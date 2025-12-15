@@ -63,7 +63,7 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
     <div className={`cu-sidebar ${expanded ? 'expanded' : ''}`} onMouseEnter={() => setExpanded(true)} onMouseLeave={() => setExpanded(false)}>
       <div className="cu-top-icons">
         {menuItems
-          .filter(item => item.roles.includes(userRole))
+          .filter(item => item.roles.some(role => role.toLowerCase() === userRole.toLowerCase()))
           .map((item) => {
             const IconComponent = item.icon;
             return (

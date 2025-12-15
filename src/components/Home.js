@@ -483,7 +483,7 @@ const Home = ({ onLogout }) => {
         <Sidebar
           currentPage={currentPage}
           onPageChange={setCurrentPage}
-          userRole={userProfile?.role || 'employee'}
+          userRole={userProfile?.user_type || 'team member'}
         />
         <div style={{ padding: '50px', textAlign: 'center' }}>
           <p>Loading tasks and meetings...</p>
