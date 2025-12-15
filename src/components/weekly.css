@@ -1,0 +1,115 @@
+.weekly-container {
+  padding: 20px 40px;
+  font-family: "Inter", sans-serif;
+  /* Let content flow naturally with global scrolling */
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.filter-section .btn {
+  padding: 8px 18px;
+  margin-right: 10px;
+  border-radius: 6px;
+  border: 1px solid #dcdcdc;
+  background: white;
+  cursor: pointer;
+}
+
+.filter-section .btn.active {
+  background: #2d63ff;
+  color: white;
+}
+
+.search {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 260px;
+}
+
+.kpi-row {
+  display: flex;
+  gap: 80px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.kpi-box {
+  text-align: center;
+}
+
+.kpi-box p {
+  font-size: 18px;
+  color: #555;
+}
+
+.kpi-box h2 {
+  margin-top: 5px;
+}
+
+.content-area {
+  display: flex;
+  margin-top: 20px;
+  gap: 40px;
+}
+
+.left-panel {
+  width: 60%;
+}
+
+.right-panel {
+  width: 40%;
+  text-align: center;
+}
+
+.weekly-card {
+  width: 100%;
+  background: #003d99;
+  padding: 25px;
+  border-radius: 12px;
+  color: white;
+}
+
+.weekly-card h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.task-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.task-table th, .task-table td {
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+}
+
+.task-table th {
+  background: #f5f5f5;
+}
+
+.download-btn {
+  background: #2d63ff;
+  border: none;
+  padding: 10px 25px;
+  color: white;
+  border-radius: 6px;
+  margin: 20px 20px 20px auto;
+  cursor: pointer;
+}
+
+.mt {
+  margin-top: 25px;
+  margin-bottom: 10px;
+}

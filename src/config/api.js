@@ -1,0 +1,158 @@
+// API Configuration
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+
+// API Endpoints
+export const API_ENDPOINTS = {
+  // Authentication
+  LOGIN: `${API_BASE_URL}/auth/login`,
+  REGISTER: `${API_BASE_URL}/auth/register`,
+  
+  // Tasks
+  TASKS: `${API_BASE_URL}/tasks`,
+  
+  // Meetings
+  MEETINGS: `${API_BASE_URL}/meetings`,
+  
+  // Admin
+  ADMIN_USERS: `${API_BASE_URL}/admin/users`,
+  ADMIN_TASKS: `${API_BASE_URL}/admin/tasks`,
+  ADMIN_MEETINGS: `${API_BASE_URL}/admin/meetings`,
+  ADMIN_ANALYTICS: `${API_BASE_URL}/admin/analytics`,
+  ADMIN_DEPT_ANALYTICS: `${API_BASE_URL}/admin/deptanalytics`,
+  ADMIN_MEMBERS: `${API_BASE_URL}/admin/members`,
+  ADMIN_ASSIGN: `${API_BASE_URL}/admin/assign`,
+  
+  // HOD
+  HOD_TASKS: `${API_BASE_URL}/hod/tasks`,
+  HOD_MEETINGS: `${API_BASE_URL}/hod/meetings`,
+  HOD_WEEKLY: `${API_BASE_URL}/hod/weekly`,
+  HOD_DOWNLOAD: `${API_BASE_URL}/hod/reports`,
+  HOD_ASSIGN: `${API_BASE_URL}/hod/assign`,
+  
+  // Reports
+  REPORTS: `${API_BASE_URL}/reports`,
+  WEEKLY: `${API_BASE_URL}/weekly`
+};
+
+// Helper function to build API URLs with dynamic parameters
+export const buildApiUrl = (endpoint, params = {}) => {
+  let url = endpoint;
+  
+  // Replace path parameters (e.g., /users/:userId)
+  Object.keys(params).forEach(key => {
+    url = url.replace(`:${key}`, params[key]);
+  });
+  
+  return url;
+};
+
+// Helper function to get auth headers
+export const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    ...(token && { "Authorization": `Bearer ${token}` })
+  };
+};
+
+// Generic API request function
+export const apiRequest = async (endpoint, options = {}) => {
+  try {
+    const response = await fetch(endpoint, {
+      headers: getAuthHeaders(),
+      ...options
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('API Request failed:', error);
+    throw error;
+  }
+};
+
+// API methods for common operations
+export const api = {
+  // Authentication
+  login: (credentials) => 
+    apiRequest(API_ENDPOINTS.LOGIN, {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    }),
+  
+  register: (userData) => 
+    apiRequest(API_ENDPOINTS.REGISTER, {
+      method: 'POST',
+      body: JSON.stringify(userData)
+    }),
+  
+  // Tasks
+  getTasks: () => 
+    apiRequest(API_ENDPOINTS.TASKS),
+  
+  createTask: (taskData) => 
+    apiRequest(API_ENDPOINTS.TASKS, {
+      method: 'POST',
+      body: JSON.stringify(taskData)
+    }),
+  
+  updateTask: (taskId, taskData) => 
+    apiRequest(buildApiUrl(API_ENDPOINTS.TASKS, { taskId }), {
+      method: 'PUT',
+      body: JSON.stringify(taskData)
+    }),
+  
+  deleteTask: (taskId) => 
+    apiRequest(buildApiUrl(API_ENDPOINTS.TASKS, { taskId }), {
+      method: 'DELETE'
+    }),
+  
+  // Meetings
+  getMeetings: () => 
+    apiRequest(API_ENDPOINTS.MEETINGS),
+  
+  createMeeting: (meetingData) => 
+    apiRequest(API_ENDPOINTS.MEETINGS, {
+      method: 'POST',
+      body: JSON.stringify(meetingData)
+    }),
+  
+  updateMeeting: (meetingId, meetingData) => 
+    apiRequest(buildApiUrl(API_ENDPOINTS.MEETINGS, { meetingId }), {
+      method: 'PUT',
+      body: JSON.stringify(meetingData)
+    }),
+  
+  deleteMeeting: (meetingId) => 
+    apiRequest(buildApiUrl(API_ENDPOINTS.MEETINGS, { meetingId }), {
+      method: 'DELETE'
+    }),
+  
+  // Admin - Users
+  getUsers: () => 
+    apiRequest(API_ENDPOINTS.ADMIN_USERS),
+  
+  createUser: (userData) => 
+    apiRequest(API_ENDPOINTS.ADMIN_USERS, {
+      method: 'POST',
+      body: JSON.stringify(userData)
+    }),
+  
+  updateUser: (userId, userData) => 
+    apiRequest(buildApiUrl(API_ENDPOINTS.ADMIN_USERS, { userId }), {
+      method: 'PUT',
+      body: JSON.stringify(userData)
+    }),
+  
+  deleteUser: (userId) => 
+    apiRequest(buildApiUrl(API_ENDPOINTS.ADMIN_USERS, { userId }), {
+      method: 'DELETE'
+    })
+};
+
+export default API_ENDPOINTS;
