@@ -8,6 +8,8 @@ import TaskDetails from './TaskDetails';
 import ProfilePanel from './ProfilePanel';
 import './Home.css';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+
 const Home = ({ onLogout }) => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [userProfile, setUserProfile] = useState(null);
@@ -18,6 +20,9 @@ const Home = ({ onLogout }) => {
   const [taskTypeFilter, setTaskTypeFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [weeklyTaskTypeFilter, setWeeklyTaskTypeFilter] = useState('');
+  const [weeklyStatusFilter, setWeeklyStatusFilter] = useState('');
+  const [weeklyCategoryFilter, setWeeklyCategoryFilter] = useState('');
   const [selectedTask, setSelectedTask] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
@@ -52,6 +57,14 @@ const Home = ({ onLogout }) => {
     fetchTasks();
   }, []);
 
+  // Refetch tasks when category filter changes
+  useEffect(() => {
+    if (userProfile) {
+      const cat = categoryFilter === '' ? 'all' : categoryFilter;
+      fetchTasks(cat);
+    }
+  }, [categoryFilter, userProfile]);
+
   // Fetch weekly data when calendar page is accessed
   useEffect(() => {
     if (currentPage === 'calendar' && userProfile) {
@@ -69,7 +82,7 @@ const Home = ({ onLogout }) => {
   }, [currentPage, filter]);
 
   // Fetch tasks from backend
-  const fetchTasks = async () => {
+  const fetchTasks = async (category = 'all') => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -81,7 +94,7 @@ const Home = ({ onLogout }) => {
       }
 
       // Fetch tasks with user filter
-      const tasksResponse = await fetch("http://localhost:5000/tasks/filter", {
+      const tasksResponse = await fetch(`${API_BASE_URL}/tasks/filter`, {
         method: 'POST',
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -91,12 +104,13 @@ const Home = ({ onLogout }) => {
           user_id: profile.user_id,
           date_filter: 'all',
           task_type: 'all',
-          status: 'all'
+          status: 'all',
+          category
         })
       });
 
       // Fetch meetings
-      const meetingsResponse = await fetch("http://localhost:5000/meetings/filter", {
+      const meetingsResponse = await fetch(`${API_BASE_URL}/meetings/filter`, {
         method: 'POST',
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -118,8 +132,8 @@ const Home = ({ onLogout }) => {
         
         // Combine tasks and meetings into a single array
         const allTasks = [
-          ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task' })),
-          ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task' })),
+          ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self' })),
+          ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned' })),
           ...(meetingsData.meetings || []).map(meeting => ({ ...meeting, itemType: 'meeting' }))
         ];
         
@@ -141,25 +155,29 @@ const Home = ({ onLogout }) => {
   };
 
   // Fetch weekly report data
-  const fetchWeeklyData = async () => {
+  const fetchWeeklyData = async (filters = {}, showLoading = true) => {
     try {
-      setWeeklyLoading(true);
+      if (showLoading) setWeeklyLoading(true);
       const token = localStorage.getItem("token");
       const profile = JSON.parse(localStorage.getItem("profile"));
-      
+
       if (!token || !profile) {
         setError("Authentication required");
         return;
       }
 
-      console.log('Fetching weekly data for user:', profile.user_id);
-      
-      const response = await fetch(`http://localhost:5000/weekly/all/${profile.user_id}`, {
-        method: 'GET',
+      console.log('Fetching weekly data for user:', profile.user_id, 'with filters:', filters);
+
+      const response = await fetch(`${API_BASE_URL}/weekly`, {
+        method: 'POST',
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
-        }
+        },
+        body: JSON.stringify({
+          user_id: profile.user_id,
+          ...filters
+        })
       });
 
       if (response.ok) {
@@ -175,7 +193,7 @@ const Home = ({ onLogout }) => {
       setError("Network error while fetching weekly data.");
       console.error("Error fetching weekly data:", err);
     } finally {
-      setWeeklyLoading(false);
+      if (showLoading) setWeeklyLoading(false);
     }
   };
 
@@ -205,36 +223,36 @@ const Home = ({ onLogout }) => {
           user_id: profile.user_id,
           meeting_name: task.name,
           date: task.date,
-          dept: task.department,
-          co_person: task.participants,
-          time: task.time,
-          prop_slot: task.timeSlot,
+          dept: task.dept,
+          co_person: task.co_person,
+          time: task.time_in_mins,
+          prop_slot: task.prop_slot,
           status: task.status || 'Scheduled',
-          notes: task.agenda
+          notes: task.notes
         };
       } else {
         // Map task fields to backend format - Include description
         console.log('Task object received:', task); // Debug log
         console.log('Description from task:', task.description); // Debug log
-        
+
         apiData = {
           user_id: profile.user_id,
           date: task.dueDate,
           timeline: task.timeline,
           task_name: task.name,
-          time: task.timeline,
+          time: task.time,
           task_type: task.type || 'work',
           status: task.status || 'pending',
           file_link: task.attachments,
           description: task.description || '' // Add description field
         };
-        
+
         console.log('API data being sent:', apiData); // Debug log
       }
       
       console.log('Creating task/meeting with data:', apiData);
       
-      const response = await fetch(`http://localhost:5000/${endpoint}/create`, {
+      const response = await fetch(`${API_BASE_URL}/${endpoint}/create`, {
         method: 'POST',
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -325,7 +343,7 @@ const Home = ({ onLogout }) => {
         };
       }
       
-      const response = await fetch(`http://localhost:5000/${endpoint}/${taskIdForAPI}`, {
+      const response = await fetch(`${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
         method: 'PUT',
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -385,7 +403,7 @@ const Home = ({ onLogout }) => {
       const taskIdForAPI = getTaskIdForAPI(taskToDelete);
       console.log('Deleting task/meeting with ID:', taskIdForAPI);
       
-      const response = await fetch(`http://localhost:5000/${endpoint}/${taskIdForAPI}`, {
+      const response = await fetch(`${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
         method: 'DELETE',
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -487,7 +505,7 @@ const Home = ({ onLogout }) => {
       <Sidebar
         currentPage={currentPage}
         onPageChange={handlePageChange}
-        userRole={userProfile.role}
+        userRole={userProfile.user_type}
       />
       <Header
         addTask={addTask}
@@ -556,12 +574,13 @@ const Home = ({ onLogout }) => {
             setFilter={setFilter}
             dateFilter={dateFilter}
             setDateFilter={setDateFilter}
-            taskTypeFilter={taskTypeFilter}
-            setTaskTypeFilter={setTaskTypeFilter}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
+            taskTypeFilter={weeklyTaskTypeFilter}
+            setTaskTypeFilter={setWeeklyTaskTypeFilter}
+            statusFilter={weeklyStatusFilter}
+            setStatusFilter={setWeeklyStatusFilter}
+            categoryFilter={weeklyCategoryFilter}
+            setCategoryFilter={setWeeklyCategoryFilter}
+            fetchWeeklyData={fetchWeeklyData}
           />
         ) : currentPage === 'meetings' ? (
           <TaskList

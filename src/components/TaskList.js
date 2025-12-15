@@ -90,9 +90,9 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
     
     const displayMap = {
       date: { 'today': 'Today', 'yesterday': 'Yesterday', 'past_week': 'Past week', 'past_month': 'Past month' },
-      tasktype: { 'fixed': 'Fixed', 'variable': 'Variable', 'hod assigned': 'HOD Assigned' },
+      tasktype: { 'Fixed': 'Fixed', 'Variable': 'Variable', 'HOD Assigned': 'HOD Assigned' },
       category: { 'self': 'Self', 'assigned': 'Assigned', 'all': 'All' },
-      status: { 'In Progress': 'In Progress', 'Done': 'Done', 'Not Started': 'Not Started', 'all': 'All' }
+      status: { 'In Progress': 'In Progress', 'Done': 'Done', 'Not Started': 'Not Started', 'Scheduled': 'Scheduled', 'Cancelled': 'Cancelled', 'On Hold': 'On Hold', 'Re-Scheduled': 'Re-Scheduled', 'all': 'All' }
     };
     
     return displayMap[filterType]?.[value] || value;
@@ -149,10 +149,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
 
   // Helper function to get time in minutes based on item type
   const getTimeInMins = (task) => {
-    if (task.itemType === 'meeting') {
-      return task.time_in_mins || '';
-    }
-    return task.time_in_mins || '';
+    return task.time || '';
   };
 
   // Helper function to get file link based on item type
@@ -201,30 +198,38 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
     // Status filter
     if (statusFilter && task.status !== statusFilter) return false;
 
-    // Date filter
+    // Date filter - use task.date instead of created_at
     if (dateFilter === 'all') return true;
-    const createdDate = new Date(task.created_at || task.createdAt || Date.now());
+    const taskDateValue = task.date || task.created_at || task.createdAt;
+    if (!taskDateValue) return false;
+    const taskDate = new Date(taskDateValue);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     if (dateFilter === 'today') {
-      const taskDate = new Date(createdDate);
-      taskDate.setHours(0, 0, 0, 0);
-      return taskDate.getTime() === today.getTime();
+      const compareDate = new Date(taskDate);
+      compareDate.setHours(0, 0, 0, 0);
+      return compareDate.getTime() === today.getTime();
     } else if (dateFilter === 'yesterday') {
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      const taskDate = new Date(createdDate);
-      taskDate.setHours(0, 0, 0, 0);
-      return taskDate.getTime() === yesterday.getTime();
+      const compareDate = new Date(taskDate);
+      compareDate.setHours(0, 0, 0, 0);
+      return compareDate.getTime() === yesterday.getTime();
     } else if (dateFilter === 'past_week') {
-      const weekAgo = new Date(today);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return createdDate >= weekAgo;
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      const weekday = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - ((weekday + 6) % 7));
+      const saturday = new Date(monday);
+      saturday.setDate(monday.getDate() + 5);
+      return taskDate >= monday && taskDate <= saturday;
     } else if (dateFilter === 'past_month') {
-      const monthAgo = new Date(today);
-      monthAgo.setDate(monthAgo.getDate() - 30);
-      return createdDate >= monthAgo;
+      const now = new Date();
+      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const last = new Date(now.getFullYear(), now.getMonth(), 0);
+      return taskDate >= first && taskDate <= last;
     }
     return true;
   });
@@ -294,9 +299,9 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                 {showTaskTypeDropdown && (
                   <div className="dropdown-menu">
                     <div className="dropdown-item" onClick={() => { setTaskTypeFilter(''); setShowTaskTypeDropdown(false); }}>All</div>
-                    <div className="dropdown-item" onClick={() => { setTaskTypeFilter('fixed'); setShowTaskTypeDropdown(false); }}>Fixed</div>
-                    <div className="dropdown-item" onClick={() => { setTaskTypeFilter('variable'); setShowTaskTypeDropdown(false); }}>Variable</div>
-                    <div className="dropdown-item" onClick={() => { setTaskTypeFilter('hod assigned'); setShowTaskTypeDropdown(false); }}>HOD Assigned</div>
+                    <div className="dropdown-item" onClick={() => { setTaskTypeFilter('Fixed'); setShowTaskTypeDropdown(false); }}>Fixed</div>
+                    <div className="dropdown-item" onClick={() => { setTaskTypeFilter('Variable'); setShowTaskTypeDropdown(false); }}>Variable</div>
+                    <div className="dropdown-item" onClick={() => { setTaskTypeFilter('HOD Assigned'); setShowTaskTypeDropdown(false); }}>HOD Assigned</div>
                   </div>
                 )}
               </div>
@@ -343,10 +348,22 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
               </button>
               {showStatusDropdown && (
                 <div className="dropdown-menu">
-                  <div className="dropdown-item" onClick={() => { setStatusFilter(''); setShowStatusDropdown(false); }}>All</div>
-                  <div className="dropdown-item" onClick={() => { setStatusFilter('In Progress'); setShowStatusDropdown(false); }}>In Progress</div>
-                  <div className="dropdown-item" onClick={() => { setStatusFilter('Done'); setShowStatusDropdown(false); }}>Done</div>
-                  <div className="dropdown-item" onClick={() => { setStatusFilter('Not Started'); setShowStatusDropdown(false); }}>Not Started</div>
+                  {filter === 'meeting' ? (
+                    <>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter('Done'); setShowStatusDropdown(false); }}>Done</div>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter('Scheduled'); setShowStatusDropdown(false); }}>Scheduled</div>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter('Cancelled'); setShowStatusDropdown(false); }}>Cancelled</div>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter('On Hold'); setShowStatusDropdown(false); }}>On Hold</div>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter('Re-scheduled'); setShowStatusDropdown(false); }}>Re-Scheduled</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter(''); setShowStatusDropdown(false); }}>All</div>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter('In Progress'); setShowStatusDropdown(false); }}>In Progress</div>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter('Done'); setShowStatusDropdown(false); }}>Done</div>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter('Not Started'); setShowStatusDropdown(false); }}>Not Started</div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -448,9 +465,9 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
               {showTaskTypeDropdown && (
                 <div className="dropdown-menu">
                   <div className="dropdown-item" onClick={() => { setTaskTypeFilter(''); setShowTaskTypeDropdown(false); }}>All</div>
-                  <div className="dropdown-item" onClick={() => { setTaskTypeFilter('fixed'); setShowTaskTypeDropdown(false); }}>Fixed</div>
-                  <div className="dropdown-item" onClick={() => { setTaskTypeFilter('variable'); setShowTaskTypeDropdown(false); }}>Variable</div>
-                  <div className="dropdown-item" onClick={() => { setTaskTypeFilter('hod assigned'); setShowTaskTypeDropdown(false); }}>HOD Assigned</div>
+                  <div className="dropdown-item" onClick={() => { setTaskTypeFilter('Fixed'); setShowTaskTypeDropdown(false); }}>Fixed</div>
+                  <div className="dropdown-item" onClick={() => { setTaskTypeFilter('Variable'); setShowTaskTypeDropdown(false); }}>Variable</div>
+                  <div className="dropdown-item" onClick={() => { setTaskTypeFilter('HOD Assigned'); setShowTaskTypeDropdown(false); }}>HOD Assigned</div>
                 </div>
               )}
             </div>
@@ -499,10 +516,22 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
             </button>
             {showStatusDropdown && (
               <div className="dropdown-menu">
-                <div className="dropdown-item" onClick={() => { setStatusFilter(''); setShowStatusDropdown(false); }}>All</div>
-                <div className="dropdown-item" onClick={() => { setStatusFilter('In Progress'); setShowStatusDropdown(false); }}>In Progress</div>
-                <div className="dropdown-item" onClick={() => { setStatusFilter('Done'); setShowStatusDropdown(false); }}>Done</div>
-                <div className="dropdown-item" onClick={() => { setStatusFilter('Not Started'); setShowStatusDropdown(false); }}>Not Started</div>
+                {filter === 'meeting' ? (
+                  <>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter('Done'); setShowStatusDropdown(false); }}>Done</div>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter('Scheduled'); setShowStatusDropdown(false); }}>Scheduled</div>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter('Cancelled'); setShowStatusDropdown(false); }}>Cancelled</div>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter('On Hold'); setShowStatusDropdown(false); }}>On Hold</div>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter('Re-Scheduled'); setShowStatusDropdown(false); }}>Re-Scheduled</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter(''); setShowStatusDropdown(false); }}>All</div>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter('In Progress'); setShowStatusDropdown(false); }}>In Progress</div>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter('Done'); setShowStatusDropdown(false); }}>Done</div>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter('Not Started'); setShowStatusDropdown(false); }}>Not Started</div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -603,7 +632,9 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                 <div className="col-time-mins">
                   <div className="time-mins-info">
                     <FaClock className="time-mins-icon" />
-                    <span className="time-mins-text">{getTimeInMins(task) || 'Not set'}</span>
+                    <span className="time-mins-text" style={{ color: 'black', fontWeight: 'bold' }}>
+                      {console.log('Task', task.task_id, 'time:', task.time) || task.time}
+                    </span>
                   </div>
                 </div>
 

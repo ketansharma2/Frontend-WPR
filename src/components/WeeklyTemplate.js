@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import "./weeklyTemplate.css";
 import { FaTimes, FaSearch, FaChevronDown } from "react-icons/fa";
+import { API_ENDPOINTS } from "../config/api";
 
-export default function WeeklyTemplate({ tasks, loading, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter }) {
+export default function WeeklyTemplate({ tasks, loading, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, fetchWeeklyData }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -16,6 +17,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
     category: '',
     status: ''
   });
+  const [filterTimeout, setFilterTimeout] = useState(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -28,6 +30,59 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
+
+  // Fetch data when filters change with debounce
+  useEffect(() => {
+    if (filterTimeout) clearTimeout(filterTimeout);
+    const timeout = setTimeout(() => {
+      if (fetchWeeklyData) {
+        const filters = {};
+        if (fromDate) filters.from_date = fromDate;
+        if (toDate) filters.to_date = toDate;
+        if (taskTypeFilter) filters.task_type = taskTypeFilter;
+        if (statusFilter) filters.status = statusFilter || 'all';
+        if (categoryFilter) filters.category = categoryFilter;
+        fetchWeeklyData(filters, false); // No loading for filter changes
+      }
+    }, 500); // 500ms debounce
+    setFilterTimeout(timeout);
+    return () => clearTimeout(timeout);
+  }, [fromDate, toDate, taskTypeFilter, statusFilter, categoryFilter, fetchWeeklyData]);
+
+  const handleDownload = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const profile = JSON.parse(localStorage.getItem("profile"));
+      const response = await fetch(`${API_ENDPOINTS.REPORTS}/download`, {
+        method: 'POST',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          user_id: profile.user_id,
+          start_date: fromDate,
+          end_date: toDate,
+          task_type: taskTypeFilter || 'all',
+          category: categoryFilter || 'all',
+          status: statusFilter || 'all'
+        })
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'weekly_report.pdf';
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        alert('Failed to download report');
+      }
+    } catch (err) {
+      alert('Error downloading report');
+    }
+  };
 
   // Show loading state
   if (loading) {
@@ -70,7 +125,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
     const displayMap = {
       tasktype: { 'fixed': 'Fixed', 'variable': 'Variable', 'hod assigned': 'HOD Assigned' },
       category: { 'self': 'Self', 'assigned': 'Assigned', 'all': 'All' },
-      status: { 'In Progress': 'In Progress', 'Done': 'Done', 'Not Started': 'Not Started', 'all': 'All' }
+      status: { 'In Progress': 'In Progress', 'Done': 'Done', 'Not Started': 'Not Started', 'Scheduled': 'Scheduled', 'Cancelled': 'Cancelled', 'On Hold': 'On Hold', 'Re-Scheduled': 'Re-Scheduled', 'all': 'All' }
     };
     
     return displayMap[filterType]?.[value] || value;
@@ -95,44 +150,6 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
       return false;
     }
 
-    // Task type filter
-    if (taskTypeFilter && task.type !== taskTypeFilter) return false;
-
-    // Status filter
-    if (statusFilter && task.status !== statusFilter) return false;
-
-    // Category filter
-    if (categoryFilter && task.category !== categoryFilter) return false;
-
-    // Date range filter
-    if (!fromDate && !toDate) return true; // No date filter applied
-    
-    const createdDate = new Date(task.createdAt);
-    const taskDate = new Date(createdDate);
-    taskDate.setHours(0, 0, 0, 0);
-    
-    let fromDateTime = null;
-    let toDateTime = null;
-    
-    if (fromDate) {
-      fromDateTime = new Date(fromDate);
-      fromDateTime.setHours(0, 0, 0, 0);
-    }
-    
-    if (toDate) {
-      toDateTime = new Date(toDate);
-      toDateTime.setHours(23, 59, 59, 999); // End of day
-    }
-    
-    // Check if task date falls within the range
-    if (fromDateTime && toDateTime) {
-      return taskDate >= fromDateTime && taskDate <= toDateTime;
-    } else if (fromDateTime) {
-      return taskDate >= fromDateTime;
-    } else if (toDateTime) {
-      return taskDate <= toDateTime;
-    }
-    
     return true;
   });
 
@@ -349,7 +366,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
         </tbody>
       </table>
 
-      <button className="download-btn">Download Report</button>
+      <button className="download-btn" onClick={handleDownload}>Download Report</button>
 
     </div>
   );

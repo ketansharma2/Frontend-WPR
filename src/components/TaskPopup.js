@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import ToggleSwitch from "./ToggleSwitch";
 import "./TaskPopup.css";
 
@@ -8,24 +8,24 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   const [error, setError] = useState('');
   const [isMounted, setIsMounted] = useState(false);
 
-  // Task refs
-  const taskNameRef = useRef();
-  const dateRef = useRef();
-  const timelineRef = useRef();
-  const timeInMinsRef = useRef();
-  const taskTypeRef = useRef();
-  const statusRef = useRef();
-  const fileLinkRef = useRef();
+  // Task state
+  const [taskName, setTaskName] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [timeline, setTimeline] = useState('');
+  const [time, setTime] = useState('');
+  const [taskType, setTaskType] = useState('Fixed');
+  const [status, setStatus] = useState('Not Started');
+  const [attachments, setAttachments] = useState('');
 
-  // Meeting refs
-  const meetingNameRef = useRef();
-  const meetingDateRef = useRef();
-  const deptRef = useRef();
-  const copersonRef = useRef();
-  const meetingTimeInMinsRef = useRef();
-  const timeSlotRef = useRef();
-  const meetingStatusRef = useRef();
-  const notesRef = useRef();
+  // Meeting state
+  const [meetingName, setMeetingName] = useState('');
+  const [meetingDate, setMeetingDate] = useState('');
+  const [dept, setDept] = useState('Marketing');
+  const [participants, setParticipants] = useState('');
+  const [meetingTime, setMeetingTime] = useState('');
+  const [timeSlot, setTimeSlot] = useState('');
+  const [meetingStatus, setMeetingStatus] = useState('Scheduled');
+  const [agenda, setAgenda] = useState('');
 
   useEffect(() => {
     // Prevent body scroll when modal is open
@@ -49,34 +49,31 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   useEffect(() => {
     // Only populate form if component is mounted and popup is open
     if (!isMounted || !open) return;
-    
+
     if (editingTask) {
       const isMeetingType = editingTask.itemType === 'meeting';
       setIsMeeting(isMeetingType);
-      
-      // Add a small delay to ensure refs are ready
-      setTimeout(() => {
-        if (isMeetingType) {
-          // Meeting fields mapping
-          if (meetingNameRef.current) meetingNameRef.current.value = editingTask.meeting_name || editingTask.name || '';
-          if (meetingDateRef.current) meetingDateRef.current.value = editingTask.date || '';
-          if (deptRef.current) deptRef.current.value = editingTask.dept || editingTask.department || '';
-          if (copersonRef.current) copersonRef.current.value = editingTask.co_person || editingTask.participants || '';
-          if (meetingTimeInMinsRef.current) meetingTimeInMinsRef.current.value = editingTask.time_in_mins || '';
-          if (timeSlotRef.current) timeSlotRef.current.value = editingTask.prop_slot || editingTask.timeSlot || '';
-          if (meetingStatusRef.current) meetingStatusRef.current.value = editingTask.status || '';
-          if (notesRef.current) notesRef.current.value = editingTask.notes || editingTask.agenda || '';
-        } else {
-          // Task fields mapping
-          if (taskNameRef.current) taskNameRef.current.value = editingTask.task_name || editingTask.name || '';
-          if (dateRef.current) dateRef.current.value = editingTask.date || editingTask.dueDate || '';
-          if (timelineRef.current) timelineRef.current.value = editingTask.timeline || '';
-          if (timeInMinsRef.current) timeInMinsRef.current.value = editingTask.time_in_mins || '';
-          if (taskTypeRef.current) taskTypeRef.current.value = editingTask.task_type || editingTask.type || '';
-          if (statusRef.current) statusRef.current.value = editingTask.status || '';
-          if (fileLinkRef.current) fileLinkRef.current.value = editingTask.file_link || editingTask.attachments || '';
-        }
-      }, 100); // Small delay to ensure DOM is ready
+
+      if (isMeetingType) {
+        // Meeting fields mapping
+        setMeetingName(editingTask.meeting_name || editingTask.name || '');
+        setMeetingDate(editingTask.date || '');
+        setDept(editingTask.dept || editingTask.department || 'Marketing');
+        setParticipants(editingTask.co_person || editingTask.participants || '');
+        setMeetingTime(editingTask.time_in_mins || '');
+        setTimeSlot(editingTask.prop_slot || editingTask.timeSlot || '');
+        setMeetingStatus(editingTask.status || 'Scheduled');
+        setAgenda(editingTask.notes || editingTask.agenda || '');
+      } else {
+        // Task fields mapping
+        setTaskName(editingTask.task_name || editingTask.name || '');
+        setDueDate(editingTask.date || editingTask.dueDate || '');
+        setTimeline(editingTask.timeline || '');
+        setTime(editingTask.time_in_mins || editingTask.time || '');
+        setTaskType(editingTask.task_type || editingTask.type || 'Fixed');
+        setStatus(editingTask.status || 'Not Started');
+        setAttachments(editingTask.file_link || editingTask.attachments || '');
+      }
     } else {
       // Reset form for new task/meeting
       setIsMeeting(false);
@@ -87,23 +84,23 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
 
   const clearForm = () => {
     // Clear task fields
-    if (taskNameRef.current) taskNameRef.current.value = '';
-    if (dateRef.current) dateRef.current.value = '';
-    if (timelineRef.current) timelineRef.current.value = '';
-    if (timeInMinsRef.current) timeInMinsRef.current.value = '';
-    if (taskTypeRef.current) taskTypeRef.current.value = '';
-    if (statusRef.current) statusRef.current.value = '';
-    if (fileLinkRef.current) fileLinkRef.current.value = '';
-    
+    setTaskName('');
+    setDueDate('');
+    setTimeline('');
+    setTime('');
+    setTaskType('Fixed');
+    setStatus('Not Started');
+    setAttachments('');
+
     // Clear meeting fields
-    if (meetingNameRef.current) meetingNameRef.current.value = '';
-    if (meetingDateRef.current) meetingDateRef.current.value = '';
-    if (deptRef.current) deptRef.current.value = '';
-    if (copersonRef.current) copersonRef.current.value = '';
-    if (meetingTimeInMinsRef.current) meetingTimeInMinsRef.current.value = '';
-    if (timeSlotRef.current) timeSlotRef.current.value = '';
-    if (meetingStatusRef.current) meetingStatusRef.current.value = '';
-    if (notesRef.current) notesRef.current.value = '';
+    setMeetingName('');
+    setMeetingDate('');
+    setDept('Marketing');
+    setParticipants('');
+    setMeetingTime('');
+    setTimeSlot('');
+    setMeetingStatus('Scheduled');
+    setAgenda('');
   };
 
   const handleToggle = (type) => {
@@ -117,14 +114,14 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         // For editing meetings
         const updatedMeeting = {
           ...editingTask,
-          meeting_name: meetingNameRef.current?.value || '',
-          date: meetingDateRef.current?.value || '',
-          dept: deptRef.current?.value || '',
-          co_person: copersonRef.current?.value || '',
-          time_in_mins: meetingTimeInMinsRef.current?.value || '',
-          prop_slot: timeSlotRef.current?.value || '',
-          status: meetingStatusRef.current?.value || '',
-          notes: notesRef.current?.value || '',
+          meeting_name: meetingName,
+          date: meetingDate,
+          dept: dept,
+          co_person: participants,
+          time_in_mins: meetingTime,
+          prop_slot: timeSlot,
+          status: meetingStatus,
+          notes: agenda,
           itemType: 'meeting',
         };
         updateTask(updatedMeeting);
@@ -132,13 +129,13 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         // For editing tasks
         const updatedTask = {
           ...editingTask,
-          task_name: taskNameRef.current?.value || '',
-          date: dateRef.current?.value || '',
-          timeline: timelineRef.current?.value || '',
-          time_in_mins: timeInMinsRef.current?.value || '',
-          task_type: taskTypeRef.current?.value || '',
-          status: statusRef.current?.value || '',
-          file_link: fileLinkRef.current?.value || '',
+          task_name: taskName,
+          date: dueDate,
+          timeline: timeline,
+          time_in_mins: time,
+          task_type: taskType,
+          status: status,
+          file_link: attachments,
           itemType: 'task',
         };
         updateTask(updatedTask);
@@ -147,27 +144,27 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
       if (isMeeting) {
         // For creating meetings
         const meeting = {
-          name: meetingNameRef.current?.value || '',
-          date: meetingDateRef.current?.value || '',
-          dept: deptRef.current?.value || '',
-          co_person: copersonRef.current?.value || '',
-          time_in_mins: meetingTimeInMinsRef.current?.value || '',
-          prop_slot: timeSlotRef.current?.value || '',
-          status: meetingStatusRef.current?.value || 'Scheduled',
-          notes: notesRef.current?.value || '',
+          name: meetingName,
+          date: meetingDate,
+          dept: dept,
+          co_person: participants,
+          time_in_mins: meetingTime,
+          prop_slot: timeSlot,
+          status: meetingStatus,
+          notes: agenda,
           itemType: 'meeting',
         };
         addTask(meeting);
       } else {
         // For creating tasks
         const task = {
-          name: taskNameRef.current?.value || '',
-          date: dateRef.current?.value || '',
-          timeline: timelineRef.current?.value || '',
-          time_in_mins: timeInMinsRef.current?.value || '',
-          task_type: taskTypeRef.current?.value || '',
-          status: statusRef.current?.value || 'Not Started',
-          file_link: fileLinkRef.current?.value || '',
+          name: taskName,
+          dueDate: dueDate,
+          timeline: timeline,
+          time: time,
+          type: taskType,
+          status: status,
+          attachments: attachments,
           itemType: 'task',
         };
         addTask(task);
@@ -229,7 +226,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="text"
                     className="enhanced-input"
                     placeholder="Enter task name"
-                    ref={taskNameRef}
+                    value={taskName}
+                    onChange={(e) => setTaskName(e.target.value)}
                     required
                   />
                 </div>
@@ -240,7 +238,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                   <input
                     type="date"
                     className="enhanced-input"
-                    ref={dateRef}
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
                     required
                   />
                 </div>
@@ -252,7 +251,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="date"
                     className="enhanced-input"
                     placeholder="Select timeline date"
-                    ref={timelineRef}
+                    value={timeline}
+                    onChange={(e) => setTimeline(e.target.value)}
                   />
                 </div>
 
@@ -263,14 +263,15 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="number"
                     className="enhanced-input"
                     placeholder="Enter time in minutes"
-                    ref={timeInMinsRef}
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
                   />
                 </div>
 
                 {/* Task Type */}
                 <div className="field-box span-6">
                   <label className="field-label">Task Type</label>
-                  <select className="enhanced-select" ref={taskTypeRef}>
+                  <select className="enhanced-select" value={taskType} onChange={(e) => setTaskType(e.target.value)}>
                     <option>Fixed</option>
                     <option>Variable</option>
                     <option>HOD Assigned</option>
@@ -282,7 +283,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                 {/* Status */}
                 <div className="field-box span-6">
                   <label className="field-label">Status</label>
-                  <select className="enhanced-select" ref={statusRef}>
+                  <select className="enhanced-select" value={status} onChange={(e) => setStatus(e.target.value)}>
                     <option>Not Started</option>
                     <option>In Progress</option>
                     <option>Done</option>
@@ -298,7 +299,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="text"
                     className="enhanced-input"
                     placeholder="Enter file link"
-                    ref={fileLinkRef}
+                    value={attachments}
+                    onChange={(e) => setAttachments(e.target.value)}
                   />
                 </div>
               </>
@@ -312,7 +314,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="text"
                     className="enhanced-input"
                     placeholder="Enter meeting name"
-                    ref={meetingNameRef}
+                    value={meetingName}
+                    onChange={(e) => setMeetingName(e.target.value)}
                     required
                   />
                 </div>
@@ -323,7 +326,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                   <input
                     type="date"
                     className="enhanced-input"
-                    ref={meetingDateRef}
+                    value={meetingDate}
+                    onChange={(e) => setMeetingDate(e.target.value)}
                     required
                   />
                 </div>
@@ -331,7 +335,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                 {/* Dept */}
                 <div className="field-box span-6">
                   <label className="field-label">Dept</label>
-                  <select className="enhanced-select" ref={deptRef}>
+                  <select className="enhanced-select" value={dept} onChange={(e) => setDept(e.target.value)}>
                     <option>Marketing</option>
                     <option>Design</option>
                     <option>HR</option>
@@ -349,7 +353,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="text"
                     className="enhanced-input"
                     placeholder="Enter co-person name"
-                    ref={copersonRef}
+                    value={participants}
+                    onChange={(e) => setParticipants(e.target.value)}
                   />
                 </div>
 
@@ -360,7 +365,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="number"
                     className="enhanced-input"
                     placeholder="Enter time in minutes"
-                    ref={meetingTimeInMinsRef}
+                    value={meetingTime}
+                    onChange={(e) => setMeetingTime(e.target.value)}
                   />
                 </div>
 
@@ -371,14 +377,15 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="text"
                     className="enhanced-input"
                     placeholder="Enter time slot"
-                    ref={timeSlotRef}
+                    value={timeSlot}
+                    onChange={(e) => setTimeSlot(e.target.value)}
                   />
                 </div>
 
                 {/* Status */}
                 <div className="field-box span-6">
                   <label className="field-label">Status</label>
-                  <select className="enhanced-select" ref={meetingStatusRef}>
+                  <select className="enhanced-select" value={meetingStatus} onChange={(e) => setMeetingStatus(e.target.value)}>
                     <option>Scheduled</option>
                     <option>Proposal</option>
                     <option>Re-scheduled</option>
@@ -394,7 +401,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                   <textarea
                     className="enhanced-textarea"
                     placeholder="Enter meeting notes"
-                    ref={notesRef}
+                    value={agenda}
+                    onChange={(e) => setAgenda(e.target.value)}
                   />
                 </div>
               </>

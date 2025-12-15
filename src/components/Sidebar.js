@@ -19,25 +19,25 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
       id: 'dashboard',
       label: 'Dashboard',
       icon: FaHome,
-      roles: ['employee', 'hod', 'admin']
+      roles: ['team member', 'hod', 'admin']
     },
     {
       id: 'tasks',
       label: 'Tasks',
       icon: FaListUl,
-      roles: ['employee', 'hod']
+      roles: ['team member', 'hod']
     },
     {
       id: 'meetings',
       label: 'Meetings',
       icon: FaUsers,
-      roles: ['employee', 'hod']
+      roles: ['team member', 'hod']
     },
     {
       id: 'calendar',
       label: 'Weekly View',
       icon: FaCalendarAlt,
-      roles: ['employee', 'hod']
+      roles: ['team member', 'hod']
     },
     {
       id: 'users',

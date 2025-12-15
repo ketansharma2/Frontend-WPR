@@ -4,8 +4,8 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:500
 // API Endpoints
 export const API_ENDPOINTS = {
   // Authentication
-  LOGIN: `${API_BASE_URL}/auth/login`,
-  REGISTER: `${API_BASE_URL}/auth/register`,
+  LOGIN: `${API_BASE_URL}/login`,
+  REGISTER: `${API_BASE_URL}/register`,
   
   // Tasks
   TASKS: `${API_BASE_URL}/tasks`,
@@ -66,7 +66,7 @@ export const apiRequest = async (endpoint, options = {}) => {
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
     }
     
     return data;

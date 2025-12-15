@@ -23,7 +23,7 @@ export default function FilterPopup({ setTaskTypeFilter, setStatusFilter, setDat
   const dateOptions = ["Today", "Yesterday", "Past week", "Past month"];
   const taskTypeOptions = ["Fixed", "Variable", "HOD Assigned"];
   const categoryOptions = ["Self", "Assigned", "All"];
-  const statusOptions = ["Done", "In progress"];
+  const statusOptions = filter === 'meeting' ? ["Done", "Scheduled", "Cancelled", "On Hold", "Re-Scheduled"] : ["Done", "In progress"];
 
   return (
     <>

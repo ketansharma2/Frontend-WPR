@@ -18,8 +18,8 @@ function App() {
         const userProfile = JSON.parse(profile);
         setUserProfile(userProfile);
         
-        // Route based on user role
-        if (userProfile.role === "admin") {
+        // Route based on user type
+        if (userProfile.user_type === "admin") {
           setView("admin-home");
         } else {
           setView("home");

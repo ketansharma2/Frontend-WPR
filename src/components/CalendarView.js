@@ -4,11 +4,15 @@ import "./CalendarView.css";
 
 export default function CalendarView({ tasks, filter, setFilter }) {
   const [dateFilter, setDateFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('');
   const [dateActive, setDateActive] = useState('');
 
   const filteredTasks = tasks.filter(task => {
     if (filter !== 'task' && filter !== 'meeting') return false;
     if (task.itemType !== filter) return false;
+
+    // Status filter
+    if (statusFilter && task.status !== statusFilter) return false;
 
     // Date filter
     if (dateFilter === 'all') return true;
@@ -83,7 +87,7 @@ export default function CalendarView({ tasks, filter, setFilter }) {
     return (
       <div className="cu-task-wrapper">
         <div className="actions-row">
-          <FilterPopup />
+          <FilterPopup setStatusFilter={setStatusFilter} setDateFilter={setDateFilter} filter={filter} />
           <button className={`btn ${dateActive === 'today' ? 'date-active' : ''}`} onClick={() => { setDateFilter('today'); setDateActive('today'); }}>Today</button>
           <button className={`btn ${dateActive === 'yesterday' ? 'date-active' : ''}`} onClick={() => { setDateFilter('yesterday'); setDateActive('yesterday'); }}>Yesterday</button>
           <button className={`btn ${dateActive === 'past_week' ? 'date-active' : ''}`} onClick={() => { setDateFilter('past_week'); setDateActive('past_week'); }}>Past week</button>
@@ -128,7 +132,7 @@ export default function CalendarView({ tasks, filter, setFilter }) {
   return (
     <div className="cu-task-wrapper">
       <div className="actions-row">
-        <FilterPopup />
+        <FilterPopup setStatusFilter={setStatusFilter} setDateFilter={setDateFilter} filter={filter} />
         <button className={`btn ${dateActive === 'today' ? 'date-active' : ''}`} onClick={() => { setDateFilter('today'); setDateActive('today'); }}>Today</button>
         <button className={`btn ${dateActive === 'yesterday' ? 'date-active' : ''}`} onClick={() => { setDateFilter('yesterday'); setDateActive('yesterday'); }}>Yesterday</button>
         <button className={`btn ${dateActive === 'past_week' ? 'date-active' : ''}`} onClick={() => { setDateFilter('past_week'); setDateActive('past_week'); }}>Past week</button>
