@@ -44,7 +44,7 @@ const Header = ({ addTask, openPopup, currentView, onLogout }) => {
         <div className="cu-header__right">
           <button className="cu-header__create-task" onClick={openPopup}>
             <span className="create-task-plus">+</span>
-            <span className="create-task-text">task/meeting</span>
+            <span className="create-task-text">Task/Meeting</span>
           </button>
           <div className="cu-header__user-avatar" onClick={toggleProfilePanel}>
             {getUserInitials()}
