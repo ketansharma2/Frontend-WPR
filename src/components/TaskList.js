@@ -741,7 +741,9 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                 <div className="col-assignee">
                   <div className="assignee-info">
                     <FaUsers className="assignee-icon" />
-                    <span className="assignee-text">Self</span>
+                    <span className="assignee-text">
+                      {task.category === 'self' ? 'Self' : (task.assigned_by_user?.name || 'Unknown')}
+                    </span>
                   </div>
                 </div>
               </>
