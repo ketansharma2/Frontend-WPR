@@ -333,13 +333,14 @@ const Home = ({ onLogout }) => {
       } else {
         // Map task fields to backend format for update - Include description
         apiData = {
-          task_name: updatedTask.task_name || updatedTask.name,
+          user_id: userProfile.user_id,
           date: updatedTask.date || updatedTask.dueDate,
-          timeline: updatedTask.time || updatedTask.timeline,
+          timeline: updatedTask.timeline,
+          task_name: updatedTask.task_name || updatedTask.name,
+          time: updatedTask.time_in_mins || updatedTask.time,
           task_type: updatedTask.task_type || updatedTask.type,
           status: updatedTask.status,
-          file_link: updatedTask.file_link || updatedTask.attachments,
-          description: updatedTask.description || '' // Add description field
+          file_link: updatedTask.file_link || updatedTask.attachments
         };
       }
       
