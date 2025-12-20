@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './Header.css';
 import ProfilePanel from './ProfilePanel';
 
-const Header = ({ addTask, openPopup, currentView, onLogout }) => {
+const Header = ({ addTask, openPopup, openAssignPopup, currentView, onLogout, user }) => {
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
 
@@ -46,6 +46,11 @@ const Header = ({ addTask, openPopup, currentView, onLogout }) => {
             <span className="create-task-plus">+</span>
             <span className="create-task-text">Task/Meeting</span>
           </button>
+          {user?.user_type === 'HOD' && (
+            <button className="cu-header__assign-task" onClick={openAssignPopup}>
+              <span className="assign-task-text">Assign Task</span>
+            </button>
+          )}
           <div className="cu-header__user-avatar" onClick={toggleProfilePanel}>
             {getUserInitials()}
           </div>

@@ -5,8 +5,6 @@ import {
   FaListUl,
   FaUsers,
   FaCalendarAlt,
-  FaCog,
-  FaStar,
   FaUserCog,
   FaChartBar,
 } from "react-icons/fa";
@@ -49,7 +47,7 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
       id: 'analytics',
       label: 'Analytics',
       icon: FaChartBar,
-      roles: ['admin', 'hod']
+      roles: ['admin']
     },
   ];
 
@@ -79,17 +77,6 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
           })}
       </div>
 
-      <div className="cu-bottom-icons">
-        <div className="icon-container">
-          <FaStar className="cu-icon" title="Upgrades" />
-          {expanded && <span className="icon-text">Upgrades</span>}
-        </div>
-
-        <div className="icon-container">
-          <FaCog className="cu-icon" title="Settings" />
-          {expanded && <span className="icon-text">Settings</span>}
-        </div>
-      </div>
     </div>
   );
 }

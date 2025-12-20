@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./weeklyTemplate.css";
 import { FaTimes, FaSearch, FaChevronDown } from "react-icons/fa";
 import { API_ENDPOINTS } from "../config/api";
 
-export default function WeeklyTemplate({ tasks, loading, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, fetchWeeklyData }) {
+export default function WeeklyTemplate({ tasks, loading, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, fetchWeeklyData }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -11,20 +11,35 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
   const [showTaskTypeDropdown, setShowTaskTypeDropdown] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showTeamMemberDropdown, setShowTeamMemberDropdown] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
     date: '',
     tasktype: '',
     category: '',
-    status: ''
+    status: '',
+    teammember: ''
   });
   const [filterTimeout, setFilterTimeout] = useState(null);
+  const hasFetchedInitial = useRef(false);
+
+  // Sync activeFilters with filter props
+  useEffect(() => {
+    setActiveFilters({
+      date: (fromDate || toDate) ? 'range' : '',
+      tasktype: taskTypeFilter,
+      category: categoryFilter,
+      status: statusFilter,
+      teammember: teamMemberFilter
+    });
+  }, [fromDate, toDate, taskTypeFilter, categoryFilter, statusFilter, viewTypeFilter, teamMemberFilter]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest('.filter-dropdown') && !event.target.closest('.btn')) {
+      if (!event.target.closest('.dropdown-menu') && !event.target.closest('.filter-btn')) {
         setShowTaskTypeDropdown(false);
         setShowCategoryDropdown(false);
         setShowStatusDropdown(false);
+        setShowTeamMemberDropdown(false);
       }
     };
     document.addEventListener('click', handleClickOutside);
@@ -42,47 +57,16 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
         if (taskTypeFilter) filters.task_type = taskTypeFilter;
         if (statusFilter) filters.status = statusFilter || 'all';
         if (categoryFilter) filters.category = categoryFilter;
-        fetchWeeklyData(filters, false); // No loading for filter changes
+        if (viewTypeFilter) filters.view_type = viewTypeFilter;
+        if (viewTypeFilter === 'team' && teamMemberFilter) filters.target_user_id = teamMemberFilter;
+        fetchWeeklyData(filters, !hasFetchedInitial.current); // Show loading only for initial fetch
+        if (!hasFetchedInitial.current) hasFetchedInitial.current = true;
       }
-    }, 500); // 500ms debounce
+    }, hasFetchedInitial.current ? 500 : 0); // No debounce for initial fetch
     setFilterTimeout(timeout);
     return () => clearTimeout(timeout);
-  }, [fromDate, toDate, taskTypeFilter, statusFilter, categoryFilter, fetchWeeklyData]);
+  }, [fromDate, toDate, taskTypeFilter, statusFilter, categoryFilter, viewTypeFilter, teamMemberFilter, fetchWeeklyData]);
 
-  const handleDownload = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const profile = JSON.parse(localStorage.getItem("profile"));
-      const response = await fetch(`${API_ENDPOINTS.REPORTS}/download`, {
-        method: 'POST',
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          user_id: profile.user_id,
-          start_date: fromDate,
-          end_date: toDate,
-          task_type: taskTypeFilter || 'all',
-          category: categoryFilter || 'all',
-          status: statusFilter || 'all'
-        })
-      });
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'weekly_report.pdf';
-        a.click();
-        window.URL.revokeObjectURL(url);
-      } else {
-        alert('Failed to download report');
-      }
-    } catch (err) {
-      alert('Error downloading report');
-    }
-  };
 
   // Show loading state
   if (loading) {
@@ -98,10 +82,11 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
   // Check if any filters are active
   const hasActiveFilters = () => {
     return searchQuery ||
-           fromDate || toDate ||
-           taskTypeFilter ||
-           statusFilter ||
-           categoryFilter;
+            fromDate || toDate ||
+            taskTypeFilter ||
+            statusFilter ||
+            categoryFilter ||
+            teamMemberFilter;
   };
 
   // Clear all filters
@@ -112,22 +97,31 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
     setTaskTypeFilter('');
     setStatusFilter('');
     setCategoryFilter('');
+    setViewTypeFilter && setViewTypeFilter('self');
+    setTeamMemberFilter && setTeamMemberFilter('');
   };
 
   // Helper function to get display text for filters
   const getFilterDisplayText = (filterType, value) => {
     if (!value) return filterType === 'date' ? 'Date Range' :
-                      filterType === 'tasktype' ? 'Task Type' :
-                      filterType === 'category' ? 'Category' : 'Status';
-    
+                       filterType === 'tasktype' ? 'Task Type' :
+                       filterType === 'category' ? 'Category' :
+                       filterType === 'teammember' ? 'Team Member' : 'Status';
+
     if (value === 'all') return 'All';
-    
+
     const displayMap = {
       tasktype: { 'fixed': 'Fixed', 'variable': 'Variable', 'hod assigned': 'HOD Assigned' },
       category: { 'self': 'Self', 'assigned': 'Assigned', 'all': 'All' },
+      teammember: {},
       status: { 'In Progress': 'In Progress', 'Done': 'Done', 'Not Started': 'Not Started', 'Scheduled': 'Scheduled', 'Cancelled': 'Cancelled', 'On Hold': 'On Hold', 'Re-Scheduled': 'Re-Scheduled', 'all': 'All' }
     };
-    
+
+    if (filterType === 'teammember') {
+      const member = teamMembers?.find(m => m.user_id === value);
+      return member ? member.name : 'Team Member';
+    }
+
     return displayMap[filterType]?.[value] || value;
   };
 
@@ -145,12 +139,18 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
   const notStartedTasks = tasks.filter(task => task.status === 'Not Started');
   const allTasks = tasks.filter(task => {
     // Search filter
-    if (searchQuery && !task.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !task.description?.toLowerCase().includes(searchQuery.toLowerCase())) {
+    const displayName = task.task_name || task.name || "Untitled Task";
+    if (searchQuery && !displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !(task.description || '').toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
 
     return true;
+  }).sort((a, b) => {
+    // Show master tasks (source: "assigned") first, then self tasks
+    if (a.source === 'assigned' && b.source !== 'assigned') return -1;
+    if (a.source !== 'assigned' && b.source === 'assigned') return 1;
+    return 0;
   });
 
   return (
@@ -287,6 +287,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
                 setShowStatusDropdown(!showStatusDropdown);
                 setShowTaskTypeDropdown(false);
                 setShowCategoryDropdown(false);
+                setShowTeamMemberDropdown(false);
               }}
             >
               {getFilterDisplayText('status', activeFilters.status)}
@@ -301,6 +302,45 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
               </div>
             )}
           </div>
+
+          {/* Team Member Filter - Only show for HOD */}
+          {teamMembers && teamMembers.length > 0 && (
+            <div className="filter-dropdown">
+              <button
+                className={`filter-btn ${activeFilters.teammember ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowTeamMemberDropdown(!showTeamMemberDropdown);
+                  setShowTaskTypeDropdown(false);
+                  setShowCategoryDropdown(false);
+                  setShowStatusDropdown(false);
+                }}
+              >
+                {getFilterDisplayText('teammember', activeFilters.teammember)}
+                <FaChevronDown className="dropdown-arrow" />
+              </button>
+              {showTeamMemberDropdown && (
+                <div className="dropdown-menu">
+                  <div
+                    className="dropdown-item"
+                    onClick={() => { setViewTypeFilter('self'); setTeamMemberFilter(''); setShowTeamMemberDropdown(false); }}
+                  >
+                    My Tasks
+                  </div>
+                  {teamMembers.map(member => (
+                    <div
+                      key={member.user_id}
+                      className="dropdown-item"
+                      onClick={() => { setViewTypeFilter('team'); setTeamMemberFilter(member.user_id); setShowTeamMemberDropdown(false); }}
+                    >
+                      {member.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
 
           {/* Clear All Filters Button - Show when filters are active */}
           {hasActiveFilters() && (
@@ -353,12 +393,12 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
           </tr>
           {/* All tasks rows */}
           {allTasks.map((task, index) => (
-            <tr key={index}>
+            <tr key={index} className={task.source === 'assigned' ? 'assigned-row' : ''}>
               <td>{task.date || task.dueDate || "--"}</td>
               <td>{task.timeline || task.prop_slot || "--"}</td>
               <td>{task.task_name || task.name || "Untitled Task"}</td>
-              <td>{task.task_type || task.type || task.dept || "Work"}</td>
-              <td style={{color: task.status === 'Done' ? 'green' : task.status === 'In Progress' ? 'red' : task.status === 'Not Started' ? 'orange' : 'black'}}>{task.status}</td>
+              <td>{task.source === 'assigned' ? 'Master' : (task.task_type || task.type || task.dept || "Work")}</td>
+              <td style={task.source !== 'assigned' ? {color: task.status === 'Done' ? 'green' : task.status === 'In Progress' ? 'red' : task.status === 'Not Started' ? 'orange' : 'black'} : {}}>{task.status}</td>
               <td>{task.itemType === 'meeting' ? (task.co_person || 'Not specified') : 'Self'}</td>
               <td>{task.file_link || task.attachments ? <a href={task.file_link || task.attachments} target="_blank" rel="noopener noreferrer">Open</a> : 'No link'}</td>
             </tr>
@@ -366,7 +406,6 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
         </tbody>
       </table>
 
-      <button className="download-btn" onClick={handleDownload}>Download Report</button>
 
     </div>
   );

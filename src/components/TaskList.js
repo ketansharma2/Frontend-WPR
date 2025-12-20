@@ -11,37 +11,51 @@ import {
   FaClock,
   FaBuilding,
   FaUsers,
-  FaFileAlt,
-  FaCheckCircle,
-  FaPlayCircle,
-  FaPauseCircle,
-  FaCircle
+  FaFileAlt
 } from "react-icons/fa";
 import { FiFlag } from "react-icons/fi";
 import { RiCheckboxBlankCircleLine } from "react-icons/ri";
 
-export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter }) {
+export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateActive, setDateActive] = useState('');
   const [activeFilters, setActiveFilters] = useState({
     date: '',
     tasktype: '',
     category: '',
-    status: ''
+    status: '',
+    viewtype: '',
+    teammember: ''
   });
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [showTaskTypeDropdown, setShowTaskTypeDropdown] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showViewTypeDropdown, setShowViewTypeDropdown] = useState(false);
+  const [showTeamMemberDropdown, setShowTeamMemberDropdown] = useState(false);
   const [menuOpen, setMenuOpen] = useState(null);
+
+  // Sync activeFilters with filter props
+  useEffect(() => {
+    setActiveFilters({
+      date: dateFilter !== 'all' ? dateFilter : '',
+      tasktype: taskTypeFilter,
+      category: categoryFilter,
+      status: statusFilter,
+      viewtype: viewTypeFilter,
+      teammember: teamMemberFilter
+    });
+  }, [dateFilter, taskTypeFilter, categoryFilter, statusFilter, viewTypeFilter, teamMemberFilter]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest('.date-dropdown') && !event.target.closest('.btn')) {
+      if (!event.target.closest('.dropdown-menu') && !event.target.closest('.filter-btn')) {
         setShowDateDropdown(false);
         setShowTaskTypeDropdown(false);
         setShowCategoryDropdown(false);
         setShowStatusDropdown(false);
+        setShowViewTypeDropdown(false);
+        setShowTeamMemberDropdown(false);
       }
       if (!event.target.closest('.task-menu') && !event.target.closest('.menu-icon')) {
         setMenuOpen(null);
@@ -51,23 +65,19 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Sync activeFilters with filter props
+  // Close dropdowns when filter changes
   useEffect(() => {
-    setActiveFilters({
-      date: dateFilter !== 'all' ? dateFilter : '',
-      tasktype: taskTypeFilter,
-      category: categoryFilter,
-      status: statusFilter
-    });
-  }, [dateFilter, taskTypeFilter, categoryFilter, statusFilter]);
+    setShowTeamMemberDropdown(false);
+  }, [filter]);
 
   // Check if any filters are active
   const hasActiveFilters = () => {
     return searchQuery ||
            (dateFilter && dateFilter !== 'all') ||
-           taskTypeFilter ||
+           (filter !== 'meeting' && taskTypeFilter) ||
            statusFilter ||
-           categoryFilter;
+           (filter !== 'meeting' && categoryFilter) ||
+           teamMemberFilter;
   };
 
   // Clear all filters
@@ -77,6 +87,8 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
     setTaskTypeFilter('');
     setStatusFilter('');
     setCategoryFilter('');
+    setViewTypeFilter && setViewTypeFilter('self');
+    setTeamMemberFilter && setTeamMemberFilter('');
     setDateActive('');
   };
 
@@ -84,17 +96,26 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
   const getFilterDisplayText = (filterType, value) => {
     if (!value) return filterType === 'date' ? 'Date' :
                       filterType === 'tasktype' ? 'Task Type' :
-                      filterType === 'category' ? 'Category' : 'Status';
-    
+                      filterType === 'category' ? 'Category' :
+                      filterType === 'viewtype' ? 'View' :
+                      filterType === 'teammember' ? 'Team Member' : 'Status';
+
     if (value === 'all') return 'All';
-    
+
     const displayMap = {
       date: { 'today': 'Today', 'yesterday': 'Yesterday', 'past_week': 'Past week', 'past_month': 'Past month' },
       tasktype: { 'Fixed': 'Fixed', 'Variable': 'Variable', 'HOD Assigned': 'HOD Assigned' },
       category: { 'self': 'Self', 'assigned': 'Assigned', 'all': 'All' },
+      viewtype: { 'self': 'Self', 'team': 'Team' },
+      teammember: {},
       status: { 'In Progress': 'In Progress', 'Done': 'Done', 'Not Started': 'Not Started', 'Scheduled': 'Scheduled', 'Cancelled': 'Cancelled', 'On Hold': 'On Hold', 'Re-Scheduled': 'Re-Scheduled', 'all': 'All' }
     };
-    
+
+    if (filterType === 'teammember') {
+      const member = teamMembers?.find(m => m.user_id === value);
+      return member ? member.name : 'Team Member';
+    }
+
     return displayMap[filterType]?.[value] || value;
   };
 
@@ -128,6 +149,9 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
     if (task.itemType === 'meeting') {
       return task.dept || 'Meeting';
     }
+    if (task.category === 'assigned') {
+      return 'Master';
+    }
     return task.task_type || task.type || 'Work';
   };
 
@@ -160,14 +184,6 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
     return task.file_link || task.attachments || task.upload || null;
   };
 
-  // Helper function to get status icon
-  const getStatusIcon = (status) => {
-    const statusLower = (status || '').toLowerCase();
-    if (statusLower.includes('done') || statusLower.includes('completed')) return <FaCheckCircle />;
-    if (statusLower.includes('progress')) return <FaPlayCircle />;
-    if (statusLower.includes('hold') || statusLower.includes('pending')) return <FaPauseCircle />;
-    return <FaCircle />;
-  };
 
   // Helper function to generate unique keys for React components
   const generateUniqueKey = (task, index) => {
@@ -368,6 +384,74 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
               )}
             </div>
 
+            {setTeamMemberFilter && (filter === 'meeting' || filter === 'task') && (
+              <div className="filter-dropdown">
+                <button
+                  className={`filter-btn ${activeFilters.teammember ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTeamMemberDropdown(!showTeamMemberDropdown);
+                    setShowDateDropdown(false);
+                    setShowTaskTypeDropdown(false);
+                    setShowCategoryDropdown(false);
+                    setShowStatusDropdown(false);
+                    setShowViewTypeDropdown(false);
+                  }}
+                >
+                  {getFilterDisplayText('teammember', activeFilters.teammember)}
+                  <FaChevronDown className="dropdown-arrow" />
+                </button>
+                {showTeamMemberDropdown && (
+                  <div className="dropdown-menu">
+                    <div
+                      className="dropdown-item"
+                      onClick={() => { setViewTypeFilter('self'); setTeamMemberFilter(''); setShowTeamMemberDropdown(false); }}
+                    >
+                      {filter === 'task' ? 'My Tasks' : 'My Meetings'}
+                    </div>
+                    {teamMembers && teamMembers.length > 0 ? teamMembers.map(member => (
+                      <div
+                        key={member.user_id}
+                        className="dropdown-item"
+                        onClick={() => { setViewTypeFilter('team'); setTeamMemberFilter(member.user_id); setShowTeamMemberDropdown(false); }}
+                      >
+                        {member.name}
+                      </div>
+                    )) : (
+                      <div className="dropdown-item disabled">No team members available</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {setViewTypeFilter && filter !== 'task' && filter !== 'meeting' && (
+              <div className="filter-dropdown">
+                <button
+                  className={`filter-btn ${activeFilters.viewtype ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowViewTypeDropdown(!showViewTypeDropdown);
+                    setShowDateDropdown(false);
+                    setShowTaskTypeDropdown(false);
+                    setShowCategoryDropdown(false);
+                    setShowStatusDropdown(false);
+                    setShowTeamMemberDropdown(false);
+                  }}
+                >
+                  {getFilterDisplayText('viewtype', activeFilters.viewtype)}
+                  <FaChevronDown className="dropdown-arrow" />
+                </button>
+                {showViewTypeDropdown && (
+                  <div className="dropdown-menu">
+                    <div className="dropdown-item" onClick={() => { setViewTypeFilter('self'); setShowViewTypeDropdown(false); }}>Self</div>
+                    <div className="dropdown-item" onClick={() => { setViewTypeFilter('team'); setShowViewTypeDropdown(false); }}>Team</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+
             {hasActiveFilters() && (
               <button
                 className="clear-all-filters-btn"
@@ -395,6 +479,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
       </div>
     );
   }
+
 
   return (
     <div className="cu-task-wrapper">
@@ -536,6 +621,74 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
             )}
           </div>
 
+          {setTeamMemberFilter && (filter === 'meeting' || filter === 'task') && (
+            <div className="filter-dropdown">
+              <button
+                className={`filter-btn ${activeFilters.teammember ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowTeamMemberDropdown(!showTeamMemberDropdown);
+                  setShowDateDropdown(false);
+                  setShowTaskTypeDropdown(false);
+                  setShowCategoryDropdown(false);
+                  setShowStatusDropdown(false);
+                  setShowViewTypeDropdown(false);
+                }}
+              >
+                {getFilterDisplayText('teammember', activeFilters.teammember)}
+                <FaChevronDown className="dropdown-arrow" />
+              </button>
+              {showTeamMemberDropdown && (
+                <div className="dropdown-menu">
+                  <div
+                    className="dropdown-item"
+                    onClick={() => { setViewTypeFilter('self'); setTeamMemberFilter(''); setShowTeamMemberDropdown(false); }}
+                  >
+                    {filter === 'task' ? 'My Tasks' : 'My Meetings'}
+                  </div>
+                  {teamMembers && teamMembers.length > 0 ? teamMembers.map(member => (
+                    <div
+                      key={member.user_id}
+                      className="dropdown-item"
+                      onClick={() => { setViewTypeFilter('team'); setTeamMemberFilter(member.user_id); setShowTeamMemberDropdown(false); }}
+                    >
+                      {member.name}
+                    </div>
+                  )) : (
+                    <div className="dropdown-item disabled">No team members available</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {setViewTypeFilter && filter !== 'task' && filter !== 'meeting' && (
+            <div className="filter-dropdown">
+              <button
+                className={`filter-btn ${activeFilters.viewtype ? 'active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowViewTypeDropdown(!showViewTypeDropdown);
+                  setShowDateDropdown(false);
+                  setShowTaskTypeDropdown(false);
+                  setShowCategoryDropdown(false);
+                  setShowStatusDropdown(false);
+                  setShowTeamMemberDropdown(false);
+                }}
+              >
+                {getFilterDisplayText('viewtype', activeFilters.viewtype)}
+                <FaChevronDown className="dropdown-arrow" />
+              </button>
+              {showViewTypeDropdown && (
+                <div className="dropdown-menu">
+                  <div className="dropdown-item" onClick={() => { setViewTypeFilter('self'); setShowViewTypeDropdown(false); }}>Self</div>
+                  <div className="dropdown-item" onClick={() => { setViewTypeFilter('team'); setShowViewTypeDropdown(false); }}>Team</div>
+                </div>
+              )}
+            </div>
+          )}
+
+
           {/* Clear All Filters Button - Show when filters are active */}
           {hasActiveFilters() && (
             <button
@@ -590,7 +743,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
         {filteredTasks.map((task, i) => (
           <div 
             key={generateUniqueKey(task, i)} 
-            className={`enhanced-task-row ${task.itemType === 'meeting' ? 'meeting-row' : 'task-row'}`}
+            className={`enhanced-task-row ${task.itemType === 'meeting' ? 'meeting-row' : 'task-row'} ${task.category === 'assigned' ? 'assigned-row' : ''}`}
             onClick={() => onEdit(task)}
           >
             {task.itemType === 'meeting' ? (
@@ -648,8 +801,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
 
                 {/* Status Column */}
                 <div className="col-status">
-                  <div className="status-badge">
-                    <span className="status-icon">{getStatusIcon(task.status)}</span>
+                  <div className={`status-badge ${task.status?.toLowerCase() === 'done' || task.status?.toLowerCase() === 'completed' ? 'status-done' : ''}`}>
                     <span className="status-text">{task.status || 'Not Started'}</span>
                   </div>
                 </div>
@@ -707,8 +859,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
 
                 {/* Status Column */}
                 <div className="col-status">
-                  <div className="status-badge">
-                    <span className="status-icon">{getStatusIcon(task.status)}</span>
+                  <div className={`status-badge ${task.status?.toLowerCase() === 'done' || task.status?.toLowerCase() === 'completed' ? 'status-done' : ''}`}>
                     <span className="status-text">{task.status || 'Not Started'}</span>
                   </div>
                 </div>

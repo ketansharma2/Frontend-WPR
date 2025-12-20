@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import TaskList from './TaskList';
@@ -10,27 +10,40 @@ import './Home.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
-const Home = ({ onLogout }) => {
+const HodHome = ({ onLogout }) => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [userProfile, setUserProfile] = useState(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [filter, setFilter] = useState('task');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [taskDateFilter, setTaskDateFilter] = useState('all');
+  const [meetingDateFilter, setMeetingDateFilter] = useState('all');
+  const [weeklyDateFilter, setWeeklyDateFilter] = useState('all');
   const [taskTypeFilter, setTaskTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [taskStatusFilter, setTaskStatusFilter] = useState('');
+  const [meetingStatusFilter, setMeetingStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [weeklyTaskTypeFilter, setWeeklyTaskTypeFilter] = useState('');
   const [weeklyStatusFilter, setWeeklyStatusFilter] = useState('');
   const [weeklyCategoryFilter, setWeeklyCategoryFilter] = useState('');
+  const [weeklyViewTypeFilter, setWeeklyViewTypeFilter] = useState('self');
+  const [weeklyTeamMemberFilter, setWeeklyTeamMemberFilter] = useState('');
+  const [taskViewTypeFilter, setTaskViewTypeFilter] = useState('self'); // 'self' or 'team' for tasks
+  const [taskTeamMemberFilter, setTaskTeamMemberFilter] = useState(''); // for team view tasks
+  const [meetingViewTypeFilter, setMeetingViewTypeFilter] = useState('self'); // 'self' or 'team' for meetings
+  const [meetingTeamMemberFilter, setMeetingTeamMemberFilter] = useState(''); // for team view meetings
+  const [teamMembers, setTeamMembers] = useState([]); // list of team members
   const [selectedTask, setSelectedTask] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [weeklyTasks, setWeeklyTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
   const [error, setError] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [pendingTasks, setPendingTasks] = useState([]);
 
   // Helper function for SVG donut chart calculations
   const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -54,23 +67,33 @@ const Home = ({ onLogout }) => {
     } else {
       setError("No user profile found");
     }
-    fetchTasks();
+    fetchHodData('self', '', 'self', '', 'all', true);
+    fetchTeamMembers(); // Fetch team members on mount
   }, []);
 
   // Refetch tasks when category filter changes
   useEffect(() => {
     if (userProfile) {
       const cat = categoryFilter === '' ? 'all' : categoryFilter;
-      fetchTasks(cat);
+      fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, false);
     }
   }, [categoryFilter, userProfile]);
 
-  // Fetch weekly data when calendar page is accessed
-  useEffect(() => {
-    if (currentPage === 'calendar' && userProfile) {
-      fetchWeeklyData();
+  // Refetch data when any filter changes
+  useLayoutEffect(() => {
+    if (userProfile) {
+      setLoading(false); // Ensure loading is false for filter changes
+      setTasks([]); // Clear current tasks to prevent showing old data
+      // Only fetch meetings if team view has a selected member
+      if (!(meetingViewTypeFilter === 'team' && !meetingTeamMemberFilter)) {
+        fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', false);
+      }
+      if (taskViewTypeFilter === 'team' || meetingViewTypeFilter === 'team') {
+        fetchTeamMembers();
+      }
     }
-  }, [currentPage, userProfile]);
+  }, [taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, userProfile]);
+
 
   // Sync filter with current page on page changes
   useEffect(() => {
@@ -81,20 +104,21 @@ const Home = ({ onLogout }) => {
     }
   }, [currentPage, filter]);
 
-  // Fetch tasks from backend
-  const fetchTasks = async (category = 'all') => {
+
+  // Fetch HOD data from backend
+  const fetchHodData = async (taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, category = 'all', showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const token = localStorage.getItem("token");
       const profile = JSON.parse(localStorage.getItem("profile"));
-      
+
       if (!token || !profile) {
         setError("Authentication required");
         return;
       }
 
-      // Fetch tasks with user filter
-      const tasksResponse = await fetch(`${API_BASE_URL}/tasks/filter`, {
+      // Fetch tasks with HOD-specific filter
+      const tasksResponse = await fetch(`${API_BASE_URL}/hod/tasks/filter`, {
         method: 'POST',
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -102,6 +126,8 @@ const Home = ({ onLogout }) => {
         },
         body: JSON.stringify({
           user_id: profile.user_id,
+          view_tasks_of: taskViewType, // 'self' or 'team'
+          target_user_id: taskViewType === 'team' && taskTeamMember ? taskTeamMember : null,
           date_filter: 'all',
           task_type: 'all',
           status: 'all',
@@ -109,8 +135,9 @@ const Home = ({ onLogout }) => {
         })
       });
 
-      // Fetch meetings
-      const meetingsResponse = await fetch(`${API_BASE_URL}/meetings/filter`, {
+      // Fetch meetings with HOD-specific filter
+      const isTeamView = !!meetingTeamMember;
+      const meetingsResponse = await fetch(`${API_BASE_URL}/hod/meetings/filter`, {
         method: 'POST',
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -118,44 +145,96 @@ const Home = ({ onLogout }) => {
         },
         body: JSON.stringify({
           user_id: profile.user_id,
+          view_type: isTeamView ? 'team' : 'self',
+          target_user_id: isTeamView ? meetingTeamMember : null,
           date_filter: 'all',
           status: 'all'
         })
       });
 
-      if (tasksResponse.ok && meetingsResponse.ok) {
-        const tasksData = await tasksResponse.json();
+      if (meetingsResponse.ok) {
         const meetingsData = await meetingsResponse.json();
-        
-        console.log('Tasks data:', tasksData);
         console.log('Meetings data:', meetingsData);
-        
-        // Combine tasks and meetings into a single array - master_tasks first, then self_tasks
-        const allTasks = [
-          ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned' })),
-          ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self' })),
-          ...(meetingsData.meetings || []).map(meeting => ({ ...meeting, itemType: 'meeting' }))
-        ];
-        
+
+        let allTasks = [];
+
+        if (tasksResponse.ok) {
+          const tasksData = await tasksResponse.json();
+          console.log('Tasks data:', tasksData);
+
+          // Combine tasks and meetings into a single array - master_tasks first, then self_tasks
+          allTasks = [
+            ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned', assigned_by_user: task.users })),
+            ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self' })),
+            ...(meetingsData.meetings || []).map(meeting => ({ ...meeting, itemType: 'meeting' }))
+          ];
+        } else {
+          // If tasks failed, still show meetings
+          console.warn('Tasks API failed, showing only meetings');
+          allTasks = (meetingsData.meetings || []).map(meeting => ({ ...meeting, itemType: 'meeting' }));
+        }
+
         console.log('Combined tasks with descriptions:', allTasks.map(t => ({ name: t.task_name, description: t.description })));
-        setTasks(allTasks);
+
+        // For HOD, backend already filters based on viewType, so use all returned tasks
+        const filteredTasks = allTasks;
+
+        setTasks(filteredTasks);
+        setPendingTasks(filteredTasks.filter(t => t.category === 'assigned' && t.status !== 'Not Started' && t.status !== 'In Progress'));
       } else {
-        const tasksError = tasksResponse.ok ? null : await tasksResponse.json();
-        const meetingsError = meetingsResponse.ok ? null : await meetingsResponse.json();
-        console.error('Tasks error:', tasksError);
-        console.error('Meetings error:', meetingsError);
-        setError("Failed to fetch data from server");
+        const meetingsError = await meetingsResponse.json();
+
+        // Don't log or set error for expected 400 when team selected but no member chosen
+        if (meetingsResponse.status === 400 && meetingViewTypeFilter === 'team' && !meetingTeamMemberFilter) {
+          console.log('Expected: Team view selected without choosing a team member');
+        } else {
+          console.error('Meetings error:', meetingsError);
+          setError("Failed to fetch meetings from server");
+        }
+        setLoading(false); // Ensure loading is set to false on error
       }
     } catch (err) {
       setError("Network error. Please check your connection.");
       console.error("Error fetching tasks:", err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+        setInitialLoading(false);
+      }
+    }
+  };
+
+  // Fetch team members for the dropdown
+  const fetchTeamMembers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const profile = JSON.parse(localStorage.getItem("profile"));
+
+      if (!token || !profile) {
+        setError("Authentication required");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/hod/meetings/team-members/${profile.dept}/${profile.user_id}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTeamMembers(data.team_members || []);
+      } else {
+        console.error('Failed to fetch team members');
+      }
+    } catch (err) {
+      console.error("Error fetching team members:", err);
     }
   };
 
   // Fetch weekly report data
-  const fetchWeeklyData = async (filters = {}, showLoading = true) => {
+  const fetchWeeklyData = useCallback(async (filters = {}, showLoading = true) => {
     try {
       if (showLoading) setWeeklyLoading(true);
       const token = localStorage.getItem("token");
@@ -166,9 +245,7 @@ const Home = ({ onLogout }) => {
         return;
       }
 
-      console.log('Fetching weekly data for user:', profile.user_id, 'with filters:', filters);
-
-      const response = await fetch(`${API_BASE_URL}/weekly`, {
+      const response = await fetch(`${API_BASE_URL}/hod/weekly`, {
         method: 'POST',
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -182,7 +259,6 @@ const Home = ({ onLogout }) => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Weekly data fetched:', data);
         setWeeklyTasks(data.tasks || []);
       } else {
         const errorData = await response.json();
@@ -195,7 +271,7 @@ const Home = ({ onLogout }) => {
     } finally {
       if (showLoading) setWeeklyLoading(false);
     }
-  };
+  }, []);
 
   const openPopup = () => { setIsPopupOpen(true); };
   const closePopup = () => {
@@ -204,11 +280,67 @@ const Home = ({ onLogout }) => {
     setError(''); // Clear any errors when closing popup
   };
 
+  const openAssignPopup = () => { setIsAssignPopupOpen(true); };
+  const closeAssignPopup = () => {
+    setIsAssignPopupOpen(false);
+    setError(''); // Clear any errors when closing popup
+  };
+
+  const assignTask = async (task) => {
+    try {
+      const token = localStorage.getItem("token");
+      const profile = JSON.parse(localStorage.getItem("profile"));
+
+      if (!token || !profile) {
+        setError("Authentication required");
+        return;
+      }
+
+      const apiData = {
+        user_id: profile.user_id,
+        assigned_by: profile.user_id,
+        assigned_to: task.assignTo,
+        date: task.date,
+        timeline: task.timeline,
+        task_name: task.taskName,
+        status: task.status,
+        assignee_remarks: task.remarks,
+        upload_closing: '',
+        remarks: '',
+        parameter: task.parameter,
+        end_goal: task.endGoal
+      };
+
+      const response = await fetch(`${API_BASE_URL}/hod/assign/create`, {
+        method: 'POST',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(apiData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Task assigned successfully:', result);
+        alert('Task assigned successfully');
+        setError(''); // Clear any errors
+        // Optionally refresh tasks or show success message
+      } else {
+        const errorData = await response.json();
+        setError(`Failed to assign task: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      setError(`Network error while assigning task: ${err.message}`);
+    }
+    closeAssignPopup();
+  };
+
   const addTask = async (task) => {
     try {
       const token = localStorage.getItem("token");
       const profile = JSON.parse(localStorage.getItem("profile"));
-      
+
       if (!profile?.user_id) {
         setError("User profile not found");
         return;
@@ -216,7 +348,7 @@ const Home = ({ onLogout }) => {
 
       let apiData;
       let endpoint = task.itemType === 'meeting' ? 'meetings' : 'tasks';
-      
+
       if (task.itemType === 'meeting') {
         // Map meeting fields to backend format
         apiData = {
@@ -249,9 +381,9 @@ const Home = ({ onLogout }) => {
 
         console.log('API data being sent:', apiData); // Debug log
       }
-      
+
       console.log('Creating task/meeting with data:', apiData);
-      
+
       const response = await fetch(`${API_BASE_URL}/${endpoint}/create`, {
         method: 'POST',
         headers: {
@@ -264,15 +396,15 @@ const Home = ({ onLogout }) => {
       if (response.ok) {
         const result = await response.json();
         console.log('Task/meeting created successfully:', result);
-        
+
         // Add the new task to local state immediately for instant UI update
         const newTask = {
           ...result.task || result.meeting,
           itemType: task.itemType
         };
-        
+
         setTasks(prevTasks => [...prevTasks, newTask]);
-        
+
         if (task.itemType === 'task') setFilter('task');
         else if (task.itemType === 'meeting') setFilter('meeting');
         setError(''); // Clear any previous errors
@@ -308,15 +440,15 @@ const Home = ({ onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const endpoint = updatedTask.itemType === 'meeting' ? 'meetings' : 'tasks';
-      
+
       // Get the correct ID for the API call
       const taskIdForAPI = getTaskIdForAPI(updatedTask);
-      
+
       if (!taskIdForAPI) {
         setError(`Cannot update ${updatedTask.itemType}: No valid ID found`);
         return;
       }
-      
+
       let apiData;
       if (updatedTask.itemType === 'meeting') {
         // Map meeting fields to backend format for update
@@ -342,7 +474,7 @@ const Home = ({ onLogout }) => {
           description: updatedTask.description || '' // Add description field
         };
       }
-      
+
       const response = await fetch(`${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
         method: 'PUT',
         headers: {
@@ -354,10 +486,10 @@ const Home = ({ onLogout }) => {
 
       if (response.ok) {
         const result = await response.json();
-        
+
         // Update the local tasks state immediately for instant UI update
         const updatedTaskData = result.task || result.meeting || updatedTask;
-        
+
         setTasks(prevTasks => {
           return prevTasks.map(task => {
             // More robust task matching logic
@@ -369,7 +501,7 @@ const Home = ({ onLogout }) => {
               (task._id && updatedTaskData._id && task._id === updatedTaskData._id) ||
               (task.task_id && updatedTaskData.task_id && task.task_id === updatedTaskData.task_id) ||
               (task.meeting_id && updatedTaskData.meeting_id && task.meeting_id === updatedTaskData.meeting_id);
-            
+
             if (isMatch) {
               return {
                 ...task,
@@ -381,7 +513,7 @@ const Home = ({ onLogout }) => {
             return task;
           });
         });
-        
+
         setEditingTask(null);
         setIsPopupOpen(false); // Close popup after successful update
         setError(''); // Clear any previous errors
@@ -398,11 +530,11 @@ const Home = ({ onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const endpoint = taskToDelete.itemType === 'meeting' ? 'meetings' : 'tasks';
-      
+
       // Get the correct ID for the API call
       const taskIdForAPI = getTaskIdForAPI(taskToDelete);
       console.log('Deleting task/meeting with ID:', taskIdForAPI);
-      
+
       const response = await fetch(`${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
         method: 'DELETE',
         headers: {
@@ -414,7 +546,7 @@ const Home = ({ onLogout }) => {
       if (response.ok) {
         const result = await response.json();
         console.log('Task/meeting deleted successfully:', result);
-        
+
         // Update the local tasks state immediately for instant UI update
         setTasks(prevTasks =>
           prevTasks.filter(task => {
@@ -423,11 +555,11 @@ const Home = ({ onLogout }) => {
               (task._id && taskToDelete._id && task._id === taskToDelete._id) ||
               (task.task_id && taskToDelete.task_id && task.task_id === taskToDelete.task_id) ||
               (task.meeting_id && taskToDelete.meeting_id && task.meeting_id === taskToDelete.meeting_id);
-            
+
             return !isMatch;
           })
         );
-        
+
         setError(''); // Clear any previous errors
       } else {
         const errorData = await response.json();
@@ -448,7 +580,7 @@ const Home = ({ onLogout }) => {
   // Handle filter changes from toggle and sync with view
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);
-    
+
     // Sync page with filter for consistent navigation
     if (newFilter === 'task' && currentPage === 'meetings') {
       setCurrentPage('tasks');
@@ -460,7 +592,7 @@ const Home = ({ onLogout }) => {
   // Handle page changes from sidebar and sync filter
   const handlePageChange = (pageId) => {
     setCurrentPage(pageId);
-    
+
     // Sync filter with page for consistent behavior
     if (pageId === 'tasks') {
       setFilter('task');
@@ -477,13 +609,13 @@ const Home = ({ onLogout }) => {
     onLogout();
   };
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div>
         <Sidebar
           currentPage={currentPage}
           onPageChange={setCurrentPage}
-          userRole={userProfile?.user_type || 'team member'}
+          userRole={userProfile?.user_type || 'hod'}
         />
         <div style={{ padding: '50px', textAlign: 'center' }}>
           <p>Loading tasks and meetings...</p>
@@ -510,11 +642,12 @@ const Home = ({ onLogout }) => {
       <Header
         addTask={addTask}
         openPopup={openPopup}
+        openAssignPopup={openAssignPopup}
         currentView={currentPage}
         onLogout={handleLogout}
         user={userProfile}
       />
-      
+
       {/* Error display - positioned to not affect layout */}
       {error && (
         <div style={{
@@ -547,7 +680,7 @@ const Home = ({ onLogout }) => {
           </button>
         </div>
       )}
-      
+
       <main>
         {currentPage === 'tasks' ? (
           <TaskList
@@ -555,16 +688,21 @@ const Home = ({ onLogout }) => {
             onEdit={editTask}
             onViewDetails={onViewDetails}
             onDelete={deleteTask}
-            filter={filter}
+            filter='task'
             setFilter={handleFilterChange}
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
+            dateFilter={taskDateFilter}
+            setDateFilter={setTaskDateFilter}
             taskTypeFilter={taskTypeFilter}
             setTaskTypeFilter={setTaskTypeFilter}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
+            statusFilter={taskStatusFilter}
+            setStatusFilter={setTaskStatusFilter}
             categoryFilter={categoryFilter}
             setCategoryFilter={setCategoryFilter}
+            viewTypeFilter={taskViewTypeFilter}
+            setViewTypeFilter={setTaskViewTypeFilter}
+            teamMemberFilter={taskTeamMemberFilter}
+            setTeamMemberFilter={setTaskTeamMemberFilter}
+            teamMembers={teamMembers}
           />
         ) : currentPage === 'calendar' ? (
           <WeeklyTemplate
@@ -572,14 +710,19 @@ const Home = ({ onLogout }) => {
             loading={weeklyLoading}
             filter={filter}
             setFilter={setFilter}
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
+            dateFilter={weeklyDateFilter}
+            setDateFilter={setWeeklyDateFilter}
             taskTypeFilter={weeklyTaskTypeFilter}
             setTaskTypeFilter={setWeeklyTaskTypeFilter}
             statusFilter={weeklyStatusFilter}
             setStatusFilter={setWeeklyStatusFilter}
             categoryFilter={weeklyCategoryFilter}
             setCategoryFilter={setWeeklyCategoryFilter}
+            viewTypeFilter={weeklyViewTypeFilter}
+            setViewTypeFilter={setWeeklyViewTypeFilter}
+            teamMemberFilter={weeklyTeamMemberFilter}
+            setTeamMemberFilter={setWeeklyTeamMemberFilter}
+            teamMembers={teamMembers}
             fetchWeeklyData={fetchWeeklyData}
           />
         ) : currentPage === 'meetings' ? (
@@ -590,14 +733,19 @@ const Home = ({ onLogout }) => {
             onDelete={deleteTask}
             filter={filter}
             setFilter={handleFilterChange}
-            dateFilter={dateFilter}
-            setDateFilter={setDateFilter}
+            dateFilter={meetingDateFilter}
+            setDateFilter={setMeetingDateFilter}
             taskTypeFilter={taskTypeFilter}
             setTaskTypeFilter={setTaskTypeFilter}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
+            statusFilter={meetingStatusFilter}
+            setStatusFilter={setMeetingStatusFilter}
             categoryFilter={categoryFilter}
             setCategoryFilter={setCategoryFilter}
+            viewTypeFilter={meetingViewTypeFilter}
+            setViewTypeFilter={setMeetingViewTypeFilter}
+            teamMemberFilter={meetingTeamMemberFilter}
+            setTeamMemberFilter={setMeetingTeamMemberFilter}
+            teamMembers={teamMembers}
           />
         ) : (
           <div className="dashboard-container">
@@ -607,7 +755,7 @@ const Home = ({ onLogout }) => {
                 <div className="welcome-header">
                   <div>
                     <h1 className="dashboard-title">
-                      Welcome, {userProfile?.name || 'User'}
+                      Welcome, {userProfile?.name || 'User'} ({userProfile?.dept || 'Department'} HOD)
                     </h1>
                     <p className="dashboard-subtitle">Dashboard Overview</p>
                   </div>
@@ -622,12 +770,32 @@ const Home = ({ onLogout }) => {
                   </button>
                 </div>
               </div>
+
+              {/* Pending HPT Tasks Section */}
+              {pendingTasks.length > 0 && (
+                <div className="pending-tasks-section">
+                  <h3 className="pending-tasks-title">Your pending HPT tasks</h3>
+                  <div className="pending-tasks-list">
+                    {pendingTasks.slice(0, 5).map(task => (
+                      <div key={task.task_id || task._id} className="pending-task-item">
+                        <span className="pending-task-name">{task.task_name || task.name}</span>
+                        <span className="pending-task-status">{task.status}</span>
+                      </div>
+                    ))}
+                    {pendingTasks.length > 5 && (
+                      <div className="pending-task-more">
+                        +{pendingTasks.length - 5} more tasks
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Professional Dashboard Layout - COMMENTED OUT */}
             {/*
             <div className="professional-dashboard">
-              
+
               Top Stats Row
               <div className="stats-row">
                 <div className="stat-card-compact" onClick={() => handlePageChange('tasks')}>
@@ -666,7 +834,7 @@ const Home = ({ onLogout }) => {
 
               Main Content Row
               <div className="main-content-row-compact">
-                
+
                 Left Panel - Simple Visible Donut Chart
                 <div className="chart-panel-compact">
                   <h3 className="section-title-compact">Task Distribution</h3>
@@ -677,9 +845,9 @@ const Home = ({ onLogout }) => {
                       const completed = taskItems.filter(t => t.status === 'completed').length;
                       const pending = taskItems.filter(t => t.status === 'pending').length;
                       const inProgress = taskItems.filter(t => t.status === 'in-progress').length;
-                      
+
                       console.log('Chart Data:', { totalTasks, completed, pending, inProgress });
-                      
+
                       if (totalTasks === 0) {
                         return (
                           <div className="no-data-chart">
@@ -691,9 +859,9 @@ const Home = ({ onLogout }) => {
                           </div>
                         );
                       }
-                      
+
                       const completionRate = totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0;
-                      
+
                       return (
                         <div className="simple-donut-wrapper">
                           Main Stats
@@ -707,7 +875,7 @@ const Home = ({ onLogout }) => {
                               <span className="main-stat-label">Complete</span>
                             </div>
                           </div>
-                          
+
                           Simple Donut Chart with Bright Colored Segments
                           <div className="simple-donut-chart">
                             <div className="donut-container">
@@ -724,7 +892,7 @@ const Home = ({ onLogout }) => {
                                     }}
                                   ></div>
                                 )}
-                                
+
                                 In Progress segment
                                 {inProgress > 0 && (
                                   <div
@@ -736,7 +904,7 @@ const Home = ({ onLogout }) => {
                                     }}
                                   ></div>
                                 )}
-                                
+
                                 Pending segment
                                 {pending > 0 && (
                                   <div
@@ -749,14 +917,14 @@ const Home = ({ onLogout }) => {
                                   ></div>
                                 )}
                               </div>
-                              
+
                               Center circle
                               <div className="donut-center-bright">
                                 <div className="donut-center-number">{totalTasks}</div>
                                 <div className="donut-center-label">Tasks</div>
                               </div>
                             </div>
-                            
+
                             Simple color indicators below
                             <div className="color-indicators">
                               <div className="color-item">
@@ -773,7 +941,7 @@ const Home = ({ onLogout }) => {
                               </div>
                             </div>
                           </div>
-                          
+
                           Legend
                           <div className="simple-legend">
                             <div className="legend-row">
@@ -801,7 +969,7 @@ const Home = ({ onLogout }) => {
 
                 Right Panel - Compact Actions and Recent Activity
                 <div className="activity-panel-compact">
-                  
+
                   Quick Actions
                   <div className="actions-section-compact">
                     <h3 className="section-title-compact">Quick Actions</h3>
@@ -859,7 +1027,7 @@ const Home = ({ onLogout }) => {
           </div>
         )}
       </main>
-      
+
       {/* Modals positioned outside main content to prevent layout shifts */}
       <TaskPopup
         open={isPopupOpen}
@@ -867,6 +1035,14 @@ const Home = ({ onLogout }) => {
         addTask={addTask}
         editingTask={editingTask}
         updateTask={updateTask}
+        mode="create"
+      />
+      <TaskPopup
+        open={isAssignPopupOpen}
+        onClose={closeAssignPopup}
+        addTask={assignTask}
+        mode="assign"
+        teamMembers={teamMembers}
       />
       <ProfilePanel
         open={isProfileOpen}
@@ -878,4 +1054,4 @@ const Home = ({ onLogout }) => {
   );
 };
 
-export default Home;
+export default HodHome;

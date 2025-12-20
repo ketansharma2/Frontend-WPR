@@ -140,3 +140,8 @@
   font-size: 10px;
   cursor: pointer;
 }
+
+.assigned-row {
+  background-color: #f87171;
+  color: black;
+}

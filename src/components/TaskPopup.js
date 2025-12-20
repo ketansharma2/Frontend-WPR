@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import ToggleSwitch from "./ToggleSwitch";
 import "./TaskPopup.css";
 
-export default function TaskPopup({ open, onClose, addTask, editingTask, updateTask }) {
+export default function TaskPopup({ open, onClose, addTask, editingTask, updateTask, mode = "create", teamMembers = [] }) {
   const [isMeeting, setIsMeeting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,6 +26,16 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   const [timeSlot, setTimeSlot] = useState('');
   const [meetingStatus, setMeetingStatus] = useState('Scheduled');
   const [agenda, setAgenda] = useState('');
+
+  // Assign task state
+  const [assignDate, setAssignDate] = useState('');
+  const [assignTimeline, setAssignTimeline] = useState('');
+  const [assignTaskName, setAssignTaskName] = useState('');
+  const [assignParameter, setAssignParameter] = useState('');
+  const [assignEndGoal, setAssignEndGoal] = useState('');
+  const [assignRemarks, setAssignRemarks] = useState('');
+  const [assignTo, setAssignTo] = useState('');
+  const [assignStatus, setAssignStatus] = useState('Not Started');
 
   useEffect(() => {
     // Prevent body scroll when modal is open
@@ -101,6 +111,16 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
     setTimeSlot('');
     setMeetingStatus('Scheduled');
     setAgenda('');
+
+    // Clear assign fields
+    setAssignDate('');
+    setAssignTimeline('');
+    setAssignTaskName('');
+    setAssignParameter('');
+    setAssignEndGoal('');
+    setAssignRemarks('');
+    setAssignTo('');
+    setAssignStatus('Not Started');
   };
 
   const handleToggle = (type) => {
@@ -109,7 +129,20 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   };
 
   const handleCreate = async () => {
-    if (editingTask) {
+    if (mode === "assign") {
+      // For assigning tasks
+      const assignData = {
+        date: assignDate,
+        timeline: assignTimeline,
+        taskName: assignTaskName,
+        parameter: assignParameter,
+        endGoal: assignEndGoal,
+        remarks: assignRemarks,
+        assignTo: assignTo,
+        status: assignStatus,
+      };
+      addTask(assignData);
+    } else if (editingTask) {
       if (isMeeting) {
         // For editing meetings
         const updatedMeeting = {
@@ -184,17 +217,19 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
             <div className="title-section">
               <div>
                 <h2 className="modal-title">
-                  {editingTask ? (isMeeting ? 'Edit Meeting' : 'Edit Task') : (isMeeting ? 'New Meeting' : 'New Task')}
+                  {mode === "assign" ? "Assign Task" : editingTask ? (isMeeting ? 'Edit Meeting' : 'Edit Task') : (isMeeting ? 'New Meeting' : 'New Task')}
                 </h2>
                 <p className="modal-subtitle">
-                  {editingTask ? (isMeeting ? 'Update meeting details' : 'Modify task details') : (isMeeting ? 'Plan and coordinate team collaboration' : 'Define objectives and assign responsibilities')}
+                  {mode === "assign" ? "Assign tasks to team members" : editingTask ? (isMeeting ? 'Update meeting details' : 'Modify task details') : (isMeeting ? 'Plan and coordinate team collaboration' : 'Define objectives and assign responsibilities')}
                 </p>
               </div>
             </div>
-            <ToggleSwitch 
-              onToggle={handleToggle}
-              active={isMeeting ? "Meeting" : "Tasks"}
-            />
+            {mode !== "assign" && (
+              <ToggleSwitch
+                onToggle={handleToggle}
+                active={isMeeting ? "Meeting" : "Tasks"}
+              />
+            )}
           </div>
         </div>
 
@@ -215,8 +250,107 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         {/* Form Content - Professional Layout */}
         <div className="popup-content">
           <div className="form-grid-container">
-            
-            {!isMeeting ? (
+
+            {mode === "assign" ? (
+              // ASSIGN TASK FORM
+              <>
+                {/* Date */}
+                <div className="field-box span-6">
+                  <label className="field-label required">Date</label>
+                  <input
+                    type="date"
+                    className="enhanced-input"
+                    value={assignDate}
+                    onChange={(e) => setAssignDate(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Timeline */}
+                <div className="field-box span-6">
+                  <label className="field-label">Timeline (date)</label>
+                  <input
+                    type="date"
+                    className="enhanced-input"
+                    value={assignTimeline}
+                    onChange={(e) => setAssignTimeline(e.target.value)}
+                  />
+                </div>
+
+                {/* Task Name */}
+                <div className="field-box span-12">
+                  <label className="field-label required">Task Name</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter task name"
+                    value={assignTaskName}
+                    onChange={(e) => setAssignTaskName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Parameter */}
+                <div className="field-box span-6">
+                  <label className="field-label">Parameter</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter parameter"
+                    value={assignParameter}
+                    onChange={(e) => setAssignParameter(e.target.value)}
+                  />
+                </div>
+
+                {/* End goal */}
+                <div className="field-box span-6">
+                  <label className="field-label">End goal</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter end goal"
+                    value={assignEndGoal}
+                    onChange={(e) => setAssignEndGoal(e.target.value)}
+                  />
+                </div>
+
+                {/* Assignee Remarks */}
+                <div className="field-box span-12">
+                  <label className="field-label">Assignee Remarks</label>
+                  <textarea
+                    className="enhanced-textarea"
+                    placeholder="Enter assignee remarks"
+                    value={assignRemarks}
+                    onChange={(e) => setAssignRemarks(e.target.value)}
+                  />
+                </div>
+
+                {/* Assign to */}
+                <div className="field-box span-6">
+                  <label className="field-label">Assign to</label>
+                  <select className="enhanced-select" value={assignTo} onChange={(e) => setAssignTo(e.target.value)}>
+                    <option value="">Select team member</option>
+                    {teamMembers.map(member => (
+                      <option key={member.user_id} value={member.user_id}>
+                        {member.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status */}
+                <div className="field-box span-6">
+                  <label className="field-label">Status</label>
+                  <select className="enhanced-select" value={assignStatus} onChange={(e) => setAssignStatus(e.target.value)}>
+                    <option>Not Started</option>
+                    <option>In Progress</option>
+                    <option>Done</option>
+                    <option>Cancelled</option>
+                    <option>On Hold</option>
+                  </select>
+                </div>
+              </>
+            ) : !isMeeting ? (
               // TASK FORM
               <>
                 {/* Task Name */}
@@ -336,6 +470,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                 <div className="field-box span-6">
                   <label className="field-label">Dept</label>
                   <select className="enhanced-select" value={dept} onChange={(e) => setDept(e.target.value)}>
+                    <option>All</option>
                     <option>Marketing</option>
                     <option>Design</option>
                     <option>HR</option>
@@ -343,6 +478,9 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     <option>IT</option>
                     <option>Operations</option>
                     <option>Finance</option>
+                    <option>Tech</option>
+                    <option>Delivery</option>
+                    <option>Legal</option>
                   </select>
                 </div>
 
@@ -422,7 +560,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
               Cancel
             </button>
             <button className="submit-btn" onClick={handleCreate} disabled={loading}>
-              {loading ? 'Saving...' : (editingTask ? (isMeeting ? 'Update Meeting' : 'Update Task') : (isMeeting ? 'Create Meeting' : 'Create Task'))}
+              {loading ? 'Saving...' : (mode === "assign" ? 'Assign Task' : editingTask ? (isMeeting ? 'Update Meeting' : 'Update Task') : (isMeeting ? 'Create Meeting' : 'Create Task'))}
             </button>
           </div>
         </div>
