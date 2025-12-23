@@ -738,27 +738,6 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
         marginBottom: '20px',
         marginTop: typeof dashboardViewType !== 'undefined' ? '20px' : (filter === 'meeting' ? '30px' : '25px')
       }}>
-        {/* Table Header - Hide for HOD dashboard and meetings page */}
-        {typeof dashboardViewType !== 'undefined' && filter !== 'meeting' && (
-          <div style={{
-            background: '#166534',
-            borderRadius: '12px 12px 0 0',
-            padding: '12px 20px',
-            margin: '0',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <h3 style={{
-              margin: '0',
-              fontSize: '18px',
-              fontWeight: '600',
-              color: 'white'
-            }}>
-              {filter === 'task' ? 'Tasks' : 'Meetings'}
-            </h3>
-          </div>
-        )}
 
         {/* Table */}
         <div style={{
