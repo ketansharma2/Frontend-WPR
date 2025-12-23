@@ -6,7 +6,11 @@ import WeeklyTemplate from './WeeklyTemplate';
 import TaskPopup from './TaskPopup';
 import TaskDetails from './TaskDetails';
 import ProfilePanel from './ProfilePanel';
+import TaskStatsPanel from './TaskStatsPanel';
+import DateToggleSwitch from './DateToggleSwitch';
+import { api } from '../config/api';
 import './Home.css';
+
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
@@ -31,6 +35,16 @@ const Home = ({ onLogout }) => {
   const [weeklyLoading, setWeeklyLoading] = useState(false);
   const [error, setError] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [monthlyStats, setMonthlyStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState('');
+  const [todayTasks, setTodayTasks] = useState([]);
+  const [todayMeetings, setTodayMeetings] = useState([]);
+  const [todayDataLoading, setTodayDataLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState('today'); // 'today' or 'yesterday'
+  const [yesterdayDate, setYesterdayDate] = useState(null); // Actual date found for yesterday
+  const [yesterdayTasks, setYesterdayTasks] = useState([]);
+  const [yesterdayMeetings, setYesterdayMeetings] = useState([]);
 
   // Helper function for SVG donut chart calculations
   const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -80,6 +94,22 @@ const Home = ({ onLogout }) => {
       setFilter('meeting');
     }
   }, [currentPage, filter]);
+
+  // Fetch monthly stats when user profile is available
+  useEffect(() => {
+    if (userProfile?.user_id) {
+      fetchMonthlyStats();
+    }
+  }, [userProfile]);
+
+  // Fetch today's data when user profile is available
+  useEffect(() => {
+    if (userProfile?.user_id) {
+      setTodayDataLoading(true);
+      Promise.all([fetchTodayTasks(), fetchTodayMeetings()])
+        .finally(() => setTodayDataLoading(false));
+    }
+  }, [userProfile]);
 
   // Fetch tasks from backend
   const fetchTasks = async (category = 'all') => {
@@ -194,6 +224,94 @@ const Home = ({ onLogout }) => {
       console.error("Error fetching weekly data:", err);
     } finally {
       if (showLoading) setWeeklyLoading(false);
+    }
+  };
+
+  // Fetch monthly task statistics
+  const fetchMonthlyStats = async () => {
+    try {
+      setStatsLoading(true);
+      setStatsError('');
+
+      const profile = JSON.parse(localStorage.getItem("profile"));
+      if (!profile?.user_id) {
+        setStatsError("User profile not found");
+        return;
+      }
+
+      const stats = await api.getMonthlyStats(profile.user_id);
+      setMonthlyStats(stats);
+
+    } catch (err) {
+      console.error("Error fetching monthly stats:", err);
+      setStatsError("Failed to load monthly statistics");
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  // Fetch today's tasks
+  const fetchTodayTasks = async () => {
+    try {
+      const profile = JSON.parse(localStorage.getItem("profile"));
+      if (!profile?.user_id) return;
+
+      const tasksData = await api.getTodayTasks(profile.user_id);
+      setTodayTasks(tasksData.tasks || []);
+    } catch (err) {
+      console.error("Error fetching today's tasks:", err);
+      setTodayTasks([]);
+    }
+  };
+
+  // Fetch today's meetings
+  const fetchTodayMeetings = async () => {
+    try {
+      const profile = JSON.parse(localStorage.getItem("profile"));
+      if (!profile?.user_id) return;
+
+      const meetingsData = await api.getTodayMeetings(profile.user_id);
+      setTodayMeetings(meetingsData.meetings || []);
+    } catch (err) {
+      console.error("Error fetching today's meetings:", err);
+      setTodayMeetings([]);
+    }
+  };
+
+  // Fetch last working day's tasks and meetings
+  const fetchLastWorkingDayData = async () => {
+    try {
+      const profile = JSON.parse(localStorage.getItem("profile"));
+      if (!profile?.user_id) return;
+
+      const workingDayData = await api.getLastWorkingDayTasks(profile.user_id);
+
+      if (workingDayData.found) {
+        // Get tasks from the response (only self_tasks now)
+        const tasks = workingDayData.tasks;
+
+        // Fetch meetings for the same date
+        const meetingsData = await api.getMeetingsByDate(profile.user_id, workingDayData.date);
+        const meetings = meetingsData.meetings || [];
+
+        setYesterdayTasks(tasks);
+        setYesterdayMeetings(meetings);
+        setYesterdayDate(workingDayData.date);
+
+        console.log(`Found last working day: ${workingDayData.date} (${workingDayData.days_back} days back)`);
+        console.log(`Tasks: ${tasks.length}, Meetings: ${meetings.length}`);
+      } else {
+        // No working days found, show empty state
+        setYesterdayTasks([]);
+        setYesterdayMeetings([]);
+        setYesterdayDate(null);
+        console.log("No working days found in last 30 days");
+      }
+    } catch (err) {
+      console.error("Error fetching last working day data:", err);
+      setYesterdayTasks([]);
+      setYesterdayMeetings([]);
+      setYesterdayDate(null);
     }
   };
 
@@ -470,6 +588,38 @@ const Home = ({ onLogout }) => {
     }
   };
 
+  const handleDateToggle = async (newDate) => {
+    setSelectedDate(newDate);
+
+    if (newDate === 'yesterday') {
+      // Fetch last working day data when switching to yesterday
+      await fetchLastWorkingDayData();
+    }
+
+    console.log('Date toggled to:', newDate);
+  };
+
+  // Dynamic colors based on selected date
+  const getHeaderColors = () => {
+    if (selectedDate === 'yesterday') {
+      return {
+        planningHeader: '#2986cc',    // Yesterday's Task Header
+        planningSubheader: '#9fc5e8', // Yesterday's Task Subheader
+        meetingsHeader: '#e06666',    // Yesterday's Meetings Header
+        meetingsSubheader: '#f4cccc'  // Yesterday's Meetings Subheader
+      };
+    } else {
+      return {
+        planningHeader: '#166534',    // Today's Task Header
+        planningSubheader: '#9dcfb0', // Today's Task Subheader
+        meetingsHeader: '#e27326',    // Today's Meetings Header
+        meetingsSubheader: '#fed7aa'  // Today's Meetings Subheader
+      };
+    }
+  };
+
+  const colors = getHeaderColors();
+
   const handleLogout = () => {
     // Clear localStorage
     localStorage.removeItem("token");
@@ -549,7 +699,7 @@ const Home = ({ onLogout }) => {
         </div>
       )}
       
-      <main>
+      <main style={{ padding: '0' }}>
         {currentPage === 'tasks' ? (
           <TaskList
             tasks={tasks.filter(task => task.itemType === 'task')}
@@ -601,27 +751,413 @@ const Home = ({ onLogout }) => {
             setCategoryFilter={setCategoryFilter}
           />
         ) : (
-          <div className="dashboard-container">
-            {/* Dashboard Header */}
-            <div className="dashboard-header-section">
-              <div className="welcome-section">
-                <div className="welcome-header">
-                  <div>
-                    <h1 className="dashboard-title">
-                      Welcome, {userProfile?.name || 'User'}
-                    </h1>
-                    <p className="dashboard-subtitle">Dashboard Overview</p>
-                  </div>
-                  <button
-                    className="profile-btn"
-                    onClick={() => setIsProfileOpen(true)}
-                    title="View Profile"
-                  >
-                    <div className="user-avatar">
-                      {userProfile?.name?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                  </button>
-                </div>
+           <div className="dashboard-container">
+             {/* Monthly Task Statistics Panel */}
+             <div style={{ marginTop: '15px' }}>
+               <TaskStatsPanel
+                 stats={monthlyStats}
+                 loading={statsLoading}
+                 error={statsError}
+               />
+             </div>
+
+            {/* Date Filter Toggle - Moved above Today's Planning header */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '15px', marginBottom: '10px', paddingRight: '20px' }}>
+              <DateToggleSwitch
+                onToggle={handleDateToggle}
+                active={selectedDate === 'today' ? 'Today' : 'Yesterday'}
+              />
+            </div>
+
+            {/* Today's Planning Section - Header and Table in Single Container */}
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              width: '100%',
+              overflow: 'hidden',
+              marginBottom: '30px'
+            }}>
+              {/* Today's Planning Table Header */}
+              <div style={{
+                background: colors.planningHeader,
+                borderRadius: '12px 12px 0 0',
+                padding: '12px 20px',
+                margin: '0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h3 style={{
+                  margin: '0',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: 'white'
+                }}>
+                  {selectedDate === 'yesterday'
+                    ? (yesterdayDate ? `Last Working Day Tasks` : "Yesterday's Tasks")
+                    : "Today's Planning"
+                  }
+                </h3>
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'white',
+                  opacity: '0.9'
+                }}>
+                  {(() => {
+                    if (selectedDate === 'yesterday' && yesterdayDate) {
+                      // Show the actual working day found
+                      const date = new Date(yesterdayDate);
+                      const day = date.getDate();
+                      const month = date.toLocaleDateString('en-US', { month: 'short' });
+                      const year = date.getFullYear();
+                      return `${day} ${month} ${year}`;
+                    } else {
+                      // Show calendar yesterday or today
+                      const date = selectedDate === 'yesterday'
+                        ? new Date(Date.now() - 24 * 60 * 60 * 1000)
+                        : new Date();
+                      const day = date.getDate();
+                      const month = date.toLocaleDateString('en-US', { month: 'short' });
+                      const year = date.getFullYear();
+                      return `${day} ${month} ${year}`;
+                    }
+                  })()}
+                </span>
+              </div>
+
+              {/* Today's Planning Table */}
+              <div style={{
+                padding: '0',
+                margin: '0'
+              }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                margin: '0'
+              }}>
+                <thead>
+                  <tr style={{
+                    background: colors.planningSubheader,
+                    borderBottom: '2px solid #e2e8f0'
+                  }}>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '60px'
+                    }}>S.No</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '30%'
+                    }}>Task Name</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '120px'
+                    }}>Deadline</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '100px'
+                    }}>Task Type</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '100px'
+                    }}>Status</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '120px'
+                    }}>Time (in mins)</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      width: '80px'
+                    }}>Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedDate === 'yesterday' ? yesterdayTasks : todayTasks).length > 0 ? (
+                    (selectedDate === 'yesterday' ? yesterdayTasks : todayTasks).map((task, index) => (
+                      <tr key={task.task_id || index} style={{
+                        backgroundColor: index % 2 === 0 ? '#f8fafc' : 'white',
+                        borderBottom: '1px solid #e2e8f0'
+                      }}>
+                        <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{task.task_name || task.name}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{task.timeline || 'N/A'}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{task.task_type || 'work'}</td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            backgroundColor: task.status === 'completed' ? '#dcfce7' :
+                                           task.status === 'in-progress' ? '#dbeafe' : '#fef3c7',
+                            color: task.status === 'completed' ? '#166534' :
+                                  task.status === 'in-progress' ? '#1e40af' : '#92400e'
+                          }}>
+                            {task.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>
+                          {task.time_in_mins || task.time || 'N/A'}
+                        </td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>
+                          {task.file_link ? (
+                            <a href={task.file_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                              Link
+                            </a>
+                          ) : 'N/A'}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" style={{
+                        padding: '40px 16px',
+                        textAlign: 'center',
+                        color: '#6b7280'
+                      }}>
+                        {selectedDate === 'yesterday'
+                          ? (yesterdayDate
+                              ? `No tasks found for ${yesterdayDate}`
+                              : "No working days found in the last 30 days")
+                          : "No tasks scheduled for today"
+                        }
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              </div>
+            </div>
+
+            {/* Today's Meetings Section - Header and Table in Single Container */}
+            <div style={{
+              background: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              width: '100%',
+              overflow: 'hidden',
+              marginBottom: '20px'
+            }}>
+              {/* Today's Meetings Table Header */}
+              <div style={{
+                background: colors.meetingsHeader,
+                borderRadius: '12px 12px 0 0',
+                padding: '12px 20px',
+                margin: '0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h3 style={{
+                  margin: '0',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: 'white'
+                }}>
+                  {selectedDate === 'yesterday'
+                    ? (yesterdayDate ? `Last Working Day Meetings` : "Yesterday's Meetings")
+                    : "Today's Meetings"
+                  }
+                </h3>
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'white',
+                  opacity: '0.9'
+                }}>
+                  {(() => {
+                    if (selectedDate === 'yesterday' && yesterdayDate) {
+                      // Show the actual working day found
+                      const date = new Date(yesterdayDate);
+                      const day = date.getDate();
+                      const month = date.toLocaleDateString('en-US', { month: 'short' });
+                      const year = date.getFullYear();
+                      return `${day} ${month} ${year}`;
+                    } else {
+                      // Show calendar yesterday or today
+                      const date = selectedDate === 'yesterday'
+                        ? new Date(Date.now() - 24 * 60 * 60 * 1000)
+                        : new Date();
+                      const day = date.getDate();
+                      const month = date.toLocaleDateString('en-US', { month: 'short' });
+                      const year = date.getFullYear();
+                      return `${day} ${month} ${year}`;
+                    }
+                  })()}
+                </span>
+              </div>
+
+              {/* Today's Meetings Table */}
+              <div style={{
+                padding: '0',
+                margin: '0'
+              }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                margin: '0'
+              }}>
+                <thead>
+                  <tr style={{
+                    background: colors.meetingsSubheader,
+                    borderBottom: '2px solid #e2e8f0'
+                  }}>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '60px'
+                    }}>S.No</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '30%'
+                    }}>Meeting name</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '15%'
+                    }}>Dept</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '15%'
+                    }}>Co Person</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '15%'
+                    }}>Time (in mins)</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '12%'
+                    }}>Prop Slot</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '12%'
+                    }}>Status</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      width: '15%'
+                    }}>Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedDate === 'yesterday' ? yesterdayMeetings : todayMeetings).length > 0 ? (
+                    (selectedDate === 'yesterday' ? yesterdayMeetings : todayMeetings).map((meeting, index) => (
+                      <tr key={meeting.meeting_id || index} style={{
+                        backgroundColor: index % 2 === 0 ? '#f8fafc' : 'white',
+                        borderBottom: '1px solid #e2e8f0'
+                      }}>
+                        <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{meeting.meeting_name || meeting.name}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.dept || 'N/A'}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.co_person || 'N/A'}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.time || 'N/A'}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.prop_slot || 'N/A'}</td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            backgroundColor: meeting.status === 'completed' ? '#dcfce7' :
+                                           meeting.status === 'scheduled' ? '#dbeafe' : '#fef3c7',
+                            color: meeting.status === 'completed' ? '#166534' :
+                                  meeting.status === 'scheduled' ? '#1e40af' : '#92400e'
+                          }}>
+                            {meeting.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.notes || 'N/A'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="8" style={{
+                        padding: '40px 16px',
+                        textAlign: 'center',
+                        color: '#6b7280'
+                      }}>
+                        {selectedDate === 'yesterday'
+                          ? (yesterdayDate
+                              ? `No meetings found for ${yesterdayDate}`
+                              : "No working days found in the last 30 days")
+                          : "No meetings scheduled for today"
+                        }
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
               </div>
             </div>
 

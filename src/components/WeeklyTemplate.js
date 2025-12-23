@@ -137,6 +137,15 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
   const completedTasks = tasks.filter(task => task.status === 'Done');
   const inProgressTasks = tasks.filter(task => task.status === 'In Progress');
   const notStartedTasks = tasks.filter(task => task.status === 'Not Started');
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "--";
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
   const allTasks = tasks.filter(task => {
     // Search filter
     const displayName = task.task_name || task.name || "Untitled Task";
@@ -147,14 +156,18 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
 
     return true;
   }).sort((a, b) => {
-    // Show master tasks (source: "assigned") first, then self tasks
+    // Primary sort: Show master tasks (source: "assigned") first, then self tasks
     if (a.source === 'assigned' && b.source !== 'assigned') return -1;
     if (a.source !== 'assigned' && b.source === 'assigned') return 1;
-    return 0;
+
+    // Secondary sort: Latest tasks first (by updated_at or created_at)
+    const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
+    const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
+    return dateB - dateA; // Descending order (newest first)
   });
 
   return (
-    <div className="weekly-wrapper">
+    <div className="weekly-wrapper" style={{ padding: '0 50px' }}>
 
       {/* Professional Search and Filter Bar */}
       <div className="professional-filter-bar">
@@ -179,7 +192,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
         {/* Filter Controls */}
         <div className="filter-controls">
           {/* Date Range Filter - Always Visible */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: fromDate || toDate ? '#e3f2fd' : '#f8f9fa', border: '1px solid #dee2e6', borderRadius: '6px', minWidth: '280px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '280px' }}>
             <span style={{ fontSize: '12px', fontWeight: '600', color: '#495057', whiteSpace: 'nowrap' }}>Date Range:</span>
             <input
               type="date"
@@ -357,54 +370,63 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
 
       </div>
 
-      <h1 className="main-title">Weekly Progress with Task and Due Date</h1>
-
       {/* Top Cards */}
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-        <div style={{ flex: 1, padding: '20px', background: '#103c7f', border: '1px solid #e1e5e9', borderRadius: '8px', textAlign: 'center', color: '#fff' }}>
-          <p style={{ margin: 0 }}>Total Tasks</p>
-          <h2 style={{ margin: '10px 0 0 0', fontSize: '24px' }}>{allTasks.length}</h2>
-        </div>
-        <div style={{ flex: 1, padding: '20px', background: '#103c7f', border: '1px solid #e1e5e9', borderRadius: '8px', textAlign: 'center', color: '#fff' }}>
-          <p style={{ margin: 0 }}>In Progress</p>
-          <h2 style={{ margin: '10px 0 0 0', fontSize: '24px' }}>{inProgressTasks.length}</h2>
-        </div>
-        <div style={{ flex: 1, padding: '20px', background: '#103c7f', border: '1px solid #e1e5e9', borderRadius: '8px', textAlign: 'center', color: '#fff' }}>
-          <p style={{ margin: 0 }}>Done</p>
-          <h2 style={{ margin: '10px 0 0 0', fontSize: '24px' }}>{completedTasks.length}</h2>
+      <div style={{ background: 'white', borderRadius: '12px', padding: '20px', marginTop: '20px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
+        <div style={{ display: 'flex', gap: '15px' }}>
+          <div style={{ flex: 1, padding: '15px', background: 'white', border: '1px solid #e1e5e9', borderRadius: '8px', textAlign: 'center', color: '#000', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)' }}>
+            <p style={{ margin: 0 }}>Total Tasks</p>
+            <h2 style={{ margin: '10px 0 0 0', fontSize: '20px' }}>{allTasks.length}</h2>
+          </div>
+          <div style={{ flex: 1, padding: '15px', background: 'white', border: '1px solid #e1e5e9', borderRadius: '8px', textAlign: 'center', color: '#000', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)' }}>
+            <p style={{ margin: 0 }}>In Progress</p>
+            <h2 style={{ margin: '10px 0 0 0', fontSize: '20px' }}>{inProgressTasks.length}</h2>
+          </div>
+          <div style={{ flex: 1, padding: '15px', background: 'white', border: '1px solid #e1e5e9', borderRadius: '8px', textAlign: 'center', color: '#000', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)' }}>
+            <p style={{ margin: 0 }}>Done</p>
+            <h2 style={{ margin: '10px 0 0 0', fontSize: '20px' }}>{completedTasks.length}</h2>
+          </div>
+          <div style={{ flex: 1, padding: '15px', background: 'white', border: '1px solid #e1e5e9', borderRadius: '8px', textAlign: 'center', color: '#000', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)' }}>
+            <p style={{ margin: 0 }}>Not Started</p>
+            <h2 style={{ margin: '10px 0 0 0', fontSize: '20px' }}>{notStartedTasks.length}</h2>
+          </div>
         </div>
       </div>
 
-      <table className="report-table">
-        <tbody>
-          {/* ALL TASKS SECTION */}
-          <tr>
-            <th colSpan="10" className="completed-title">All Tasks</th>
-          </tr>
-
-          <tr className="header-row">
-            <th>Date</th>
-            <th>Timeline</th>
-            <th>Task Name</th>
-            <th>Task Type</th>
-            <th>Status</th>
-            <th>Assignee</th>
-            <th>Link</th>
-          </tr>
-          {/* All tasks rows */}
-          {allTasks.map((task, index) => (
-            <tr key={index} className={task.source === 'assigned' ? 'assigned-row' : ''}>
-              <td>{task.date || task.dueDate || "--"}</td>
-              <td>{task.timeline || task.prop_slot || "--"}</td>
-              <td>{task.task_name || task.name || "Untitled Task"}</td>
-              <td>{task.source === 'assigned' ? 'Master' : (task.task_type || task.type || task.dept || "Work")}</td>
-              <td style={task.source !== 'assigned' ? {color: task.status === 'Done' ? 'green' : task.status === 'In Progress' ? 'red' : task.status === 'Not Started' ? 'orange' : 'black'} : {}}>{task.status}</td>
-              <td>{task.itemType === 'meeting' ? (task.co_person || 'Not specified') : 'Self'}</td>
-              <td>{task.file_link || task.attachments ? <a href={task.file_link || task.attachments} target="_blank" rel="noopener noreferrer">Open</a> : 'No link'}</td>
+      {/* Table Container */}
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+        width: '100%',
+        overflow: 'hidden',
+        marginBottom: '20px'
+      }}>
+        <table className="report-table">
+          <tbody>
+            <tr className="header-row">
+              <th>Date</th>
+              <th>Timeline</th>
+              <th>Task Name</th>
+              <th>Task Type</th>
+              <th>Status</th>
+              <th>Assignee</th>
+              <th>Link</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+            {/* All tasks rows */}
+            {allTasks.map((task, index) => (
+              <tr key={index} style={task.source === 'assigned' ? { backgroundColor: '#cfe2f3' } : {}} className={task.source === 'assigned' ? 'assigned-row' : ''}>
+                <td>{formatDate(task.date || task.dueDate)}</td>
+                <td>{formatDate(task.timeline || task.prop_slot)}</td>
+                <td>{task.task_name || task.name || "Untitled Task"}</td>
+                <td>{task.source === 'assigned' ? 'Master' : (task.task_type || task.type || task.dept || "Work")}</td>
+                <td>{task.status}</td>
+                <td>{task.itemType === 'meeting' ? (task.co_person || 'Not specified') : 'Self'}</td>
+                <td>{task.file_link || task.attachments ? <a href={task.file_link || task.attachments} target="_blank" rel="noopener noreferrer">Link</a> : 'No link'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
 
     </div>

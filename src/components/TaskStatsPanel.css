@@ -1,0 +1,143 @@
+.task-stats-panel {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+}
+
+.stats-header {
+  margin-bottom: 16px;
+}
+
+.stats-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: left;
+}
+
+.stats-cards {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.stats-cards::-webkit-scrollbar {
+  height: 4px;
+}
+
+.stats-cards::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 2px;
+}
+
+.stats-cards::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.stat-card {
+  flex: 0 0 180px;
+  height: 80px;
+  background: white;
+  border-radius: 12px;
+  padding: 0px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: black;
+  min-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  border-color: #d1d5db;
+}
+
+.stat-card:nth-child(1) {
+  background: white;
+}
+
+.stat-card:nth-child(2) {
+  background: white;
+}
+
+.stat-card:nth-child(3) {
+  background: white;
+}
+
+.stat-card:nth-child(4) {
+  background: white;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.stat-number {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1f2937;
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.stats-loading,
+.stats-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.stats-error {
+  color: #ef4444;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .task-stats-panel {
+    padding: 16px;
+  }
+
+  .stat-card {
+    flex: 0 0 160px;
+    height: 70px;
+    min-width: 160px;
+    padding: 0px;
+  }
+
+  .stat-number {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  .stat-content {
+    gap: 6px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+}

@@ -1,5 +1,5 @@
 .weekly-wrapper {
-  padding: 30px;
+  padding: 20px 0 0 0;
   font-family: "Arial", sans-serif;
   /* Let content flow naturally with global scrolling */
 }
@@ -41,7 +41,7 @@
 }
 
 .completed-title {
-  background: #103c7f;
+  background: #3d85c6;
   color: #fff;
   text-align: center;
   padding: 10px;
@@ -68,15 +68,33 @@
 }
 
 .header-row th {
-  background: #f2f2f2;
-  padding: 12px;
-  border: 1px solid #ccc;
+  background: #5580ff;
+  padding: 6px 8px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: white;
+  border-right: 1px solid #e5e7eb;
+  min-width: 50px;
+  width: auto;
 }
 
 .report-table td,
 .report-table th {
-  border: 1px solid #ccc;
-  padding: 10px;
+  border: 1px solid #e5e7eb;
+  padding: 6px 8px;
+}
+
+.report-table tbody tr:nth-child(even) {
+  background-color: white;
+}
+
+.report-table tbody tr:nth-child(odd) {
+  background-color: white;
+}
+
+.report-table tbody tr {
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .report-table input[type="text"] {
@@ -142,6 +160,6 @@
 }
 
 .assigned-row {
-  background-color: #f87171;
+  background-color: #cfe2f3;
   color: black;
 }

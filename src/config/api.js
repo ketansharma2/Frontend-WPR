@@ -25,13 +25,21 @@ export const API_ENDPOINTS = {
   // HOD
   HOD_TASKS: `${API_BASE_URL}/hod/tasks`,
   HOD_MEETINGS: `${API_BASE_URL}/hod/meetings`,
+  HOD_DASHBOARD: `${API_BASE_URL}/hod/dashboard`,
   HOD_WEEKLY: `${API_BASE_URL}/hod/weekly`,
   HOD_DOWNLOAD: `${API_BASE_URL}/hod/reports`,
   HOD_ASSIGN: `${API_BASE_URL}/hod/assign`,
   
   // Reports
   REPORTS: `${API_BASE_URL}/reports`,
-  WEEKLY: `${API_BASE_URL}/weekly`
+  WEEKLY: `${API_BASE_URL}/weekly`,
+
+  // Dashboard
+  DASHBOARD_MONTHLY_STATS: `${API_BASE_URL}/dashboard/monthly-stats`,
+  DASHBOARD_TODAY_TASKS: `${API_BASE_URL}/dashboard/today-tasks`,
+  DASHBOARD_TODAY_MEETINGS: `${API_BASE_URL}/dashboard/today-meetings`,
+  DASHBOARD_LAST_WORKING_DAY_TASKS: `${API_BASE_URL}/dashboard/last-working-day-tasks`,
+  DASHBOARD_MEETINGS_BY_DATE: `${API_BASE_URL}/dashboard/meetings-by-date`
 };
 
 // Helper function to build API URLs with dynamic parameters
@@ -149,9 +157,67 @@ export const api = {
       body: JSON.stringify(userData)
     }),
   
-  deleteUser: (userId) => 
+  deleteUser: (userId) =>
     apiRequest(buildApiUrl(API_ENDPOINTS.ADMIN_USERS, { userId }), {
       method: 'DELETE'
+    }),
+
+  // Dashboard
+  getMonthlyStats: (userId, dateFilter = 'current_month') =>
+    apiRequest(API_ENDPOINTS.DASHBOARD_MONTHLY_STATS, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, date_filter: dateFilter })
+    }),
+
+  getTodayTasks: (userId) =>
+    apiRequest(API_ENDPOINTS.DASHBOARD_TODAY_TASKS, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId })
+    }),
+
+  getTodayMeetings: (userId) =>
+    apiRequest(API_ENDPOINTS.DASHBOARD_TODAY_MEETINGS, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId })
+    }),
+
+  getLastWorkingDayTasks: (userId) =>
+    apiRequest(API_ENDPOINTS.DASHBOARD_LAST_WORKING_DAY_TASKS, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId })
+    }),
+
+  getMeetingsByDate: (userId, date) =>
+    apiRequest(API_ENDPOINTS.DASHBOARD_MEETINGS_BY_DATE, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, date: date })
+    }),
+
+  // HOD Dashboard
+  getHodDashboardData: (userId, viewType, targetUserId) =>
+    apiRequest(API_ENDPOINTS.HOD_DASHBOARD + '/data', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: userId,
+        view_type: viewType,
+        target_user_id: targetUserId
+      })
+    }),
+
+  getHodYesterdayData: (userId, viewType, targetUserId) =>
+    apiRequest(API_ENDPOINTS.HOD_DASHBOARD + '/yesterday-data', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: userId,
+        view_type: viewType,
+        target_user_id: targetUserId
+      })
+    }),
+
+  getHodTeamOverview: (userId) =>
+    apiRequest(API_ENDPOINTS.HOD_DASHBOARD + '/team-overview', {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId })
     })
 };
 

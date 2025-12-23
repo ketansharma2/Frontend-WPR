@@ -5,9 +5,9 @@
 
 main {
   flex: 1;
-  margin: 35px 15px 15px 60px; /* top right bottom left - updated for new sidebar width */
+  margin: 35px 0px 15px 60px; /* top right bottom left - updated for new sidebar width */
   padding: 0;
-  background-color: #f8f9fa;
+  background-color: transparent;
   transition: margin-left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   /* Let the content flow naturally with global scrolling */
   min-height: calc(100vh - 50px);
@@ -20,12 +20,11 @@ main {
 
 /* Professional Dashboard Styles */
 .dashboard-container {
-  padding: 120px 0 0 0; /* Increased top padding to account for fixed welcome box */
+  padding: 20px 0 0 0; /* Reduced top padding for dashboard page */
   max-width: 1400px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
 }
 
 /* Professional Dashboard Header Section - Fixed Welcome Box */
@@ -1138,7 +1137,7 @@ main {
 
 .bar-item {
   background: white;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 1rem;
   border: 1px solid #e2e8f0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);

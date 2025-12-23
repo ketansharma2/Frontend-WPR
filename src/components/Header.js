@@ -34,9 +34,8 @@ const Header = ({ addTask, openPopup, openAssignPopup, currentView, onLogout, us
           <div className="cu-header__workspace-picker">
             <img className="cu-header__workspace-avatar" src="/Maven Jobs Favicon.jpg" alt="Workspace" />
             <span className="cu-header__workspace-name">
-              {userProfile?.dept || 'General'} Department
+              {userProfile?.name || 'User'}'s Workspace
             </span>
-            <span className="cu-header__workspace-chevron">▼</span>
           </div>
         </div>
         <div className="cu-header__center">
