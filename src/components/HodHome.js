@@ -895,6 +895,7 @@ const HodHome = ({ onLogout }) => {
               setTeamMemberFilter={setTaskTeamMemberFilter}
               teamMembers={teamMembers}
               dashboardViewType={dashboardViewType}
+              userRole={userProfile.user_type}
             />
           </div>
         ) : currentPage === 'calendar' ? (
@@ -942,6 +943,7 @@ const HodHome = ({ onLogout }) => {
               teamMemberFilter={meetingTeamMemberFilter}
               setTeamMemberFilter={setMeetingTeamMemberFilter}
               teamMembers={teamMembers}
+              userRole={userProfile.user_type}
             />
           </div>
         ) : (

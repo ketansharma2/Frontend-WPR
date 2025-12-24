@@ -15,11 +15,11 @@ export const API_ENDPOINTS = {
   
   // Admin
   ADMIN_USERS: `${API_BASE_URL}/admin/users`,
+  ADMIN_MEMBERS: `${API_BASE_URL}/admin/members`,
   ADMIN_TASKS: `${API_BASE_URL}/admin/tasks`,
   ADMIN_MEETINGS: `${API_BASE_URL}/admin/meetings`,
   ADMIN_ANALYTICS: `${API_BASE_URL}/admin/analytics`,
   ADMIN_DEPT_ANALYTICS: `${API_BASE_URL}/admin/deptanalytics`,
-  ADMIN_MEMBERS: `${API_BASE_URL}/admin/members`,
   ADMIN_ASSIGN: `${API_BASE_URL}/admin/assign`,
   
   // HOD
@@ -142,25 +142,50 @@ export const api = {
     }),
   
   // Admin - Users
-  getUsers: () => 
+  getUsers: () =>
     apiRequest(API_ENDPOINTS.ADMIN_USERS),
-  
-  createUser: (userData) => 
+
+  createUser: (userData) =>
     apiRequest(API_ENDPOINTS.ADMIN_USERS, {
       method: 'POST',
       body: JSON.stringify(userData)
     }),
-  
-  updateUser: (userId, userData) => 
+
+  updateUser: (userId, userData) =>
     apiRequest(buildApiUrl(API_ENDPOINTS.ADMIN_USERS, { userId }), {
       method: 'PUT',
       body: JSON.stringify(userData)
     }),
-  
+
   deleteUser: (userId) =>
     apiRequest(buildApiUrl(API_ENDPOINTS.ADMIN_USERS, { userId }), {
       method: 'DELETE'
     }),
+
+  // Admin - Members
+  getMembers: () =>
+    apiRequest(API_ENDPOINTS.ADMIN_MEMBERS + '/list'),
+
+  createMember: (memberData) =>
+    apiRequest(API_ENDPOINTS.ADMIN_MEMBERS + '/add', {
+      method: 'POST',
+      body: JSON.stringify(memberData)
+    }),
+
+  updateMember: (memberId, memberData) =>
+    apiRequest(API_ENDPOINTS.ADMIN_MEMBERS + `/${memberId}`, {
+      method: 'PUT',
+      body: JSON.stringify(memberData)
+    }),
+
+  deleteMember: (memberId) =>
+    apiRequest(API_ENDPOINTS.ADMIN_MEMBERS + `/${memberId}`, {
+      method: 'DELETE'
+    }),
+
+  // Admin - Assign Members
+  getAssignMembers: () =>
+    apiRequest(API_ENDPOINTS.ADMIN_ASSIGN + '/members'),
 
   // Dashboard
   getMonthlyStats: (userId, dateFilter = 'current_month') =>

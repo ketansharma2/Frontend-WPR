@@ -716,6 +716,7 @@ const Home = ({ onLogout }) => {
             setStatusFilter={setStatusFilter}
             categoryFilter={categoryFilter}
             setCategoryFilter={setCategoryFilter}
+            userRole={userProfile.user_type}
           />
         ) : currentPage === 'calendar' ? (
           <WeeklyTemplate
@@ -749,6 +750,7 @@ const Home = ({ onLogout }) => {
             setStatusFilter={setStatusFilter}
             categoryFilter={categoryFilter}
             setCategoryFilter={setCategoryFilter}
+            userRole={userProfile.user_type}
           />
         ) : (
            <div className="dashboard-container">

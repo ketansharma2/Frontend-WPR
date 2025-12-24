@@ -23,19 +23,19 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
       id: 'tasks',
       label: 'Tasks',
       icon: FaListUl,
-      roles: ['team member', 'hod']
+      roles: ['team member', 'hod', 'admin']
     },
     {
       id: 'meetings',
       label: 'Meetings',
       icon: FaUsers,
-      roles: ['team member', 'hod']
+      roles: ['team member', 'hod', 'admin']
     },
     {
       id: 'calendar',
       label: 'Weekly View',
       icon: FaCalendarAlt,
-      roles: ['team member', 'hod']
+      roles: ['team member', 'hod', 'admin']
     },
     {
       id: 'users',
@@ -44,8 +44,14 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
       roles: ['admin']
     },
     {
-      id: 'analytics',
-      label: 'Analytics',
+      id: 'individual-analytics',
+      label: 'Individual Analytics',
+      icon: FaChartBar,
+      roles: ['admin']
+    },
+    {
+      id: 'dept-analytics',
+      label: 'Dept Analytics',
       icon: FaChartBar,
       roles: ['admin']
     },

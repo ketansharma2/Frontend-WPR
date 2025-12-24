@@ -8,7 +8,7 @@ import {
   FaChevronDown
 } from "react-icons/fa";
 
-export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, dashboardViewType, showFilterBar = true }) {
+export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, dashboardViewType, showFilterBar = true, showMyTasksOption = true, isAdminView = false, userRole }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateActive, setDateActive] = useState('');
   const [activeFilters, setActiveFilters] = useState({
@@ -249,7 +249,14 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
     if (isMasterA && !isMasterB) return -1;
     if (!isMasterA && isMasterB) return 1;
 
-    // Secondary sort: Latest first (new to old)
+    // Secondary sort: Owner name in ascending order (A-Z)
+    const ownerNameA = a.users?.name || 'Unknown';
+    const ownerNameB = b.users?.name || 'Unknown';
+
+    if (ownerNameA < ownerNameB) return -1;
+    if (ownerNameA > ownerNameB) return 1;
+
+    // Tertiary sort: Latest first (new to old)
     const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
     const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
     return dateB - dateA; // Descending order (newest first)
@@ -484,8 +491,12 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
 
         <div className="enhanced-row-container">
           <div className="no-tasks-message">
-            <h3>No {filter === 'task' ? 'tasks' : 'meetings'} found</h3>
-            <p>Try adjusting your search parameters or filters</p>
+            <p>
+              {isAdminView && !teamMemberFilter
+                ? `Choose a team member from the dropdown above to see their ${filter === 'task' ? 'tasks' : 'meetings'}`
+                : 'Try adjusting your search parameters or filters'
+              }
+            </p>
           </div>
         </div>
       </div>
@@ -653,12 +664,14 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
               </button>
               {showTeamMemberDropdown && (
                 <div className="dropdown-menu">
-                  <div
-                    className="dropdown-item"
-                    onClick={() => { setViewTypeFilter('self'); setTeamMemberFilter(''); setShowTeamMemberDropdown(false); }}
-                  >
-                    {filter === 'task' ? 'My Tasks' : 'My Meetings'}
-                  </div>
+                  {showMyTasksOption && (
+                    <div
+                      className="dropdown-item"
+                      onClick={() => { setViewTypeFilter('self'); setTeamMemberFilter(''); setShowTeamMemberDropdown(false); }}
+                    >
+                      {filter === 'task' ? 'My Tasks' : 'My Meetings'}
+                    </div>
+                  )}
                   <div
                     className="dropdown-item"
                     onClick={() => { setViewTypeFilter('all'); setTeamMemberFilter('all'); setShowTeamMemberDropdown(false); }}
@@ -1007,7 +1020,22 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                             marginTop: '5px'
                           }}>
                             <button
-                              onClick={(e) => { e.stopPropagation(); onEdit(task); setMenuOpen(null); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                console.log('userRole:', userRole);
+                                const today = new Date().toISOString().split('T')[0];
+                                const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
+                                const isPastDate = taskDate !== today;
+                                if (isPastDate && userRole !== 'hod' && userRole !== 'HOD') {
+                                  if (task.itemType === 'task' || task.itemType === 'meeting') {
+                                    alert(`You can't edit past ${task.itemType}s`);
+                                    setMenuOpen(null);
+                                    return;
+                                  }
+                                }
+                                onEdit(task);
+                                setMenuOpen(null);
+                              }}
                               style={{
                                 display: 'block',
                                 width: '100%',
@@ -1080,7 +1108,21 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                             marginTop: '5px'
                           }}>
                             <button
-                              onClick={(e) => { e.stopPropagation(); onEdit(task); setMenuOpen(null); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const today = new Date().toISOString().split('T')[0];
+                                const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
+                                const isPastDate = taskDate !== today;
+                                if (isPastDate && userRole !== 'hod' && userRole !== 'HOD') {
+                                  if (task.itemType === 'task' || task.itemType === 'meeting') {
+                                    alert(`You can't edit past ${task.itemType}s`);
+                                    setMenuOpen(null);
+                                    return;
+                                  }
+                                }
+                                onEdit(task);
+                                setMenuOpen(null);
+                              }}
                               style={{
                                 display: 'block',
                                 width: '100%',
@@ -1107,7 +1149,10 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                   textAlign: 'center',
                   color: '#6b7280'
                 }}>
-                  No {filter === 'task' ? 'tasks' : 'meetings'} found
+                  {isAdminView && !teamMemberFilter
+                    ? `Select a team member to view their ${filter === 'task' ? 'tasks' : 'meetings'}`
+                    : `No ${filter === 'task' ? 'tasks' : 'meetings'} found`
+                  }
                 </td>
               </tr>
             )}

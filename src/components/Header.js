@@ -41,11 +41,20 @@ const Header = ({ addTask, openPopup, openAssignPopup, currentView, onLogout, us
         <div className="cu-header__center">
         </div>
         <div className="cu-header__right">
-          <button className="cu-header__create-task" onClick={openPopup}>
-            <span className="create-task-plus">+</span>
-            <span className="create-task-text">Task/Meeting</span>
-          </button>
-          {user?.user_type === 'HOD' && (
+          {user?.user_type !== 'Admin' && (
+            <>
+              <button className="cu-header__create-task" onClick={openPopup}>
+                <span className="create-task-plus">+</span>
+                <span className="create-task-text">Task/Meeting</span>
+              </button>
+              {user?.user_type === 'HOD' && (
+                <button className="cu-header__assign-task" onClick={openAssignPopup}>
+                  <span className="assign-task-text">Assign Task</span>
+                </button>
+              )}
+            </>
+          )}
+          {user?.user_type === 'Admin' && openAssignPopup && (
             <button className="cu-header__assign-task" onClick={openAssignPopup}>
               <span className="assign-task-text">Assign Task</span>
             </button>
