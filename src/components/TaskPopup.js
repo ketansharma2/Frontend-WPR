@@ -16,6 +16,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   const [taskType, setTaskType] = useState('Fixed');
   const [status, setStatus] = useState('Not Started');
   const [attachments, setAttachments] = useState('');
+  const [remarks, setRemarks] = useState('');
 
   // Meeting state
   const [meetingName, setMeetingName] = useState('');
@@ -83,6 +84,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         setTaskType(editingTask.task_type || editingTask.type || 'Fixed');
         setStatus(editingTask.status || 'Not Started');
         setAttachments(editingTask.file_link || editingTask.attachments || '');
+        setRemarks(editingTask.remarks || '');
+        setRemarks(editingTask.remarks || '');
       }
     } else {
       // Reset form for new task/meeting
@@ -101,6 +104,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
     setTaskType('Fixed');
     setStatus('Not Started');
     setAttachments('');
+    setRemarks('');
+    setRemarks('');
 
     // Clear meeting fields
     setMeetingName('');
@@ -198,6 +203,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
           type: taskType,
           status: status,
           attachments: attachments,
+          remarks: remarks,
           itemType: 'task',
         };
         addTask(task);
@@ -349,6 +355,17 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     <option>On Hold</option>
                   </select>
                 </div>
+
+                {/* Remarks */}
+                <div className="field-box span-12">
+                  <label className="field-label">Remarks</label>
+                  <textarea
+                    className="enhanced-textarea"
+                    placeholder="Enter task remarks"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                  />
+                </div>
               </>
             ) : !isMeeting ? (
               // TASK FORM
@@ -435,6 +452,17 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     placeholder="Enter file link"
                     value={attachments}
                     onChange={(e) => setAttachments(e.target.value)}
+                  />
+                </div>
+
+                {/* Remarks */}
+                <div className="field-box span-12">
+                  <label className="field-label">Remarks</label>
+                  <textarea
+                    className="enhanced-textarea"
+                    placeholder="Enter task remarks"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
                   />
                 </div>
               </>

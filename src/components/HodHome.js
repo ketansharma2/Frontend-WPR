@@ -558,13 +558,27 @@ const HodHome = ({ onLogout }) => {
         const result = await response.json();
         console.log('Task/meeting created successfully:', result);
 
-        // Add the new task to local state immediately for instant UI update
+        // Add or update the task in local state immediately for instant UI update
         const newTask = {
           ...result.task || result.meeting,
           itemType: task.itemType
         };
 
-        setTasks(prevTasks => [...prevTasks, newTask]);
+        setTasks(prevTasks => {
+          const existingIndex = prevTasks.findIndex(t =>
+            (t.task_id && newTask.task_id && t.task_id === newTask.task_id) ||
+            (t.meeting_id && newTask.meeting_id && t.meeting_id === newTask.meeting_id)
+          );
+          if (existingIndex !== -1) {
+            // Replace existing
+            const updatedTasks = [...prevTasks];
+            updatedTasks[existingIndex] = newTask;
+            return updatedTasks;
+          } else {
+            // Add new
+            return [...prevTasks, newTask];
+          }
+        });
 
         if (task.itemType === 'task') setFilter('task');
         else if (task.itemType === 'meeting') setFilter('meeting');

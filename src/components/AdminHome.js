@@ -4,6 +4,7 @@ import Header from "./Header";
 import Sidebar from "./Sidebar";
 import TaskList from './TaskList';
 import WeeklyTemplate from './WeeklyTemplate';
+import IndividualAnalytics from './IndividualAnalytics';
 import TaskPopup from './TaskPopup';
 import TaskDetails from './TaskDetails';
 import ProfilePanel from './ProfilePanel';
@@ -12,6 +13,10 @@ import DateToggleSwitch from './DateToggleSwitch';
 import { FaChevronDown } from 'react-icons/fa';
 import { api } from '../config/api';
 import DeptTaskDistributionBar from './DeptTaskDistributionBar';
+import DeptBreakdownChart from './DeptAnalytics/DeptBreakdownChart';
+import MemberBreakdownChart from './DeptAnalytics/MemberBreakdownChart';
+import DeptStatusChart from './DeptAnalytics/DeptStatusChart';
+import SelfVsAssignedPieChart from './DeptAnalytics/SelfVsAssignedPieChart';
 import "./AdminHome.css";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
@@ -97,7 +102,7 @@ const AdminHome = ({ onLogout }) => {
    const [weeklyTaskTypeFilter, setWeeklyTaskTypeFilter] = useState('');
    const [weeklyStatusFilter, setWeeklyStatusFilter] = useState('');
    const [weeklyCategoryFilter, setWeeklyCategoryFilter] = useState('');
-   const [weeklyViewTypeFilter, setWeeklyViewTypeFilter] = useState('self');
+   const [weeklyViewTypeFilter, setWeeklyViewTypeFilter] = useState('all');
    const [weeklyTeamMemberFilter, setWeeklyTeamMemberFilter] = useState('');
    const [taskViewTypeFilter, setTaskViewTypeFilter] = useState('self'); // 'self' or 'team' for tasks
    const [taskTeamMemberFilter, setTaskTeamMemberFilter] = useState(''); // for team view tasks
@@ -135,6 +140,7 @@ const AdminHome = ({ onLogout }) => {
    const [deptAnalyticsToDate, setDeptAnalyticsToDate] = useState(formatDate(today));
    const [deptAnalyticsDeptFilter, setDeptAnalyticsDeptFilter] = useState('all');
    const [showDeptAnalyticsDeptDropdown, setShowDeptAnalyticsDeptDropdown] = useState(false);
+   const [availableDepartments, setAvailableDepartments] = useState([]);
 
   useEffect(() => {
     // Get user profile from localStorage
@@ -151,6 +157,7 @@ const AdminHome = ({ onLogout }) => {
     }
     // fetchAdminData('self', '', 'self', '', 'all', true);
     fetchTeamMembers(); // Fetch team members on mount
+    fetchAvailableDepartments(); // Fetch available departments on mount
   }, []);
 
   // Refetch tasks when category filter changes
@@ -291,6 +298,26 @@ const AdminHome = ({ onLogout }) => {
     }
   };
   
+  // Fetch available departments
+  const fetchAvailableDepartments = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE_URL}/admin/dept-analytics/departments`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableDepartments(data.departments || []);
+      } else {
+        console.error('Failed to fetch departments');
+      }
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
+  };
+
   // Fetch department analytics data
   const fetchDeptAnalytics = async () => {
     try {
@@ -309,11 +336,7 @@ const AdminHome = ({ onLogout }) => {
       });
       if (response.ok) {
         const data = await response.json();
-        if (deptAnalyticsDeptFilter === 'all') {
-          setDeptAnalyticsData(data.dept_breakdown || {});
-        } else {
-          setDeptAnalyticsData(data.member_breakdown || {});
-        }
+        setDeptAnalyticsData(data); // Store the full response including status counts
       } else {
         console.error('Failed to fetch dept analytics');
       }
@@ -322,45 +345,51 @@ const AdminHome = ({ onLogout }) => {
     }
   };
 
+  // Fetch dept analytics when filters change
+  useEffect(() => {
+    if (userProfile && currentPage === 'dept-analytics') {
+      fetchDeptAnalytics();
+    }
+  }, [deptAnalyticsDeptFilter, deptAnalyticsFromDate, deptAnalyticsToDate, userProfile, currentPage]);
+
   // Fetch weekly report data
-  // const fetchWeeklyData = useCallback(async (filters = {}, showLoading = true) => {
-  //   try {
-  //     if (showLoading) setWeeklyLoading(true);
-  //     const token = localStorage.getItem("token");
-  //     const profile = JSON.parse(localStorage.getItem("profile"));
+  const fetchWeeklyData = useCallback(async (filters = {}, showLoading = true) => {
+    try {
+      if (showLoading) setWeeklyLoading(true);
+      const token = localStorage.getItem("token");
+      const profile = JSON.parse(localStorage.getItem("profile"));
 
-  //     if (!token || !profile) {
-  //       setError("Authentication required");
-  //       return;
-  //     }
+      if (!token || !profile) {
+        setError("Authentication required");
+        return;
+      }
 
-  //     const response = await fetch(`${API_BASE_URL}/admin/weekly`, {
-  //       method: 'POST',
-  //       headers: {
-  //         "Authorization": `Bearer ${token}`,
-  //         "Content-Type": "application/json"
-  //       },
-  //       body: JSON.stringify({
-  //         user_id: profile.user_id,
-  //         ...filters
-  //       })
-  //     });
+      const response = await fetch(`${API_BASE_URL}/admin/weekly/filter`, {
+        method: 'POST',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...filters
+        })
+      });
 
-  //     if (response.ok) {
-  //       const data = await response.json();
-  //       setWeeklyTasks(data.tasks || []);
-  //     } else {
-  //       const errorData = await response.json();
-  //       console.error('Weekly data error:', errorData);
-  //       setError("Failed to fetch weekly report data");
-  //     }
-  //   } catch (err) {
-  //     setError("Network error while fetching weekly data.");
-  //     console.error("Error fetching weekly data:", err);
-  //   } finally {
-  //     if (showLoading) setWeeklyLoading(false);
-  //   }
-  // }, []);
+      if (response.ok) {
+        const data = await response.json();
+        setWeeklyTasks([...(data.self_tasks || []), ...(data.master_tasks || [])]);
+      } else {
+        const errorData = await response.json();
+        console.error('Weekly data error:', errorData);
+        setError("Failed to fetch weekly report data");
+      }
+    } catch (err) {
+      setError("Network error while fetching weekly data.");
+      console.error("Error fetching weekly data:", err);
+    } finally {
+      if (showLoading) setWeeklyLoading(false);
+    }
+  }, []);
 
   // Fetch monthly task statistics
   // const fetchMonthlyStats = async () => {
@@ -883,7 +912,8 @@ const AdminHome = ({ onLogout }) => {
               teamMemberFilter={weeklyTeamMemberFilter}
               setTeamMemberFilter={setWeeklyTeamMemberFilter}
               teamMembers={teamMembers}
-              // fetchWeeklyData={fetchWeeklyData}
+              fetchWeeklyData={fetchWeeklyData}
+              isAdminView={true}
             />
           </div>
         );
@@ -894,14 +924,7 @@ const AdminHome = ({ onLogout }) => {
           </AdminUsersErrorBoundary>
         );
       case "individual-analytics":
-        return (
-          <div style={{
-            backgroundColor: '#e0e0e0',
-            minHeight: '100vh'
-          }}>
-            {/* Individual Analytics page - blank for now */}
-          </div>
-        );
+        return <IndividualAnalytics />;
       case "dept-analytics":
         return (
           <div style={{
@@ -967,16 +990,94 @@ const AdminHome = ({ onLogout }) => {
                       setShowDeptAnalyticsDeptDropdown(!showDeptAnalyticsDeptDropdown);
                     }}
                   >
-                    Department: {deptAnalyticsDeptFilter === 'all' ? 'All' : deptAnalyticsDeptFilter === 'tech & dm' ? 'Tech & DM' : 'Deliveries'}
+                    Department: {deptAnalyticsDeptFilter === 'all' ? 'All' : deptAnalyticsDeptFilter}
                     <FaChevronDown className="dropdown-arrow" />
                   </button>
                   {showDeptAnalyticsDeptDropdown && (
                     <div className="dropdown-menu">
                       <div className="dropdown-item" onClick={() => { setDeptAnalyticsDeptFilter('all'); setShowDeptAnalyticsDeptDropdown(false); }}>All</div>
-                      <div className="dropdown-item" onClick={() => { setDeptAnalyticsDeptFilter('tech & dm'); setShowDeptAnalyticsDeptDropdown(false); }}>Tech & DM</div>
-                      <div className="dropdown-item" onClick={() => { setDeptAnalyticsDeptFilter('deliveries'); setShowDeptAnalyticsDeptDropdown(false); }}>Deliveries</div>
+                      {availableDepartments.map(dept => (
+                        <div
+                          key={dept}
+                          className="dropdown-item"
+                          onClick={() => { setDeptAnalyticsDeptFilter(dept); setShowDeptAnalyticsDeptDropdown(false); }}
+                        >
+                          {dept}
+                        </div>
+                      ))}
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+
+            {/* Chart Display */}
+            <div style={{ padding: '20px 50px' }}>
+              <div style={{
+                display: 'flex',
+                gap: '20px',
+                marginTop: '20px',
+                marginBottom: '20px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                {/* Main Distribution Chart */}
+                <div style={{
+                  background: 'white',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  flex: '1',
+                  minWidth: '300px'
+                }}>
+                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
+                    {deptAnalyticsDeptFilter === 'all' ? 'Department Task Distribution' : `Task Distribution - ${deptAnalyticsDeptFilter}`}
+                  </h4>
+                  {deptAnalyticsDeptFilter === 'all' ? (
+                    <DeptBreakdownChart data={deptAnalyticsData.dept_breakdown || {}} />
+                  ) : (
+                    <MemberBreakdownChart data={deptAnalyticsData.member_breakdown || {}} />
+                  )}
+                </div>
+
+                {/* Status Distribution Chart */}
+                <div style={{
+                  background: 'white',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  flex: '1',
+                  minWidth: '300px'
+                }}>
+                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
+                    Task Status Distribution - {deptAnalyticsDeptFilter === 'all' ? 'All Departments' : deptAnalyticsDeptFilter}
+                  </h4>
+                  <DeptStatusChart key={deptAnalyticsDeptFilter} data={deptAnalyticsData} />
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '20px',
+                marginTop: '20px',
+                marginBottom: '20px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                {/* Self vs Assigned Tasks Chart */}
+                <div style={{
+                  background: 'white',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  flex: '1',
+                  minWidth: '300px'
+                }}>
+                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
+                    Self vs Assigned Tasks - {deptAnalyticsDeptFilter === 'all' ? 'All Departments' : deptAnalyticsDeptFilter}
+                  </h4>
+                  {console.log('Rendering SelfVsAssignedPieChart with data:', { self: deptAnalyticsData.self_tasks || 0, assigned: deptAnalyticsData.assigned_tasks || 0 })}
+                  <SelfVsAssignedPieChart data={{ self: deptAnalyticsData.self_tasks || 0, assigned: deptAnalyticsData.assigned_tasks || 0 }} />
                 </div>
               </div>
             </div>

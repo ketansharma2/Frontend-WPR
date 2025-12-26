@@ -287,6 +287,8 @@
   animation: dropdownSlide 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateY(0);
   will-change: transform, opacity;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 @keyframes dropdownSlide {
@@ -311,6 +313,10 @@
   margin: 2px 0;
   transition: all 0.15s ease;
   position: relative;
+}
+
+.dropdown-item:not(:last-child) {
+  border-bottom: 1px solid #e0e0e0;
 }
 
 .dropdown-item::before {

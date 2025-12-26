@@ -358,10 +358,11 @@ const Home = ({ onLogout }) => {
           date: task.dueDate,
           timeline: task.timeline,
           task_name: task.name,
-          time: task.time,
+          time: task.time ? parseInt(task.time) : 0,
           task_type: task.type || 'work',
           status: task.status || 'pending',
           file_link: task.attachments,
+          remarks: task.remarks || '',
           description: task.description || '' // Add description field
         };
 
@@ -382,14 +383,28 @@ const Home = ({ onLogout }) => {
       if (response.ok) {
         const result = await response.json();
         console.log('Task/meeting created successfully:', result);
-        
-        // Add the new task to local state immediately for instant UI update
+
+        // Add or update the task in local state immediately for instant UI update
         const newTask = {
           ...result.task || result.meeting,
           itemType: task.itemType
         };
-        
-        setTasks(prevTasks => [...prevTasks, newTask]);
+
+        setTasks(prevTasks => {
+          const existingIndex = prevTasks.findIndex(t =>
+            (t.task_id && newTask.task_id && t.task_id === newTask.task_id) ||
+            (t.meeting_id && newTask.meeting_id && t.meeting_id === newTask.meeting_id)
+          );
+          if (existingIndex !== -1) {
+            // Replace existing
+            const updatedTasks = [...prevTasks];
+            updatedTasks[existingIndex] = newTask;
+            return updatedTasks;
+          } else {
+            // Add new
+            return [...prevTasks, newTask];
+          }
+        });
         
         if (task.itemType === 'task') setFilter('task');
         else if (task.itemType === 'meeting') setFilter('meeting');

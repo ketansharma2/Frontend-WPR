@@ -3,10 +3,36 @@ import "./weeklyTemplate.css";
 import { FaTimes, FaSearch, FaChevronDown } from "react-icons/fa";
 import { API_ENDPOINTS } from "../config/api";
 
-export default function WeeklyTemplate({ tasks, loading, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, fetchWeeklyData }) {
+export default function WeeklyTemplate({ tasks, loading, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, fetchWeeklyData, isAdminView = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+
+  // Set default dates to current week's Monday and Saturday on mount
+  useEffect(() => {
+    if (!fromDate && !toDate) {
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+      // Calculate Monday of current week
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+      // Calculate Saturday of current week
+      const saturday = new Date(monday);
+      saturday.setDate(monday.getDate() + 5);
+
+      const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      setFromDate(formatDate(monday));
+      setToDate(formatDate(saturday));
+    }
+  }, []);
   const [showFilters, setShowFilters] = useState(true);
   const [showTaskTypeDropdown, setShowTaskTypeDropdown] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -29,7 +55,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
       tasktype: taskTypeFilter,
       category: categoryFilter,
       status: statusFilter,
-      teammember: teamMemberFilter
+      teammember: (viewTypeFilter === 'team' && teamMemberFilter) ? teamMemberFilter : ''
     });
   }, [fromDate, toDate, taskTypeFilter, categoryFilter, statusFilter, viewTypeFilter, teamMemberFilter]);
 
@@ -51,6 +77,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
     if (filterTimeout) clearTimeout(filterTimeout);
     const timeout = setTimeout(() => {
       if (fetchWeeklyData) {
+
         const filters = {};
         if (fromDate) filters.from_date = fromDate;
         if (toDate) filters.to_date = toDate;
@@ -59,13 +86,16 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
         if (categoryFilter) filters.category = categoryFilter;
         if (viewTypeFilter) filters.view_type = viewTypeFilter;
         if (viewTypeFilter === 'team' && teamMemberFilter) filters.target_user_id = teamMemberFilter;
-        fetchWeeklyData(filters, !hasFetchedInitial.current); // Show loading only for initial fetch
+        // For admin view, don't fetch if no team member selected (not 'all')
+        if (!(isAdminView && viewTypeFilter === 'all' && teamMemberFilter !== 'all')) {
+          fetchWeeklyData(filters, !hasFetchedInitial.current); // Show loading only for initial fetch
+        }
         if (!hasFetchedInitial.current) hasFetchedInitial.current = true;
       }
     }, hasFetchedInitial.current ? 500 : 0); // No debounce for initial fetch
     setFilterTimeout(timeout);
     return () => clearTimeout(timeout);
-  }, [fromDate, toDate, taskTypeFilter, statusFilter, categoryFilter, viewTypeFilter, teamMemberFilter, fetchWeeklyData]);
+  }, [fromDate, toDate, taskTypeFilter, statusFilter, categoryFilter, viewTypeFilter, teamMemberFilter, fetchWeeklyData, isAdminView]);
 
 
   // Show loading state
@@ -78,6 +108,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
       </div>
     );
   }
+
 
   // Check if any filters are active
   const hasActiveFilters = () => {
@@ -97,7 +128,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
     setTaskTypeFilter('');
     setStatusFilter('');
     setCategoryFilter('');
-    setViewTypeFilter && setViewTypeFilter('self');
+    setViewTypeFilter && setViewTypeFilter(isAdminView ? 'all' : 'self');
     setTeamMemberFilter && setTeamMemberFilter('');
   };
 
@@ -118,6 +149,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
     };
 
     if (filterType === 'teammember') {
+      if (!value) return isAdminView ? 'All Users' : 'My Tasks';
       const member = teamMembers?.find(m => m.user_id === value);
       return member ? member.name : 'Team Member';
     }
@@ -336,9 +368,9 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
                 <div className="dropdown-menu">
                   <div
                     className="dropdown-item"
-                    onClick={() => { setViewTypeFilter('self'); setTeamMemberFilter(''); setShowTeamMemberDropdown(false); }}
+                    onClick={() => { setViewTypeFilter(isAdminView ? 'all' : 'self'); setTeamMemberFilter(isAdminView ? 'all' : ''); setShowTeamMemberDropdown(false); }}
                   >
-                    My Tasks
+                    {isAdminView ? 'All Users' : 'My Tasks'}
                   </div>
                   {teamMembers.map(member => (
                     <div
@@ -409,21 +441,37 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
               <th>Task Name</th>
               <th>Task Type</th>
               <th>Status</th>
+              <th>Owner</th>
               <th>Assignee</th>
               <th>Link</th>
             </tr>
-            {/* All tasks rows */}
-            {allTasks.map((task, index) => (
-              <tr key={index} style={task.source === 'assigned' ? { backgroundColor: '#cfe2f3' } : {}} className={task.source === 'assigned' ? 'assigned-row' : ''}>
-                <td>{formatDate(task.date || task.dueDate)}</td>
-                <td>{formatDate(task.timeline || task.prop_slot)}</td>
-                <td>{task.task_name || task.name || "Untitled Task"}</td>
-                <td>{task.source === 'assigned' ? 'Master' : (task.task_type || task.type || task.dept || "Work")}</td>
-                <td>{task.status}</td>
-                <td>{task.itemType === 'meeting' ? (task.co_person || 'Not specified') : 'Self'}</td>
-                <td>{task.file_link || task.attachments ? <a href={task.file_link || task.attachments} target="_blank" rel="noopener noreferrer">Link</a> : 'No link'}</td>
+            {allTasks.length > 0 ? (
+              allTasks.map((task, index) => (
+                <tr key={index} style={task.source === 'assigned' ? { backgroundColor: '#cfe2f3' } : {}} className={task.source === 'assigned' ? 'assigned-row' : ''}>
+                  <td>{formatDate(task.date || task.dueDate)}</td>
+                  <td>{formatDate(task.timeline || task.prop_slot)}</td>
+                  <td>{task.task_name || task.name || "Untitled Task"}</td>
+                  <td>{task.source === 'assigned' ? 'Master' : (task.task_type || task.type || task.dept || "Work")}</td>
+                  <td>{task.status}</td>
+                  <td>{task.source === 'assigned' ? (task.assigned_to_user?.name || 'Unknown') : (task.users?.name || 'Unknown')}</td>
+                  <td>{task.source === 'assigned' ? (task.assigned_by_user?.name || 'Unknown') : 'Self'}</td>
+                  <td>{task.file_link || task.attachments ? <a href={task.file_link || task.attachments} target="_blank" rel="noopener noreferrer">Link</a> : 'No link'}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="8" style={{
+                  padding: '40px 16px',
+                  textAlign: 'center',
+                  color: '#6b7280'
+                }}>
+                  {isAdminView && viewTypeFilter === 'all' && teamMemberFilter !== 'all'
+                    ? 'Choose a team member from the dropdown above to see their tasks'
+                    : 'No tasks found'
+                  }
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
