@@ -1036,16 +1036,16 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                console.log('userRole:', userRole);
                                 const today = new Date().toISOString().split('T')[0];
+                                const yesterday = new Date();
+                                yesterday.setDate(yesterday.getDate() - 1);
+                                const yesterdayStr = yesterday.toISOString().split('T')[0];
                                 const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
-                                const isPastDate = taskDate !== today;
-                                if (isPastDate && userRole !== 'hod' && userRole !== 'HOD') {
-                                  if (task.itemType === 'task' || task.itemType === 'meeting') {
-                                    alert(`You can't edit past ${task.itemType}s`);
-                                    setMenuOpen(null);
-                                    return;
-                                  }
+                                const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
+                                if (isBeforeYesterday && userRole !== 'hod' && userRole !== 'HOD') {
+                                  alert(`You can't edit tasks from before yesterday`);
+                                  setMenuOpen(null);
+                                  return;
                                 }
                                 onEdit(task);
                                 setMenuOpen(null);
@@ -1131,14 +1131,15 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                               onClick={(e) => {
                                 e.stopPropagation();
                                 const today = new Date().toISOString().split('T')[0];
+                                const yesterday = new Date();
+                                yesterday.setDate(yesterday.getDate() - 1);
+                                const yesterdayStr = yesterday.toISOString().split('T')[0];
                                 const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
-                                const isPastDate = taskDate !== today;
-                                if (isPastDate && userRole !== 'hod' && userRole !== 'HOD') {
-                                  if (task.itemType === 'task' || task.itemType === 'meeting') {
-                                    alert(`You can't edit past ${task.itemType}s`);
-                                    setMenuOpen(null);
-                                    return;
-                                  }
+                                const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
+                                if (isBeforeYesterday && userRole !== 'hod' && userRole !== 'HOD') {
+                                  alert(`You can't edit tasks from before yesterday`);
+                                  setMenuOpen(null);
+                                  return;
                                 }
                                 onEdit(task);
                                 setMenuOpen(null);

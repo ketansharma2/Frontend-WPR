@@ -1913,10 +1913,13 @@ const HodHome = ({ onLogout }) => {
                                  onClick={(e) => {
                                    e.stopPropagation();
                                    const today = new Date().toISOString().split('T')[0];
+                                   const yesterday = new Date();
+                                   yesterday.setDate(yesterday.getDate() - 1);
+                                   const yesterdayStr = yesterday.toISOString().split('T')[0];
                                    const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
-                                   const isPastDate = taskDate !== today;
-                                   if (isPastDate && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
-                                     alert(`You can't edit past tasks`);
+                                   const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
+                                   if (isBeforeYesterday && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
+                                     alert(`You can't edit tasks from before yesterday`);
                                      setMenuOpen(null);
                                      return;
                                    }
