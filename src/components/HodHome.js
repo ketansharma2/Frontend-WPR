@@ -1,4 +1,4 @@
-  import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+ import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
   import Sidebar from './Sidebar';
   import Header from './Header';
   import TaskList from './TaskList';
@@ -8,7 +8,7 @@
   import ProfilePanel from './ProfilePanel';
   import TaskHistoryPopup from './TaskHistoryPopup';
   import RnR from './RnR';
-  import { FaChevronDown, FaTimes } from 'react-icons/fa';
+  import { FaChevronDown, FaTimes, FaExternalLinkAlt, FaEllipsisV } from 'react-icons/fa';
   import { api } from '../config/api';
   import './Home.css';
   import './TaskList.css';
@@ -44,7 +44,9 @@ const HodHome = ({ onLogout }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [tasksPageTasks, setTasksPageTasks] = useState([]);
   const [weeklyTasks, setWeeklyTasks] = useState([]);
+  const [dashboardTasks, setDashboardTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
@@ -55,7 +57,7 @@ const HodHome = ({ onLogout }) => {
   const [todayMeetings, setTodayMeetings] = useState([]);
   const [monthlyStats, setMonthlyStats] = useState(null);
   const [dashboardViewType, setDashboardViewType] = useState('self'); // 'self' or 'team' for dashboard
-  const [dashboardDateFilter, setDashboardDateFilter] = useState('all');
+  const [dashboardDateFilter, setDashboardDateFilter] = useState('today');
   const [dashboardTaskTypeFilter, setDashboardTaskTypeFilter] = useState('');
   const [dashboardStatusFilter, setDashboardStatusFilter] = useState('');
   const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState('');
@@ -65,79 +67,11 @@ const HodHome = ({ onLogout }) => {
   const [showDashboardStatusDropdown, setShowDashboardStatusDropdown] = useState(false);
   const [showDashboardCategoryDropdown, setShowDashboardCategoryDropdown] = useState(false);
   const [showDashboardTeamMemberDropdown, setShowDashboardTeamMemberDropdown] = useState(false);
-
-
-  useEffect(() => {
-    // Get user profile from localStorage
-    const profile = localStorage.getItem("profile");
-    if (profile) {
-      try {
-        setUserProfile(JSON.parse(profile));
-      } catch (error) {
-        console.error("Error parsing user profile:", error);
-        setError("Error loading user profile");
-      }
-    } else {
-      setError("No user profile found");
-    }
-    fetchHodData('self', '', 'self', '', 'all', true);
-    fetchHodDashboardData('self'); // Fetch dashboard data on mount
-    fetchTeamMembers(); // Fetch team members on mount
-  }, []);
-
-  // Refetch tasks when category filter changes
-  useEffect(() => {
-    if (userProfile) {
-      const cat = categoryFilter === '' ? 'all' : categoryFilter;
-      fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, false);
-    }
-  }, [categoryFilter, userProfile]);
-
-  // Refetch data when any filter changes
-  useLayoutEffect(() => {
-    if (userProfile) {
-      setLoading(false); // Ensure loading is false for filter changes
-      setTasks([]); // Clear current tasks to prevent showing old data
-      // Only fetch meetings if team view has a selected member
-      if (!(meetingViewTypeFilter === 'team' && !meetingTeamMemberFilter)) {
-        fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', false);
-      }
-      if (taskViewTypeFilter === 'team' || meetingViewTypeFilter === 'team' || taskViewTypeFilter === 'all' || meetingViewTypeFilter === 'all') {
-        fetchTeamMembers();
-      }
-    }
-  }, [taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, userProfile]);
-
-
-
-
-  // Sync filter with current page on page changes
-  useEffect(() => {
-    if (currentPage === 'tasks' && filter !== 'task') {
-      setFilter('task');
-    } else if (currentPage === 'meetings' && filter !== 'meeting') {
-      setFilter('meeting');
-    }
-  }, [currentPage, filter]);
-
-  // Handle clicking outside dropdown to close it
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest('.dropdown-menu') && !event.target.closest('.filter-btn')) {
-        setShowDashboardDateDropdown(false);
-        setShowDashboardTaskTypeDropdown(false);
-        setShowDashboardStatusDropdown(false);
-        setShowDashboardCategoryDropdown(false);
-        setShowDashboardTeamMemberDropdown(false);
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
-
+  const [menuOpen, setMenuOpen] = useState(null);
 
   // Fetch HOD data from backend
-  const fetchHodData = async (taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, category = 'all', showLoading = true) => {
+  async function fetchHodData(taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, category = 'all', dateFilter = 'all', showLoading = true) {
+  
     try {
       if (showLoading) setLoading(true);
       const token = localStorage.getItem("token");
@@ -248,6 +182,73 @@ const HodHome = ({ onLogout }) => {
     }
   };
 
+  // Fetch dashboard tasks data
+  const fetchDashboardTasks = async (taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, category = 'all', dateFilter = 'all', showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      const token = localStorage.getItem("token");
+      const profile = JSON.parse(localStorage.getItem("profile"));
+
+      if (!token || !profile) {
+        setError("Authentication required");
+        return;
+      }
+
+      // Fetch tasks with HOD-specific filter
+      let viewTasksOf = taskViewType;
+      let targetUserId = taskViewType === 'team' && taskTeamMember && taskTeamMember !== 'all' ? taskTeamMember : null;
+      if (taskTeamMember === 'all') {
+        viewTasksOf = 'all';
+        targetUserId = null;
+      }
+
+      const tasksResponse = await fetch(`${API_BASE_URL}/hod/tasks/filter`, {
+        method: 'POST',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          user_id: profile.user_id,
+          view_tasks_of: viewTasksOf,
+          target_user_id: targetUserId,
+          date_filter: dateFilter,
+          task_type: 'all',
+          status: 'all',
+          category
+        })
+      });
+
+      if (tasksResponse.ok) {
+        const tasksData = await tasksResponse.json();
+
+        // Combine tasks and meetings into a single array - master_tasks first, then self_tasks
+        const allTasks = [
+          ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned', assigned_by_user: task.users })),
+          ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' }))
+        ];
+
+        console.log('Combined dashboard tasks with descriptions:', allTasks.map(t => ({ name: t.task_name, description: t.description })));
+
+        // For HOD, backend already filters based on viewType, so use all returned tasks
+        const filteredTasks = allTasks;
+
+        setDashboardTasks(filteredTasks);
+      } else {
+        console.error('Dashboard tasks API failed');
+        setError("Failed to fetch dashboard tasks from server");
+      }
+    } catch (err) {
+      setError("Network error. Please check your connection.");
+      console.error("Error fetching dashboard tasks:", err);
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+        setInitialLoading(false);
+      }
+    }
+  };
+
   // Fetch team members for the dropdown
   const fetchTeamMembers = async () => {
     try {
@@ -297,7 +298,8 @@ const HodHome = ({ onLogout }) => {
         body: JSON.stringify({
           user_id: profile.user_id,
           view_type: viewType,
-          target_user_id: targetUserId
+          target_user_id: targetUserId,
+          date_filter: dashboardDateFilter
         })
       });
 
@@ -356,6 +358,118 @@ const HodHome = ({ onLogout }) => {
     } finally {
       if (showLoading) setWeeklyLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    // Get user profile from localStorage
+    const profile = localStorage.getItem("profile");
+    if (profile) {
+      try {
+        setUserProfile(JSON.parse(profile));
+      } catch (error) {
+        console.error("Error parsing user profile:", error);
+        setError("Error loading user profile");
+      }
+    } else {
+      setError("No user profile found");
+    }
+    fetchHodData('self', '', 'self', '', 'all', true);
+    fetchHodDashboardData('self'); // Fetch dashboard data on mount
+    fetchTeamMembers(); // Fetch team members on mount
+  }, []);
+
+  // Refetch tasks when category filter changes
+  useEffect(() => {
+    if (userProfile) {
+      const cat = categoryFilter === '' ? 'all' : categoryFilter;
+      fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, false);
+    }
+  }, [categoryFilter, userProfile]);
+
+  // Refetch data when any filter changes
+  useLayoutEffect(() => {
+    if (userProfile && (currentPage === 'tasks' || currentPage === 'meetings')) {
+      setLoading(false); // Ensure loading is false for filter changes
+      setTasks([]); // Clear current tasks to prevent showing old data
+      // Only fetch meetings if team view has a selected member
+      if (!(meetingViewTypeFilter === 'team' && !meetingTeamMemberFilter)) {
+        fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', false);
+      }
+      if (taskViewTypeFilter === 'team' || meetingViewTypeFilter === 'team' || taskViewTypeFilter === 'all' || meetingViewTypeFilter === 'all') {
+        fetchTeamMembers();
+      }
+    }
+  }, [taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, userProfile, currentPage]);
+
+  // Refetch dashboard data when dashboard filters change
+  useEffect(() => {
+    if (userProfile) {
+      const viewType = dashboardViewType;
+      const targetUserId = dashboardViewType === 'team' ? dashboardTeamMemberFilter : null;
+      fetchHodDashboardData(viewType, targetUserId);
+    }
+  }, [dashboardViewType, dashboardTeamMemberFilter, userProfile]);
+
+  // Refetch dashboard data when date filter changes
+  useEffect(() => {
+    if (userProfile) {
+      const viewType = dashboardViewType;
+      const targetUserId = dashboardViewType === 'team' ? dashboardTeamMemberFilter : null;
+      fetchHodDashboardData(viewType, targetUserId);
+    }
+  }, [dashboardDateFilter, userProfile]);
+
+  // Refetch tasks and meetings data when dashboard view type or team member changes
+  useEffect(() => {
+    if (userProfile) {
+      const taskViewType = dashboardViewType === 'all' ? 'all' : dashboardViewType;
+      const taskTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
+      const meetingViewType = dashboardViewType === 'all' ? 'all' : dashboardViewType;
+      const meetingTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
+      fetchHodData(taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, 'all', false);
+    }
+  }, [dashboardViewType, dashboardTeamMemberFilter, userProfile]);
+
+   // Refetch tasks and meetings data when dashboard view type or team member changes
+   useEffect(() => {
+     if (userProfile) {
+       setDashboardTasks([]); // Clear tasks to show loading state
+       const taskViewType = dashboardViewType === 'all' ? 'all' : dashboardViewType;
+       const taskTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
+       const meetingViewType = dashboardViewType === 'all' ? 'all' : dashboardViewType;
+       const meetingTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
+       fetchDashboardTasks(taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, 'all', false);
+     }
+   }, [dashboardViewType, dashboardTeamMemberFilter, userProfile]);
+
+
+
+
+  // Sync filter with current page on page changes
+  useEffect(() => {
+    if (currentPage === 'tasks' && filter !== 'task') {
+      setFilter('task');
+    } else if (currentPage === 'meetings' && filter !== 'meeting') {
+      setFilter('meeting');
+    }
+  }, [currentPage, filter]);
+
+  // Handle clicking outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.dropdown-menu') && !event.target.closest('.filter-btn')) {
+        setShowDashboardDateDropdown(false);
+        setShowDashboardTaskTypeDropdown(false);
+        setShowDashboardStatusDropdown(false);
+        setShowDashboardCategoryDropdown(false);
+        setShowDashboardTeamMemberDropdown(false);
+      }
+      if (!event.target.closest('.task-menu') && !event.target.closest('.menu-icon')) {
+        setMenuOpen(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
 
@@ -722,6 +836,96 @@ const HodHome = ({ onLogout }) => {
     onLogout();
   };
 
+  // Calculate filtered tasks and meetings based on dashboard filters
+  const filteredTasks = dashboardTasks.filter(task => {
+    // Date filter
+    const taskDate = new Date(task.date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // For past_week: last week's Monday to Saturday
+    const dayOfWeek = today.getDay();
+    const daysToLastSaturday = (dayOfWeek + 1) % 7;
+    const lastSaturday = new Date(today);
+    lastSaturday.setDate(today.getDate() - daysToLastSaturday);
+    const lastMonday = new Date(lastSaturday);
+    lastMonday.setDate(lastSaturday.getDate() - 5);
+
+    // For past_month: first to last of last month
+    const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+
+    // For all: current month
+    const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    if (dashboardDateFilter === 'today' && taskDate.toDateString() !== today.toDateString()) return false;
+    if (dashboardDateFilter === 'yesterday' && taskDate.toDateString() !== yesterday.toDateString()) return false;
+    if (dashboardDateFilter === 'past_week' && (taskDate < lastMonday || taskDate > lastSaturday)) return false;
+    if (dashboardDateFilter === 'past_month' && (taskDate < firstOfLastMonth || taskDate > lastOfLastMonth)) return false;
+    if (dashboardDateFilter === 'all' && (taskDate < startOfCurrentMonth || taskDate > endOfCurrentMonth)) return false;
+
+    // Task type filter - only apply if task has task_type field
+    if (dashboardTaskTypeFilter && task.task_type && task.task_type !== dashboardTaskTypeFilter) return false;
+
+    // Status filter - handle both frontend and backend status formats
+    if (dashboardStatusFilter) {
+      let taskStatus = task.status?.toLowerCase();
+      let filterStatus = dashboardStatusFilter.toLowerCase();
+
+      // Map frontend filter values to backend status values for comparison
+      if (filterStatus === 'done') filterStatus = 'completed';
+      else if (filterStatus === 'in progress') filterStatus = 'in-progress';
+      else if (filterStatus === 'not started') filterStatus = 'pending';
+
+      if (taskStatus !== filterStatus) return false;
+    }
+
+    // Category filter
+    if (dashboardCategoryFilter && task.category !== dashboardCategoryFilter) return false;
+
+    // Team member filter
+    if (dashboardTeamMemberFilter) {
+      if (dashboardTeamMemberFilter === 'all') {
+        if (task.category !== 'assigned') return false;
+      } else {
+        // For specific user, show their self tasks and tasks assigned to them
+        if (task.category === 'self' && task.user_id !== dashboardTeamMemberFilter) return false;
+        if (task.category === 'assigned' && task.assigned_to !== dashboardTeamMemberFilter) return false;
+      }
+    } else {
+      if (task.category !== 'self') return false;
+    }
+
+    return true;
+  });
+
+  const filteredMeetings = todayMeetings.filter(meeting => {
+    // Status filter
+    if (dashboardStatusFilter && meeting.status !== dashboardStatusFilter) return false;
+
+    return true;
+  });
+
+  // Use stats from backend
+  const totalTasks = monthlyStats?.total_tasks || 0;
+  const selfTasks = monthlyStats?.self_tasks || 0;
+  const masterTasks = monthlyStats?.assigned_tasks || 0;
+  const completed = monthlyStats?.completed || 0;
+  const inProgress = monthlyStats?.in_progress || 0;
+  const notStarted = monthlyStats?.not_started || 0;
+  const onHold = monthlyStats?.on_hold || 0;
+  const cancelled = monthlyStats?.cancelled || 0;
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "--";
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    return `${day} ${month}`;
+  };
+
   if (initialLoading) {
     return (
       <div>
@@ -820,6 +1024,7 @@ const HodHome = ({ onLogout }) => {
               teamMembers={teamMembers}
               dashboardViewType={dashboardViewType}
               userRole={userProfile.user_type}
+              showFilterBar={true}
             />
           </div>
         ) : currentPage === 'calendar' ? (
@@ -1003,7 +1208,8 @@ const HodHome = ({ onLogout }) => {
                        setShowDashboardCategoryDropdown(false);
                      }}
                    >
-                     {dashboardTeamMemberFilter === 'all' ? 'All Team Members' :
+                     {dashboardViewType === 'self' ? 'My Dashboard' :
+                      dashboardTeamMemberFilter === 'all' ? 'All Team Members' :
                       dashboardTeamMemberFilter ? (teamMembers?.find(m => m.user_id === dashboardTeamMemberFilter)?.name || 'Team Member') : 'Team Member'}
                      <FaChevronDown className="dropdown-arrow" />
                    </button>
@@ -1055,260 +1261,286 @@ const HodHome = ({ onLogout }) => {
                    </button>
                  )}
                </div>
-             </div>
 
-             {/* Stats Cards Container */}
-             <div style={{
-               display: 'flex',
-               gap: '20px',
-               marginTop: '20px',
-               marginBottom: '20px',
-               flexWrap: 'wrap'
-             }}>
+              </div>
+                {/* All Cards Container */}
+                <div style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                  padding: '20px',
+                  marginTop: '10px',
+                  marginBottom: '10px'
+                }}>
+                  {/* Stats Cards Container */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '10px',
+                    marginBottom: '15px',
+                    flexWrap: 'wrap'
+                  }}>
                {/* Total Tasks Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '250px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>Total Tasks</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#3b82f6'
-                 }}>{monthlyStats?.total_tasks || 0}</div>
+                 }}>{totalTasks}</div>
                </div>
 
                {/* Self Tasks Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '250px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>Self Tasks</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#10b981'
-                 }}>{monthlyStats?.self_tasks || 0}</div>
+                 }}>{selfTasks}</div>
                </div>
 
                {/* Master Tasks Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '250px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>Master Tasks</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#f59e0b'
-                 }}>{tasks.filter(t => t.category === 'assigned').length}</div>
+                 }}>{masterTasks}</div>
                </div>
              </div>
+
+             {/* Status Wise Distribution Heading */}
+             <h3 style={{
+               fontSize: '15px',
+               fontWeight: '600',
+               color: '#374151',
+               margin: '15px 0 10px 0',
+               textAlign: 'left'
+             }}>Status Wise Distribution</h3>
 
              {/* Status Cards Container */}
              <div style={{
                display: 'flex',
-               gap: '20px',
-               marginBottom: '20px',
+               gap: '10px',
+               marginBottom: '10px',
                flexWrap: 'wrap'
              }}>
                {/* Done Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '200px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>Done</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#22c55e'
-                 }}>{monthlyStats?.completed || 0}</div>
+                 }}>{completed}</div>
                </div>
 
                {/* In Progress Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '200px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>In Progress</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#3b82f6'
-                 }}>{monthlyStats?.in_progress || 0}</div>
+                 }}>{inProgress}</div>
                </div>
 
                {/* Not Started Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '200px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>Not Started</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#f97316'
-                 }}>{monthlyStats?.not_started || 0}</div>
+                 }}>{notStarted}</div>
                </div>
 
                {/* On Hold Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '200px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>On Hold</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#f59e0b'
-                 }}>{tasks.filter(t => t.status === 'On Hold').length}</div>
+                 }}>{onHold}</div>
                </div>
 
                {/* Cancelled Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '200px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>Cancelled</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#ef4444'
-                 }}>{tasks.filter(t => t.status === 'Cancelled').length}</div>
+                 }}>{cancelled}</div>
                </div>
              </div>
+
+             {/* Team Wise Distribution Heading */}
+             <h3 style={{
+               fontSize: '15px',
+               fontWeight: '600',
+               color: '#374151',
+               margin: '15px 0 10px 0',
+               textAlign: 'left'
+             }}>Team Wise Distribution</h3>
 
              {/* Team Member Cards Container */}
              <div style={{
                display: 'flex',
-               gap: '20px',
-               marginBottom: '20px',
+               gap: '10px',
+               marginBottom: '10px',
                flexWrap: 'wrap'
              }}>
                {/* HOD Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '200px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>{userProfile?.name || 'HOD'}</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#8b5cf6'
-                 }}>{tasks.filter(t => t.category === 'self').length}</div>
+                 }}>{filteredTasks.filter(t => t.category === 'self').length}</div>
                </div>
 
                {/* Team Member Cards */}
                {[...teamMembers].sort((a, b) => a.name.localeCompare(b.name)).map(member => {
-                 const memberTasks = tasks.filter(t => t.category === 'assigned' && t.users?.user_id === member.user_id).length;
+                 const memberTasks = filteredTasks.filter(t => t.category === 'assigned' && t.users?.user_id === member.user_id).length;
                  return (
                    <div key={member.user_id} style={{
                      background: 'white',
-                     borderRadius: '12px',
+                     borderRadius: '6px',
                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                     padding: '20px',
+                     padding: '10px 5px',
                      flex: '1',
-                     minWidth: '200px',
+                     minWidth: '120px',
                      textAlign: 'center'
                    }}>
                      <h3 style={{
-                       margin: '0 0 10px 0',
-                       fontSize: '16px',
+                       margin: '0 0 5px 0',
+                       fontSize: '15px',
                        fontWeight: '600',
                        color: '#374151'
                      }}>{member.name}</h3>
                      <div style={{
-                       fontSize: '36px',
+                       fontSize: '15px',
                        fontWeight: 'bold',
                        color: '#8b5cf6'
                      }}>{memberTasks}</div>
@@ -1317,312 +1549,651 @@ const HodHome = ({ onLogout }) => {
                })}
              </div>
 
+             {/* Task Type Distribution Heading */}
+             <h3 style={{
+               fontSize: '15px',
+               fontWeight: '600',
+               color: '#374151',
+               margin: '15px 0 10px 0',
+               textAlign: 'left'
+             }}>Task Type Distribution</h3>
+
              {/* Task Type Cards Container */}
              <div style={{
                display: 'flex',
-               gap: '20px',
-               marginBottom: '20px',
+               gap: '10px',
+               marginBottom: '10px',
                flexWrap: 'wrap'
              }}>
                {/* Fixed Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '200px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>Fixed</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#059669'
-                 }}>{tasks.filter(t => t.task_type === 'Fixed').length}</div>
+                 }}>{filteredTasks.filter(t => t.task_type === 'Fixed').length}</div>
                </div>
 
                {/* Variable Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '200px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>Variable</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#dc2626'
-                 }}>{tasks.filter(t => t.task_type === 'Variable').length}</div>
+                 }}>{filteredTasks.filter(t => t.task_type === 'Variable').length}</div>
                </div>
 
                {/* HOD Assigned Card */}
                <div style={{
                  background: 'white',
-                 borderRadius: '12px',
+                 borderRadius: '6px',
                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '20px',
+                 padding: '10px 5px',
                  flex: '1',
-                 minWidth: '200px',
+                 minWidth: '120px',
                  textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0 0 10px 0',
-                   fontSize: '16px',
+                   margin: '0 0 5px 0',
+                   fontSize: '15px',
                    fontWeight: '600',
                    color: '#374151'
                  }}>HOD Assigned</h3>
                  <div style={{
-                   fontSize: '36px',
+                   fontSize: '15px',
                    fontWeight: 'bold',
                    color: '#7c3aed'
-                 }}>{tasks.filter(t => t.task_type === 'HOD Assigned').length}</div>
+                 }}>{filteredTasks.filter(t => t.task_type === 'HOD Assigned').length}</div>
                </div>
              </div>
+           </div>
 
-            {/* Professional Dashboard Layout */}
-            <div className="professional-dashboard">
+           {/* Tasks Table Section */}
+           <div style={{
+             background: 'white',
+             borderRadius: '12px',
+             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+             width: '100%',
+             overflow: 'hidden',
+             marginTop: '10px',
+             marginBottom: '10px'
+           }}>
+             {/* Tasks Table Header */}
+             <div style={{
+               background: '#5580ff',
+               borderRadius: '12px 12px 0 0',
+               padding: '12px 20px',
+               margin: '0',
+               display: 'flex',
+               justifyContent: 'space-between',
+               alignItems: 'center'
+             }}>
+               <h3 style={{
+                 margin: '0',
+                 fontSize: '18px',
+                 fontWeight: '600',
+                 color: 'white'
+               }}>
+                 Tasks Table
+               </h3>
+               <span style={{
+                 fontSize: '14px',
+                 fontWeight: '500',
+                 color: 'white',
+                 opacity: '0.9'
+               }}>
+                 {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+               </span>
+             </div>
 
-              {/* Top Stats Row */}
-              <div className="stats-row">
-                <div className="stat-card-compact" onClick={() => handlePageChange('tasks')}>
-                  <div className="stat-icon">📋</div>
-                  <div className="stat-content">
-                    <div className="stat-number">{tasks.filter(t => t.itemType === 'task').length}</div>
-                    <div className="stat-label">Total Tasks</div>
-                    <div className="stat-sublabel">{tasks.filter(t => t.itemType === 'task' && t.status === 'pending').length} pending</div>
-                  </div>
-                </div>
-                <div className="stat-card-compact" onClick={() => handlePageChange('meetings')}>
-                  <div className="stat-icon">📅</div>
-                  <div className="stat-content">
-                    <div className="stat-number">{tasks.filter(t => t.itemType === 'meeting').length}</div>
-                    <div className="stat-label">Meetings</div>
-                    <div className="stat-sublabel">{tasks.filter(t => t.itemType === 'meeting' && t.status === 'scheduled').length} scheduled</div>
-                  </div>
-                </div>
-                <div className="stat-card-compact" onClick={() => handlePageChange('tasks')}>
-                  <div className="stat-icon">🚀</div>
-                  <div className="stat-content">
-                    <div className="stat-number">{tasks.filter(t => t.status === 'in-progress').length}</div>
-                    <div className="stat-label">In Progress</div>
-                    <div className="stat-sublabel">{Math.round((tasks.filter(t => t.status === 'in-progress').length / Math.max(tasks.filter(t => t.itemType === 'task').length, 1)) * 100)}% of tasks</div>
-                  </div>
-                </div>
-                <div className="stat-card-compact" onClick={() => handlePageChange('tasks')}>
-                  <div className="stat-icon">✅</div>
-                  <div className="stat-content">
-                    <div className="stat-number">{tasks.filter(t => t.status === 'completed').length}</div>
-                    <div className="stat-label">Completed</div>
-                    <div className="stat-sublabel">{Math.round((tasks.filter(t => t.status === 'completed').length / Math.max(tasks.filter(t => t.itemType === 'task').length, 1)) * 100)}% completion</div>
-                  </div>
-                </div>
-              </div>
+             {/* Tasks Table */}
+             <div style={{
+               padding: '0',
+               margin: '0'
+             }}>
+               <table style={{
+                 width: '100%',
+                 borderCollapse: 'collapse',
+                 margin: '0'
+               }}>
+                 <thead>
+                   <tr style={{
+                     background: '#dbeafe',
+                     borderBottom: '2px solid #e2e8f0'
+                   }}>
+                     <th style={{
+                       padding: '8px 12px',
+                       textAlign: 'center',
+                       fontWeight: '600',
+                       fontSize: '14px',
+                       color: 'black',
+                       borderRight: '1px solid #e5e7eb',
+                       width: '60px'
+                     }}>Sno</th>
+                     <th style={{
+                       padding: '8px 12px',
+                       textAlign: 'left',
+                       fontWeight: '600',
+                       fontSize: '14px',
+                       color: 'black',
+                       borderRight: '1px solid #e5e7eb',
+                       width: '30%'
+                     }}>Task name</th>
+                     <th style={{
+                       padding: '8px 12px',
+                       textAlign: 'center',
+                       fontWeight: '600',
+                       fontSize: '14px',
+                       color: 'black',
+                       borderRight: '1px solid #e5e7eb',
+                       width: '120px'
+                     }}>Date</th>
+                     <th style={{
+                       padding: '8px 12px',
+                       textAlign: 'center',
+                       fontWeight: '600',
+                       fontSize: '14px',
+                       color: 'black',
+                       borderRight: '1px solid #e5e7eb',
+                       width: '120px'
+                     }}>Timeline</th>
+                     <th style={{
+                       padding: '8px 12px',
+                       textAlign: 'center',
+                       fontWeight: '600',
+                       fontSize: '14px',
+                       color: 'black',
+                       borderRight: '1px solid #e5e7eb',
+                       width: '100px'
+                     }}>Type</th>
+                     <th style={{
+                       padding: '8px 12px',
+                       textAlign: 'center',
+                       fontWeight: '600',
+                       fontSize: '14px',
+                       color: 'black',
+                       borderRight: '1px solid #e5e7eb',
+                       width: '120px'
+                     }}>Time</th>
+                     <th style={{
+                       padding: '8px 12px',
+                       textAlign: 'center',
+                       fontWeight: '600',
+                       fontSize: '14px',
+                       color: 'black',
+                       borderRight: '1px solid #e5e7eb',
+                       width: '100px'
+                     }}>Status</th>
+                     <th style={{
+                       padding: '8px 12px',
+                       textAlign: 'center',
+                       fontWeight: '600',
+                       fontSize: '14px',
+                       color: 'black',
+                       width: '80px'
+                     }}>Link</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {(() => {
+                     const filteredTasks = tasks.filter(task => {
+                       // Date filter
+                       if (dashboardDateFilter !== 'all') {
+                         const taskDate = new Date(task.date);
+                         const today = new Date();
+                         const yesterday = new Date(today);
+                         yesterday.setDate(yesterday.getDate() - 1);
+                         const pastWeek = new Date(today);
+                         pastWeek.setDate(pastWeek.getDate() - 7);
+                         const pastMonth = new Date(today);
+                         pastMonth.setMonth(pastMonth.getMonth() - 1);
 
-              {/* Main Content Row */}
-              <div className="main-content-row-compact">
+                         if (dashboardDateFilter === 'today' && taskDate.toDateString() !== today.toDateString()) return false;
+                         if (dashboardDateFilter === 'yesterday' && taskDate.toDateString() !== yesterday.toDateString()) return false;
+                         if (dashboardDateFilter === 'past_week' && taskDate < pastWeek) return false;
+                         if (dashboardDateFilter === 'past_month' && taskDate < pastMonth) return false;
+                       }
 
-                {/* Left Panel - Simple Visible Donut Chart */}
-                <div className="chart-panel-compact">
-                  <h3 className="section-title-compact">Task Distribution</h3>
-                  <div className="simple-donut-container">
-                    {(() => {
-                      const taskItems = tasks.filter(t => t.itemType === 'task');
-                      const totalTasks = taskItems.length;
-                      const completed = taskItems.filter(t => t.status === 'completed').length;
-                      const pending = taskItems.filter(t => t.status === 'pending').length;
-                      const inProgress = taskItems.filter(t => t.status === 'in-progress').length;
+                       // Task type filter
+                       if (dashboardTaskTypeFilter && task.task_type !== dashboardTaskTypeFilter) return false;
 
-                      console.log('Chart Data:', { totalTasks, completed, pending, inProgress });
+                       // Status filter
+                       if (dashboardStatusFilter && task.status !== dashboardStatusFilter) return false;
 
-                      if (totalTasks === 0) {
-                        return (
-                          <div className="no-data-chart">
-                            <div className="no-data-icon">📊</div>
-                            <p className="no-data-text">No tasks available</p>
-                            <button className="create-first-btn-compact" onClick={openPopup}>
-                              Create Task
-                            </button>
-                          </div>
-                        );
-                      }
+                       // Category filter
+                       if (dashboardCategoryFilter && task.category !== dashboardCategoryFilter) return false;
 
-                      const completionRate = totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0;
+                       // Team member filter
+                       if (dashboardTeamMemberFilter) {
+                         if (dashboardTeamMemberFilter === 'all') {
+                           if (task.category !== 'assigned') return false;
+                         } else {
+                           if (task.category !== 'assigned' || task.users?.user_id !== dashboardTeamMemberFilter) return false;
+                         }
+                       } else {
+                         if (task.category !== 'self') return false;
+                       }
 
-                      return (
-                        <div className="simple-donut-wrapper">
-                          {/* Main Stats */}
-                          <div className="main-stats">
-                            <div className="main-stat-item">
-                              <span className="main-stat-number">{totalTasks}</span>
-                              <span className="main-stat-label">Total Tasks</span>
-                            </div>
-                            <div className="main-stat-item">
-                              <span className="main-stat-number completion">{completionRate}%</span>
-                              <span className="main-stat-label">Complete</span>
-                            </div>
-                          </div>
+                       return true;
+                     });
 
-                          {/* Simple Donut Chart with Bright Colored Segments */}
-                          <div className="simple-donut-chart">
-                            <div className="donut-container">
-                              {/* Bright colored segments */}
-                              <div className="donut-segments">
-                                {/* Completed segment */}
-                                {completed > 0 && (
-                                  <div
-                                    className="donut-segment completed"
-                                    style={{
-                                      backgroundColor: '#22c55e',
-                                      transform: `rotate(0deg)`,
-                                      width: `${(completed / totalTasks) * 100}%`
-                                    }}
-                                  ></div>
-                                )}
+                     if (filteredTasks.length === 0) {
+                       return (
+                         <tr>
+                           <td colSpan="8" style={{
+                             padding: '40px 16px',
+                             textAlign: 'center',
+                             color: '#6b7280'
+                           }}>
+                             No tasks available
+                           </td>
+                         </tr>
+                       );
+                     }
 
-                                {/* In Progress segment */}
-                                {inProgress > 0 && (
-                                  <div
-                                    className="donut-segment in-progress"
-                                    style={{
-                                      backgroundColor: '#3b82f6',
-                                      transform: `rotate(${completed * 360 / totalTasks}deg)`,
-                                      width: `${(inProgress / totalTasks) * 100}%`
-                                    }}
-                                  ></div>
-                                )}
+                     return filteredTasks.map((task, index) => (
+                       <tr key={task.task_id || task._id || index} style={{
+                         backgroundColor: index % 2 === 0 ? '#f8fafc' : 'white',
+                         borderBottom: '1px solid #e2e8f0'
+                       }}>
+                         <td style={{
+                           padding: '8px 12px',
+                           color: '#374151',
+                           textAlign: 'center',
+                           fontWeight: '500'
+                         }}>{index + 1}</td>
+                         <td style={{
+                           padding: '8px 12px',
+                           color: '#374151',
+                           fontWeight: '500',
+                           textAlign: 'left'
+                         }}>{task.task_name}</td>
+                         <td style={{
+                           padding: '8px 12px',
+                           color: '#374151',
+                           textAlign: 'center'
+                         }}>{formatDate(task.date)}</td>
+                         <td style={{
+                           padding: '8px 12px',
+                           color: '#374151',
+                           textAlign: 'center'
+                         }}>{task.timeline ? formatDate(task.timeline) : 'N/A'}</td>
+                         <td style={{
+                           padding: '8px 12px',
+                           color: '#374151',
+                           textAlign: 'center'
+                         }}>{task.task_type}</td>
+                         <td style={{
+                           padding: '8px 12px',
+                           color: '#374151',
+                           textAlign: 'center'
+                         }}>{task.time} mins</td>
+                         <td style={{
+                           padding: '8px 12px',
+                           textAlign: 'center'
+                         }}>
+                           <span style={{
+                             padding: '4px 8px',
+                             borderRadius: '4px',
+                             fontSize: '12px',
+                             fontWeight: '500',
+                             backgroundColor: task.status === 'Done' ? '#dcfce7' :
+                                            task.status === 'In Progress' ? '#dbeafe' : '#fef3c7',
+                             color: task.status === 'Done' ? '#166534' :
+                                   task.status === 'In Progress' ? '#1e40af' : '#92400e'
+                           }}>
+                             {task.status}
+                           </span>
+                         </td>
+                         <td style={{
+                           padding: '8px 12px',
+                           color: '#374151',
+                           textAlign: 'center',
+                           position: 'relative'
+                         }}>
+                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                             <FaExternalLinkAlt
+                               style={{
+                                 color: '#3b82f6',
+                                 cursor: 'pointer',
+                                 fontSize: '14px'
+                               }}
+                               onClick={() => onViewDetails(task)}
+                               title="View details"
+                             />
+                             <FaEllipsisV
+                               className="menu-icon"
+                               style={{ cursor: 'pointer' }}
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 setMenuOpen(menuOpen === `task-${index}` ? null : `task-${index}`);
+                               }}
+                             />
+                           </div>
+                           {menuOpen === `task-${index}` && (
+                             <div className="task-menu" style={{
+                               position: 'absolute',
+                               background: 'white',
+                               border: '1px solid #e2e8f0',
+                               borderRadius: '8px',
+                               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                               zIndex: 1000,
+                               marginTop: '5px',
+                               left: '-80px'
+                             }}>
+                               <button
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   const today = new Date().toISOString().split('T')[0];
+                                   const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
+                                   const isPastDate = taskDate !== today;
+                                   if (isPastDate && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
+                                     alert(`You can't edit past tasks`);
+                                     setMenuOpen(null);
+                                     return;
+                                   }
+                                   editTask(task);
+                                   setMenuOpen(null);
+                                 }}
+                                 style={{
+                                   display: 'block',
+                                   width: '100%',
+                                   padding: '8px 16px',
+                                   border: 'none',
+                                   background: 'none',
+                                   textAlign: 'left',
+                                   cursor: 'pointer'
+                                 }}
+                               >
+                                 Edit Item
+                               </button>
+                               <button
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   if (onViewHistory) {
+                                     onViewHistory(task);
+                                   }
+                                   setMenuOpen(null);
+                                 }}
+                                 style={{
+                                   display: 'block',
+                                   width: '100%',
+                                   padding: '8px 16px',
+                                   border: 'none',
+                                   background: 'none',
+                                   textAlign: 'left',
+                                   cursor: 'pointer'
+                                 }}
+                               >
+                                 View History
+                               </button>
+                             </div>
+                           )}
+                         </td>
+                       </tr>
+                     ));
+                   })()}
+                 </tbody>
+               </table>
+             </div>
+           </div>
 
-                                {/* Pending segment */}
-                                {pending > 0 && (
-                                  <div
-                                    className="donut-segment pending"
-                                    style={{
-                                      backgroundColor: '#f97316',
-                                      transform: `rotate(${(completed + inProgress) * 360 / totalTasks}deg)`,
-                                      width: `${(pending / totalTasks) * 100}%`
-                                    }}
-                                  ></div>
-                                )}
-                              </div>
+           {/* Today's Meetings Section - Header and Table in Single Container */}
+           <div style={{
+             background: 'white',
+             borderRadius: '12px',
+             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+             width: '100%',
+             overflow: 'visible',
+             marginTop: '30px',
+             marginBottom: '20px'
+           }}>
+             {/* Today's Meetings Table Header */}
+             <div style={{
+               background: '#e27326',
+               borderRadius: '12px 12px 0 0',
+               padding: '12px 20px',
+               margin: '0',
+               display: 'flex',
+               justifyContent: 'space-between',
+               alignItems: 'center'
+             }}>
+               <h3 style={{
+                 margin: '0',
+                 fontSize: '18px',
+                 fontWeight: '600',
+                 color: 'white'
+               }}>
+                 Meetings Table
+               </h3>
+               <span style={{
+                 fontSize: '14px',
+                 fontWeight: '500',
+                 color: 'white',
+                 opacity: '0.9'
+               }}>
+                 {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+               </span>
+             </div>
 
-                              {/* Center circle */}
-                              <div className="donut-center-bright">
-                                <div className="donut-center-number">{totalTasks}</div>
-                                <div className="donut-center-label">Tasks</div>
-                              </div>
-                            </div>
-
-                            {/* Simple color indicators below */}
-                            <div className="color-indicators">
-                              <div className="color-item">
-                                <div className="color-box completed-color"></div>
-                                <span>Completed ({completed})</span>
-                              </div>
-                              <div className="color-item">
-                                <div className="color-box inprogress-color"></div>
-                                <span>In Progress ({inProgress})</span>
-                              </div>
-                              <div className="color-item">
-                                <div className="color-box pending-color"></div>
-                                <span>Pending ({pending})</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Legend */}
-                          <div className="simple-legend">
-                            <div className="legend-row">
-                              <div className="legend-item">
-                                <div className="legend-dot" style={{backgroundColor: '#10b981'}}></div>
-                                <span className="legend-text">Completed ({completed})</span>
-                              </div>
-                              <div className="legend-item">
-                                <div className="legend-dot" style={{backgroundColor: '#3b82f6'}}></div>
-                                <span className="legend-text">In Progress ({inProgress})</span>
-                              </div>
-                            </div>
-                            <div className="legend-row">
-                              <div className="legend-item">
-                                <div className="legend-dot" style={{backgroundColor: '#f59e0b'}}></div>
-                                <span className="legend-text">Pending ({pending})</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* Right Panel - Compact Actions and Recent Activity */}
-                <div className="activity-panel-compact">
-
-                  {/* Quick Actions */}
-                  <div className="actions-section-compact">
-                    <h3 className="section-title-compact">Quick Actions</h3>
-                    <div className="action-buttons-grid-compact">
-                      <button className="action-btn-compact primary" onClick={openPopup}>
-                        ➕ New Task
-                      </button>
-                      <button className="action-btn-compact" onClick={() => handlePageChange('tasks')}>
-                        📋 Tasks
-                      </button>
-                      <button className="action-btn-compact" onClick={() => handlePageChange('meetings')}>
-                        📅 Meetings
-                      </button>
-                      <button className="action-btn-compact" onClick={() => handlePageChange('calendar')}>
-                        📊 Report
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Recent Items - More Compact with 4 items */}
-                  <div className="activity-section-compact">
-                    <h3 className="section-title-compact">Recent Items</h3>
-                    <div className="activity-list-super-compact">
-                      {tasks.slice(0, 4).map((task, index) => (
-                        <div key={index} className="activity-item-super-compact">
-                          <div className={`activity-icon-super-compact ${task.itemType === 'meeting' ? 'meeting' : 'task'}`}>
-                            {task.itemType === 'meeting' ? '📅' : '📋'}
-                          </div>
-                          <div className="activity-content-super-compact">
-                            <div className="activity-title-super-compact">
-                              {task.task_name || task.meeting_name || task.name}
-                            </div>
-                            <div className="activity-meta-super-compact">
-                              {task.itemType === 'meeting' ? 'Meeting' : 'Task'} • {task.status}
-                            </div>
-                          </div>
-                          <span className={`status-indicator-super-compact ${task.status}`}></span>
-                        </div>
-                      ))}
-                      {tasks.length === 0 && (
-                        <div className="no-activity-super-compact">
-                          <p>No items yet. Create your first task.</p>
-                          <button className="create-first-btn-super-compact" onClick={openPopup}>
-                            Create Task
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+             {/* Today's Meetings Table */}
+             <div style={{
+               padding: '0',
+               margin: '0'
+             }}>
+             <table style={{
+               width: '100%',
+               borderCollapse: 'collapse',
+               margin: '0'
+             }}>
+               <thead>
+                 <tr style={{
+                   background: '#fed7aa',
+                   borderBottom: '2px solid #e2e8f0'
+                 }}>
+                   <th style={{
+                     padding: '8px 12px',
+                     textAlign: 'center',
+                     fontWeight: '600',
+                     fontSize: '14px',
+                     color: 'black',
+                     borderRight: '1px solid #e5e7eb',
+                     width: '60px'
+                   }}>S.No</th>
+                   <th style={{
+                     padding: '8px 12px',
+                     textAlign: 'center',
+                     fontWeight: '600',
+                     fontSize: '14px',
+                     color: 'black',
+                     borderRight: '1px solid #e5e7eb',
+                     width: '30%'
+                   }}>Meeting name</th>
+                   <th style={{
+                     padding: '8px 12px',
+                     textAlign: 'center',
+                     fontWeight: '600',
+                     fontSize: '14px',
+                     color: 'black',
+                     borderRight: '1px solid #e5e7eb',
+                     width: '15%'
+                   }}>Dept</th>
+                   <th style={{
+                     padding: '8px 12px',
+                     textAlign: 'center',
+                     fontWeight: '600',
+                     fontSize: '14px',
+                     color: 'black',
+                     borderRight: '1px solid #e5e7eb',
+                     width: '15%'
+                   }}>Co Person</th>
+                   <th style={{
+                     padding: '8px 12px',
+                     textAlign: 'center',
+                     fontWeight: '600',
+                     fontSize: '14px',
+                     color: 'black',
+                     borderRight: '1px solid #e5e7eb',
+                     width: '15%'
+                   }}>Time (in mins)</th>
+                   <th style={{
+                     padding: '8px 12px',
+                     textAlign: 'center',
+                     fontWeight: '600',
+                     fontSize: '14px',
+                     color: 'black',
+                     borderRight: '1px solid #e5e7eb',
+                     width: '12%'
+                   }}>Prop Slot</th>
+                   <th style={{
+                     padding: '8px 12px',
+                     textAlign: 'center',
+                     fontWeight: '600',
+                     fontSize: '14px',
+                     color: 'black',
+                     borderRight: '1px solid #e5e7eb',
+                     width: '12%'
+                   }}>Status</th>
+                   <th style={{
+                     padding: '8px 12px',
+                     textAlign: 'center',
+                     fontWeight: '600',
+                     fontSize: '14px',
+                     color: 'black',
+                     width: '15%'
+                   }}>Notes</th>
+                   <th style={{
+                     padding: '8px 12px',
+                     textAlign: 'center',
+                     fontWeight: '600',
+                     fontSize: '14px',
+                     color: 'black',
+                     width: '60px'
+                   }}></th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {filteredMeetings.length > 0 ? (
+                   filteredMeetings.map((meeting, index) => (
+                     <tr key={meeting.meeting_id || index} style={{
+                       backgroundColor: index % 2 === 0 ? '#f8fafc' : 'white',
+                       borderBottom: '1px solid #e2e8f0'
+                     }}>
+                       <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
+                       <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{meeting.meeting_name || meeting.name}</td>
+                       <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.dept || 'N/A'}</td>
+                       <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.co_person || 'N/A'}</td>
+                       <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.time || 'N/A'}</td>
+                       <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.prop_slot || 'N/A'}</td>
+                       <td style={{ padding: '8px 12px' }}>
+                         <span style={{
+                           padding: '4px 8px',
+                           borderRadius: '4px',
+                           fontSize: '12px',
+                           fontWeight: '500',
+                           backgroundColor: meeting.status === 'completed' ? '#dcfce7' :
+                                          meeting.status === 'scheduled' ? '#dbeafe' : '#fef3c7',
+                           color: meeting.status === 'completed' ? '#166534' :
+                                 meeting.status === 'scheduled' ? '#1e40af' : '#92400e'
+                         }}>
+                           {meeting.status}
+                         </span>
+                       </td>
+                       <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.notes || 'N/A'}</td>
+                       <td style={{ padding: '6px 8px', textAlign: 'center', position: 'relative' }}>
+                         <FaEllipsisV
+                           className="menu-icon"
+                           style={{ cursor: 'pointer' }}
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setMenuOpen(menuOpen === `meeting-${index}` ? null : `meeting-${index}`);
+                           }}
+                         />
+                         {menuOpen === `meeting-${index}` && (
+                           <div className="task-menu" style={{
+                             position: 'absolute',
+                             background: 'white',
+                             border: '1px solid #e2e8f0',
+                             borderRadius: '8px',
+                             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                             zIndex: 1000,
+                             marginTop: '5px',
+                             left: '-80px'
+                           }}>
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 const today = new Date().toISOString().split('T')[0];
+                                 const meetingDate = meeting.date ? new Date(meeting.date).toISOString().split('T')[0] : null;
+                                 const isPastDate = meetingDate !== today;
+                                 if (isPastDate && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
+                                   alert(`You can't edit past meetings`);
+                                   setMenuOpen(null);
+                                   return;
+                                 }
+                                 editTask(meeting);
+                                 setMenuOpen(null);
+                               }}
+                               style={{
+                                 display: 'block',
+                                 width: '100%',
+                                 padding: '8px 16px',
+                                 border: 'none',
+                                 background: 'none',
+                                 textAlign: 'left',
+                                 cursor: 'pointer'
+                               }}
+                             >
+                               Edit Item
+                             </button>
+                           </div>
+                         )}
+                       </td>
+                     </tr>
+                   ))
+                 ) : (
+                   <tr>
+                     <td colSpan="9" style={{
+                       padding: '40px 16px',
+                       textAlign: 'center',
+                       color: '#6b7280'
+                     }}>
+                       No meetings scheduled for today
+                     </td>
+                   </tr>
+                 )}
+               </tbody>
+             </table>
+             </div>
+           </div>
 
           </div>
         )}

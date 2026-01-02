@@ -3,25 +3,26 @@ import './Home.css'; // Reuse Home.css for styling
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
-const RnR = () => {
-  const [showRnrModal, setShowRnrModal] = useState(false);
-  const [showFixedTaskModal, setShowFixedTaskModal] = useState(false);
-
+const AdminRnR = () => {
   // Data will be loaded from API
   const [rnrData, setRnrData] = useState([]);
   const [fixedTasks, setFixedTasks] = useState([]);
 
+  // User profile and all users
+  const [userProfile, setUserProfile] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
+
+  // R&R filter state
+  const [selectedRnrUser, setSelectedRnrUser] = useState('');
+  const [showRnrUserDropdown, setShowRnrUserDropdown] = useState(false);
+
+  // Modal states
+  const [showRnrModal, setShowRnrModal] = useState(false);
+  const [showFixedTaskModal, setShowFixedTaskModal] = useState(false);
+
   // Edit states
   const [editingRnr, setEditingRnr] = useState(null);
   const [editingFixedTask, setEditingFixedTask] = useState(null);
-
-  // User profile and team members
-  const [userProfile, setUserProfile] = useState(null);
-  const [teamMembers, setTeamMembers] = useState([]);
-
-  // User selection for filtering
-  const [selectedRnrUser, setSelectedRnrUser] = useState(null);
-  const [showRnrUserDropdown, setShowRnrUserDropdown] = useState(false);
 
   // R&R form state
   const [rnrForm, setRnrForm] = useState({
@@ -42,31 +43,31 @@ const RnR = () => {
   });
 
   // Fetch R&R data from API
-   const fetchRnrData = async (userId = null) => {
-     try {
-       const token = localStorage.getItem("token");
-       if (!token) return;
+  const fetchRnrData = async (userId = null) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
 
-       let url = `${API_BASE_URL}/rnr`;
-       if (userId && userId !== 'all') {
-         url += `?user_id=${userId}`;
-       }
+      let url = `${API_BASE_URL}/admin/rnr`;
+      if (userId && userId !== 'all') {
+        url += `?user_id=${userId}`;
+      }
 
-       const response = await fetch(url, {
-         headers: {
-           "Authorization": `Bearer ${token}`,
-           "Content-Type": "application/json"
-         }
-       });
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
 
-       if (response.ok) {
-         const result = await response.json();
-         setRnrData(result || []);
-       }
-     } catch (error) {
-       console.error('Error fetching R&R data:', error);
-     }
-   };
+      if (response.ok) {
+        const result = await response.json();
+        setRnrData(result || []);
+      }
+    } catch (error) {
+      console.error('Error fetching R&R data:', error);
+    }
+  };
 
   // Fetch fixed tasks from API
   const fetchFixedTasks = async (userId = null) => {
@@ -95,18 +96,17 @@ const RnR = () => {
     }
   };
 
-  // Fetch team members for the dropdown
-  const fetchTeamMembers = async () => {
+  // Fetch all users for the dropdown
+  const fetchAllUsers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const profile = JSON.parse(localStorage.getItem("profile"));
 
-      if (!token || !profile) {
+      if (!token) {
         console.error("Authentication required");
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/hod/meetings/team-members/${profile.dept}/${profile.user_id}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/rnr/members`, {
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
@@ -115,64 +115,16 @@ const RnR = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setTeamMembers(data.team_members || []);
+        setAllUsers(data.members || []);
       } else {
-        console.error('Failed to fetch team members');
+        console.error('Failed to fetch users');
       }
     } catch (err) {
-      console.error("Error fetching team members:", err);
+      console.error("Error fetching users:", err);
     }
   };
 
-  // Fetch user profile and team members on component mount
-   useEffect(() => {
-     // Get user profile from localStorage
-     const profile = localStorage.getItem("profile");
-     if (profile) {
-       try {
-         const parsed = JSON.parse(profile);
-         setUserProfile(parsed);
-         fetchRnrData(parsed.user_id);
-         fetchFixedTasks(parsed.user_id);
-         fetchTeamMembers();
-       } catch (error) {
-         console.error("Error parsing user profile:", error);
-       }
-     }
-   }, []);
-
-   // Set default selected user to HOD when profile loads
-   useEffect(() => {
-     if (userProfile && !selectedRnrUser) {
-       setSelectedRnrUser(userProfile.user_id);
-     }
-   }, [userProfile, selectedRnrUser]);
-
-   // Handle clicking outside dropdown to close it
-   useEffect(() => {
-     const handleClickOutside = (event) => {
-       if (!event.target.closest('.dropdown-menu') && !event.target.closest('.filter-btn')) {
-         setShowRnrUserDropdown(false);
-       }
-     };
-     document.addEventListener('click', handleClickOutside);
-     return () => document.removeEventListener('click', handleClickOutside);
-   }, []);
-
-   // Refetch R&R and fixed tasks data when user filter changes
-   useEffect(() => {
-     if (userProfile) {
-       fetchRnrData(selectedRnrUser || null);
-       fetchFixedTasks(selectedRnrUser || null);
-     }
-   }, [selectedRnrUser, userProfile]);
-
-   // Update fixed task form assignTo when selectedRnrUser changes
-   useEffect(() => {
-     setFixedTaskForm(prev => ({ ...prev, assignTo: selectedRnrUser || '' }));
-   }, [selectedRnrUser]);
-
- // Handle edit R&R
+  // Handle edit R&R
   const handleEditRnr = (rnrItem) => {
     setEditingRnr(rnrItem);
     setRnrForm({
@@ -219,11 +171,11 @@ const RnR = () => {
         process_limitations: rnrForm.process_limitations
       };
 
-      // For editing, use the existing R&R's user_id; for creating, use the logged in user's
+      // For editing, use the existing R&R's user_id; for creating, use the selected user or admin's
       if (editingRnr) {
         requestData.user_id = editingRnr.user_id;
       } else {
-        requestData.user_id = userProfile?.user_id;
+        requestData.user_id = selectedRnrUser !== 'all' ? selectedRnrUser : userProfile?.user_id;
       }
 
       const response = await fetch(url, {
@@ -282,7 +234,7 @@ const RnR = () => {
       taskName: '',
       frequency: 'Daily',
       assignedBy: '',
-      assignTo: selectedRnrUser || ''
+      assignTo: selectedRnrUser === 'all' ? '' : selectedRnrUser || ''
     });
   };
 
@@ -307,7 +259,7 @@ const RnR = () => {
 
       console.log('Sending fixed task data:', requestData);
       console.log('Selected assignTo:', fixedTaskForm.assignTo);
-      console.log('HOD user_id:', userProfile?.user_id);
+      console.log('Admin user_id:', userProfile?.user_id);
 
       const response = await fetch(url, {
         method: method,
@@ -339,9 +291,57 @@ const RnR = () => {
       taskName: '',
       frequency: 'Daily',
       assignedBy: '',
-      assignTo: selectedRnrUser || ''
+      assignTo: selectedRnrUser === 'all' ? '' : selectedRnrUser || ''
     });
   };
+
+  // Fetch user profile and all users on component mount
+  useEffect(() => {
+    // Get user profile from localStorage
+    const profile = localStorage.getItem("profile");
+    if (profile) {
+      try {
+        const parsed = JSON.parse(profile);
+        setUserProfile(parsed);
+        fetchRnrData();
+        fetchFixedTasks();
+        fetchAllUsers();
+      } catch (error) {
+        console.error("Error parsing user profile:", error);
+      }
+    }
+  }, []);
+
+  // Set default selected user to empty when profile loads
+  useEffect(() => {
+    if (userProfile && selectedRnrUser === null) {
+      setSelectedRnrUser('');
+    }
+  }, [userProfile, selectedRnrUser]);
+
+  // Handle clicking outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.dropdown-menu') && !event.target.closest('.filter-btn')) {
+        setShowRnrUserDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // Refetch R&R and fixed tasks data when user filter changes
+  useEffect(() => {
+    if (userProfile) {
+      fetchRnrData(selectedRnrUser || null);
+      fetchFixedTasks(selectedRnrUser || null);
+    }
+  }, [selectedRnrUser, userProfile]);
+
+  // Update fixed task form assignTo when selectedRnrUser changes
+  useEffect(() => {
+    setFixedTaskForm(prev => ({ ...prev, assignTo: selectedRnrUser === 'all' ? '' : selectedRnrUser || '' }));
+  }, [selectedRnrUser]);
 
   return (
     <div className="dashboard-container">
@@ -353,109 +353,90 @@ const RnR = () => {
         textAlign: 'center',
         marginTop: '20px'
       }}>
-        <h1 style={{ fontSize: '24px' }}>Roles and Responsibilities</h1>
+        <h1 style={{ fontSize: '24px' }}>Admin - Roles and Responsibilities</h1>
       </div>
 
-      {userProfile?.user_type === 'HOD' && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'flex-start',
-          marginTop: '15px',
-          marginBottom: '10px'
-        }}>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            {/* Team Member Filter */}
-            <div className="filter-dropdown" style={{ position: 'relative' }}>
-              <button
-                className={`filter-btn ${selectedRnrUser ? 'active' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowRnrUserDropdown(!showRnrUserDropdown);
-                }}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  background: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                {teamMembers?.find(m => m.user_id === selectedRnrUser)?.name || (userProfile?.user_id === selectedRnrUser ? userProfile?.name : 'Select User')}
-                <span>▼</span>
-              </button>
-              {showRnrUserDropdown && (
-                <div className="dropdown-menu" style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  background: 'white',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  zIndex: 1000,
-                  minWidth: '200px',
-                  marginTop: '4px',
-                  maxHeight: '200px',
-                  overflowY: 'auto'
-                }}>
-                  {/* HOD Option */}
-                  {userProfile && (
-                    <div
-                      className="dropdown-item"
-                      onClick={() => { setSelectedRnrUser(userProfile.user_id); setShowRnrUserDropdown(false); }}
-                      style={{
-                        padding: '8px 12px',
-                        cursor: 'pointer',
-                        borderBottom: '1px solid #f3f4f6',
-                        fontSize: '14px'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
-                    >
-                      {userProfile.name} (HOD)
-                    </div>
-                  )}
-                  {/* Team Members */}
-                  {teamMembers && teamMembers.length > 0 ? teamMembers.map(member => (
-                    <div
-                      key={member.user_id}
-                      className="dropdown-item"
-                      onClick={() => { setSelectedRnrUser(member.user_id); setShowRnrUserDropdown(false); }}
-                      style={{
-                        padding: '8px 12px',
-                        cursor: 'pointer',
-                        borderBottom: teamMembers.indexOf(member) < teamMembers.length - 1 ? '1px solid #f3f4f6' : 'none',
-                        fontSize: '14px'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
-                    >
-                      {member.name}
-                    </div>
-                  )) : (
-                    <div
-                      className="dropdown-item disabled"
-                      style={{
-                        padding: '8px 12px',
-                        color: '#9ca3af',
-                        fontSize: '14px',
-                        cursor: 'not-allowed'
-                      }}
-                    >
-                      No team members available
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
+      {/* R&R Filter Panel */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'flex-start',
+        marginTop: '15px',
+        marginBottom: '10px'
+      }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {/* User Filter */}
+          <div className="filter-dropdown" style={{ position: 'relative' }}>
+            <button
+              className={`filter-btn ${selectedRnrUser ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowRnrUserDropdown(!showRnrUserDropdown);
+              }}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                background: 'white',
+                cursor: 'pointer',
+                fontSize: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {allUsers?.find(u => u.user_id === selectedRnrUser)?.name || 'Select User'}
+              <span>▼</span>
+            </button>
+            {showRnrUserDropdown && (
+              <div className="dropdown-menu" style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                background: 'white',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                zIndex: 1000,
+                minWidth: '200px',
+                marginTop: '4px',
+                maxHeight: '200px',
+                overflowY: 'auto'
+              }}>
+                {/* Individual Users */}
+                {allUsers && allUsers.length > 0 ? allUsers.map(user => (
+                  <div
+                    key={user.user_id}
+                    className="dropdown-item"
+                    onClick={() => { setSelectedRnrUser(user.user_id); setShowRnrUserDropdown(false); }}
+                    style={{
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      borderBottom: allUsers.indexOf(user) < allUsers.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      fontSize: '14px'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                  >
+                    {user.name}
+                  </div>
+                )) : (
+                  <div
+                    className="dropdown-item disabled"
+                    style={{
+                      padding: '8px 12px',
+                      color: '#9ca3af',
+                      fontSize: '14px',
+                      cursor: 'not-allowed'
+                    }}
+                  >
+                    No users available
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       <div style={{
         background: 'white',
@@ -482,25 +463,6 @@ const RnR = () => {
           }}>
             R&R
           </h3>
-          <button
-            onClick={() => setShowRnrModal(true)}
-            style={{
-              background: 'white',
-              color: '#166534',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <span>+</span>
-            Add R&R
-          </button>
         </div>
 
         <div style={{
@@ -588,15 +550,6 @@ const RnR = () => {
                   width: '20%',
                   minWidth: '150px'
                 }}>Process and Limitations</th>
-                <th style={{
-                  padding: '8px 12px',
-                  textAlign: 'left',
-                  fontWeight: '600',
-                  fontSize: '14px',
-                  color: 'black',
-                  width: '80px',
-                  minWidth: '80px'
-                }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -613,27 +566,11 @@ const RnR = () => {
                     <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'left' }}>{item.timings}</td>
                     <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'left' }}>{item.guideline}</td>
                     <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'left' }}>{item.process_limitations}</td>
-                    <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'left' }}>
-                      <button
-                        onClick={() => handleEditRnr(item)}
-                        style={{
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Edit
-                      </button>
-                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" style={{
+                  <td colSpan="7" style={{
                     padding: '40px 16px',
                     textAlign: 'center',
                     color: '#6b7280'
@@ -672,25 +609,6 @@ const RnR = () => {
           }}>
             Fixed Tasks
           </h3>
-          <button
-            onClick={() => setShowFixedTaskModal(true)}
-            style={{
-              background: 'white',
-              color: '#5580ff',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <span>+</span>
-            Add Fixed Task
-          </button>
         </div>
 
         <div style={{
@@ -740,18 +658,8 @@ const RnR = () => {
                   fontWeight: '600',
                   fontSize: '14px',
                   color: 'black',
-                  borderRight: '1px solid #e5e7eb',
                   width: '20%'
                 }}>Assigned by</th>
-                <th style={{
-                  padding: '8px 12px',
-                  textAlign: 'center',
-                  fontWeight: '600',
-                  fontSize: '14px',
-                  color: 'black',
-                  width: '80px',
-                  minWidth: '80px'
-                }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -765,32 +673,16 @@ const RnR = () => {
                     <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500', textAlign: 'left' }}>{task.task_name}</td>
                     <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>{task.frequency}</td>
                     <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>{task.assigned_by}</td>
-                    <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>
-                      <button
-                        onClick={() => handleEditFixedTask(task)}
-                        style={{
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Edit
-                      </button>
-                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" style={{
+                  <td colSpan="4" style={{
                     padding: '40px 16px',
                     textAlign: 'center',
                     color: '#6b7280'
                   }}>
-                    No fixed tasks assigned yet
+                    No fixed tasks assigned
                   </td>
                 </tr>
               )}
@@ -931,23 +823,21 @@ const RnR = () => {
                     onChange={(e) => setFixedTaskForm({...fixedTaskForm, assignedBy: e.target.value})}
                   />
                 </div>
-                {userProfile?.user_type === 'HOD' && (
-                  <div className="field-box span-3">
-                    <label className="field-label">Assign to</label>
-                    <select
-                      className="enhanced-select"
-                      value={fixedTaskForm.assignTo}
-                      onChange={(e) => setFixedTaskForm({...fixedTaskForm, assignTo: e.target.value})}
-                    >
-                      <option value={userProfile?.user_id}>Assign to me (HOD)</option>
-                      {teamMembers.map(member => (
-                        <option key={member.user_id} value={member.user_id}>
-                          {member.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                <div className="field-box span-3">
+                  <label className="field-label">Assign to</label>
+                  <select
+                    className="enhanced-select"
+                    value={fixedTaskForm.assignTo}
+                    onChange={(e) => setFixedTaskForm({...fixedTaskForm, assignTo: e.target.value})}
+                  >
+                    <option value="">Select User</option>
+                    {allUsers.map(user => (
+                      <option key={user.user_id} value={user.user_id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             <div className="popup-footer">
@@ -971,4 +861,4 @@ const RnR = () => {
   );
 };
 
-export default RnR;
+export default AdminRnR;

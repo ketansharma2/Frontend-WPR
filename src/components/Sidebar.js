@@ -42,7 +42,7 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
       id: 'rnr',
       label: 'R&R',
       icon: FaClipboardList,
-      roles: ['team member', 'hod']
+      roles: ['team member', 'hod', 'admin']
     },
     {
       id: 'users',

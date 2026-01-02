@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import AdminUsers from "./AdminUsers";
+import AdminRnR from "./AdminRnR";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import TaskList from './TaskList';
@@ -1082,6 +1083,8 @@ const AdminHome = ({ onLogout }) => {
         );
       case "individual-analytics":
         return <IndividualAnalytics />;
+      case "rnr":
+        return <AdminRnR />;
     }
   };
 
