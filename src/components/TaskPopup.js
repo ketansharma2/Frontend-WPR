@@ -3,7 +3,7 @@ import ToggleSwitch from "./ToggleSwitch";
 import { api } from "../config/api";
 import "./TaskPopup.css";
 
-export default function TaskPopup({ open, onClose, addTask, editingTask, updateTask, mode = "create", teamMembers = [], isRestrictedEdit = false }) {
+export default function TaskPopup({ open, onClose, addTask, editingTask, updateTask, mode = "create", teamMembers = [], isRestrictedEdit = false, isPreviousDay = false }) {
   const [isMeeting, setIsMeeting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -242,7 +242,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         if (isRestrictedEdit) {
           const updatedTask = {
             ...editingTask,
-            time_in_mins: time,
+            ...(isPreviousDay ? {} : { time_in_mins: time }),
             status: status,
             file_link: attachments,
             remarks: remarks,
@@ -539,7 +539,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                 </div>
 
                 {/* Time (in mins) */}
-                <div className="field-box span-6">
+                <div className={`field-box span-6 ${isPreviousDay ? 'restricted-field' : ''}`}>
                   <label className="field-label">Time (in mins)</label>
                   <input
                     type="number"
@@ -547,6 +547,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     placeholder="Enter time in minutes"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
+                    disabled={isPreviousDay}
+                    title={isPreviousDay ? "Time cannot be edited for previous day tasks" : ""}
                   />
                 </div>
 

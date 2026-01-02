@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
   
   // Tasks
   TASKS: `${API_BASE_URL}/tasks`,
+  TASK_HISTORY: `${API_BASE_URL}/tasks/history`,
   
   // Meetings
   MEETINGS: `${API_BASE_URL}/meetings`,
@@ -118,9 +119,15 @@ export const api = {
       body: JSON.stringify(taskData)
     }),
   
-  deleteTask: (taskId) => 
+  deleteTask: (taskId) =>
     apiRequest(buildApiUrl(API_ENDPOINTS.TASKS, { taskId }), {
       method: 'DELETE'
+    }),
+
+  getTaskHistory: (taskId) =>
+    apiRequest(API_ENDPOINTS.TASK_HISTORY, {
+      method: 'POST',
+      body: JSON.stringify({ task_id: taskId })
     }),
   
   // Meetings

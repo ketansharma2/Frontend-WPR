@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './Header.css';
 import ProfilePanel from './ProfilePanel';
 
-const Header = ({ addTask, openPopup, openAssignPopup, currentView, onLogout, user }) => {
+const Header = ({ addTask, openPopup, openAssignPopup, currentView, onLogout, user, isAddDisabled }) => {
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
 
@@ -43,7 +43,13 @@ const Header = ({ addTask, openPopup, openAssignPopup, currentView, onLogout, us
         <div className="cu-header__right">
           {user?.user_type !== 'Admin' && (
             <>
-              <button className="cu-header__create-task" onClick={openPopup}>
+              <button className="cu-header__create-task" onClick={() => {
+                if (isAddDisabled) {
+                  alert("Remarks missing from previous day tasks. Please fill remarks for all previous day's tasks before adding new ones.");
+                  return;
+                }
+                openPopup();
+              }}>
                 <span className="create-task-plus">+</span>
                 <span className="create-task-text">Task/Meeting</span>
               </button>

@@ -6,6 +6,7 @@
   import TaskPopup from './TaskPopup';
   import TaskDetails from './TaskDetails';
   import ProfilePanel from './ProfilePanel';
+  import TaskHistoryPopup from './TaskHistoryPopup';
   import RnR from './RnR';
   import { FaChevronDown, FaTimes } from 'react-icons/fa';
   import { api } from '../config/api';
@@ -40,6 +41,8 @@ const HodHome = ({ onLogout }) => {
   const [teamMembers, setTeamMembers] = useState([]); // list of team members
   const [selectedTask, setSelectedTask] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [weeklyTasks, setWeeklyTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -675,6 +678,17 @@ const HodHome = ({ onLogout }) => {
     setIsDetailsOpen(true);
   };
 
+  const onViewHistory = (task) => {
+    const taskId = getTaskIdForAPI(task);
+    setSelectedTaskId(taskId);
+    setIsHistoryOpen(true);
+  };
+
+  const closeHistoryPopup = () => {
+    setIsHistoryOpen(false);
+    setSelectedTaskId(null);
+  };
+
   // Handle filter changes from toggle and sync with view
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);
@@ -788,6 +802,7 @@ const HodHome = ({ onLogout }) => {
               onEdit={editTask}
               onViewDetails={onViewDetails}
               onDelete={deleteTask}
+              onViewHistory={onViewHistory}
               filter='task'
               setFilter={handleFilterChange}
               dateFilter={taskDateFilter}
@@ -1636,6 +1651,13 @@ const HodHome = ({ onLogout }) => {
         onLogout={handleLogout}
       />
       {isDetailsOpen && <TaskDetails task={selectedTask} onClose={() => setIsDetailsOpen(false)} />}
+      {isHistoryOpen && (
+        <TaskHistoryPopup
+          open={isHistoryOpen}
+          onClose={closeHistoryPopup}
+          taskId={selectedTaskId}
+        />
+      )}
     </div>
   );
 };

@@ -9,7 +9,7 @@ import {
   FaExternalLinkAlt
 } from "react-icons/fa";
 
-export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, dashboardViewType, showFilterBar = true, showMyTasksOption = true, isAdminView = false, userRole }) {
+export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onViewHistory, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, dashboardViewType, showFilterBar = true, showMyTasksOption = true, isAdminView = false, userRole }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateActive, setDateActive] = useState('');
   const [activeFilters, setActiveFilters] = useState({
@@ -1154,6 +1154,28 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                               }}
                             >
                               Edit Item
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // For TaskList, we need to pass the taskId to parent component
+                                // This will need to be handled by the parent component (Home.js)
+                                if (onViewHistory) {
+                                  onViewHistory(task);
+                                }
+                                setMenuOpen(null);
+                              }}
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                padding: '8px 16px',
+                                border: 'none',
+                                background: 'none',
+                                textAlign: 'left',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              View History
                             </button>
                           </div>
                         )}

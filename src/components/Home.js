@@ -8,6 +8,7 @@ import TaskDetails from './TaskDetails';
 import ProfilePanel from './ProfilePanel';
 import TaskStatsPanel from './TaskStatsPanel';
 import DateToggleSwitch from './DateToggleSwitch';
+import TaskHistoryPopup from './TaskHistoryPopup';
 import RnR from './RnR';
 import { api } from '../config/api';
 import { FaEllipsisV } from 'react-icons/fa';
@@ -49,6 +50,9 @@ const Home = ({ onLogout }) => {
   const [yesterdayMeetings, setYesterdayMeetings] = useState([]);
   const [menuOpen, setMenuOpen] = useState(null);
   const [hasAutoPopulated, setHasAutoPopulated] = useState(false);
+  const [isRemarksRequired, setIsRemarksRequired] = useState(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
 
   // Helper function for SVG donut chart calculations
   const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -124,13 +128,20 @@ const Home = ({ onLogout }) => {
     }
   }, [userProfile]);
 
-  // Auto-populate fixed tasks when dashboard loads
+  // Check remarks requirement when dashboard loads
   useEffect(() => {
-    if (userProfile?.user_id && currentPage === 'dashboard' && !hasAutoPopulated) {
+    if (userProfile?.user_id && currentPage === 'dashboard' && isRemarksRequired === null) {
+      fetchLastWorkingDayData();
+    }
+  }, [userProfile, currentPage, isRemarksRequired]);
+
+  // Auto-populate fixed tasks when dashboard loads and remarks are checked
+  useEffect(() => {
+    if (userProfile?.user_id && currentPage === 'dashboard' && !hasAutoPopulated && isRemarksRequired === false) {
       autoPopulateFixedTasks();
       setHasAutoPopulated(true);
     }
-  }, [userProfile, currentPage, hasAutoPopulated]);
+  }, [userProfile, currentPage, hasAutoPopulated, isRemarksRequired]);
 
   // Fetch tasks from backend
   const fetchTasks = async (category = 'all') => {
@@ -366,8 +377,12 @@ const Home = ({ onLogout }) => {
         setYesterdayMeetings(meetings);
         setYesterdayDate(workingDayData.date);
 
+        // Check if any yesterday's tasks have unfilled remarks
+        const hasUnfilledRemarks = tasks.some(task => !task.remarks || task.remarks.trim() === '');
+        setIsRemarksRequired(hasUnfilledRemarks);
+
         console.log(`Found last working day: ${workingDayData.date} (${workingDayData.days_back} days back)`);
-        console.log(`Tasks: ${tasks.length}, Meetings: ${meetings.length}`);
+        console.log(`Tasks: ${tasks.length}, Meetings: ${meetings.length}, Remarks required: ${hasUnfilledRemarks}`);
       } else {
         // No working days found, show empty state
         setYesterdayTasks([]);
@@ -489,7 +504,9 @@ const Home = ({ onLogout }) => {
   };
 
   const editTask = (task) => {
-    setEditingTask(task);
+    const today = new Date().toISOString().split('T')[0];
+    const isPreviousDay = task.date < today;
+    setEditingTask({ ...task, isPreviousDay });
     setIsPopupOpen(true);
     // Don't force page change - let the current page stay as is
     // setCurrentPage('tasks');
@@ -509,15 +526,15 @@ const Home = ({ onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const endpoint = updatedTask.itemType === 'meeting' ? 'meetings' : 'tasks';
-      
+
       // Get the correct ID for the API call
       const taskIdForAPI = getTaskIdForAPI(updatedTask);
-      
+
       if (!taskIdForAPI) {
         setError(`Cannot update ${updatedTask.itemType}: No valid ID found`);
         return;
       }
-      
+
       let apiData;
       if (updatedTask.itemType === 'meeting') {
         // Map meeting fields to backend format for update
@@ -541,10 +558,11 @@ const Home = ({ onLogout }) => {
           time: updatedTask.time_in_mins || updatedTask.time,
           task_type: updatedTask.task_type || updatedTask.type,
           status: updatedTask.status,
-          file_link: updatedTask.file_link || updatedTask.attachments
+          file_link: updatedTask.file_link || updatedTask.attachments,
+          remarks: updatedTask.remarks
         };
       }
-      
+
       const response = await fetch(`${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
         method: 'PUT',
         headers: {
@@ -556,10 +574,34 @@ const Home = ({ onLogout }) => {
 
       if (response.ok) {
         const result = await response.json();
-        
+
         // Update the local tasks state immediately for instant UI update
         const updatedTaskData = result.task || result.meeting || updatedTask;
-        
+
+        // Determine which state to update based on task date
+        const today = new Date().toISOString().split('T')[0];
+        if (updatedTask.date === today) {
+          // Update todayTasks
+          if (updatedTask.itemType === 'task') {
+            setTodayTasks(prev => prev.map(task => {
+              const isMatch = task.task_id === updatedTask.task_id || task._id === updatedTask._id;
+              return isMatch ? { ...task, ...updatedTask, ...updatedTaskData } : task;
+            }));
+          } else {
+            setTodayMeetings(prev => prev.map(meeting => {
+              const isMatch = meeting.meeting_id === updatedTask.meeting_id || meeting._id === updatedTask._id;
+              return isMatch ? { ...meeting, ...updatedTask, ...updatedTaskData } : meeting;
+            }));
+          }
+        } else {
+          // Update yesterdayTasks
+          setYesterdayTasks(prev => prev.map(task => {
+            const isMatch = task.task_id === updatedTask.task_id || task._id === updatedTask._id;
+            return isMatch ? { ...task, ...updatedTask, ...updatedTaskData } : task;
+          }));
+        }
+
+        // Also update the general tasks state for consistency
         setTasks(prevTasks => {
           return prevTasks.map(task => {
             // More robust task matching logic
@@ -571,7 +613,7 @@ const Home = ({ onLogout }) => {
               (task._id && updatedTaskData._id && task._id === updatedTaskData._id) ||
               (task.task_id && updatedTaskData.task_id && task.task_id === updatedTaskData.task_id) ||
               (task.meeting_id && updatedTaskData.meeting_id && task.meeting_id === updatedTaskData.meeting_id);
-            
+
             if (isMatch) {
               return {
                 ...task,
@@ -583,7 +625,7 @@ const Home = ({ onLogout }) => {
             return task;
           });
         });
-        
+
         setEditingTask(null);
         setIsPopupOpen(false); // Close popup after successful update
         setError(''); // Clear any previous errors
@@ -747,6 +789,7 @@ const Home = ({ onLogout }) => {
         currentView={currentPage}
         onLogout={handleLogout}
         user={userProfile}
+        isAddDisabled={isRemarksRequired}
       />
       
       {/* Error display - positioned to not affect layout */}
@@ -789,6 +832,10 @@ const Home = ({ onLogout }) => {
             onEdit={editTask}
             onViewDetails={onViewDetails}
             onDelete={deleteTask}
+            onViewHistory={(task) => {
+              setSelectedTaskId(task.task_id);
+              setIsHistoryOpen(true);
+            }}
             filter={filter}
             setFilter={handleFilterChange}
             dateFilter={dateFilter}
@@ -823,6 +870,10 @@ const Home = ({ onLogout }) => {
             onEdit={editTask}
             onViewDetails={onViewDetails}
             onDelete={deleteTask}
+            onViewHistory={(task) => {
+              setSelectedTaskId(task.task_id);
+              setIsHistoryOpen(true);
+            }}
             filter={filter}
             setFilter={handleFilterChange}
             dateFilter={dateFilter}
@@ -1059,14 +1110,6 @@ const Home = ({ onLogout }) => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const today = new Date().toISOString().split('T')[0];
-                                  const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
-                                  const isPastDate = taskDate !== today;
-                                  if (isPastDate && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
-                                    alert(`You can't edit past tasks`);
-                                    setMenuOpen(null);
-                                    return;
-                                  }
                                   editTask(task);
                                   setMenuOpen(null);
                                 }}
@@ -1081,6 +1124,25 @@ const Home = ({ onLogout }) => {
                                 }}
                               >
                                 Edit Item
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTaskId(task.task_id);
+                                  setIsHistoryOpen(true);
+                                  setMenuOpen(null);
+                                }}
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  padding: '8px 16px',
+                                  border: 'none',
+                                  background: 'none',
+                                  textAlign: 'left',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                View History
                               </button>
                             </div>
                           )}
@@ -1605,7 +1667,8 @@ const Home = ({ onLogout }) => {
         addTask={addTask}
         editingTask={editingTask}
         updateTask={updateTask}
-        isRestrictedEdit={editingTask?.is_fixed === true}
+        isRestrictedEdit={editingTask ? true : false}
+        isPreviousDay={editingTask?.isPreviousDay}
       />
       <ProfilePanel
         open={isProfileOpen}
@@ -1613,6 +1676,11 @@ const Home = ({ onLogout }) => {
         onLogout={handleLogout}
       />
       {isDetailsOpen && <TaskDetails task={selectedTask} onClose={() => setIsDetailsOpen(false)} />}
+      <TaskHistoryPopup
+        open={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        taskId={selectedTaskId}
+      />
     </div>
   );
 };
