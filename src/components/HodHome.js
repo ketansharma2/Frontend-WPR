@@ -1,17 +1,16 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import TaskList from './TaskList';
-import WeeklyTemplate from './WeeklyTemplate';
-import TaskPopup from './TaskPopup';
-import TaskDetails from './TaskDetails';
-import ProfilePanel from './ProfilePanel';
-import TaskStatsPanel from './TaskStatsPanel';
-import DateToggleSwitch from './DateToggleSwitch';
-import { FaChevronDown } from 'react-icons/fa';
-import { api } from '../config/api';
-import './Home.css';
-import './TaskList.css';
+  import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+  import Sidebar from './Sidebar';
+  import Header from './Header';
+  import TaskList from './TaskList';
+  import WeeklyTemplate from './WeeklyTemplate';
+  import TaskPopup from './TaskPopup';
+  import TaskDetails from './TaskDetails';
+  import ProfilePanel from './ProfilePanel';
+  import RnR from './RnR';
+  import { FaChevronDown, FaTimes } from 'react-icons/fa';
+  import { api } from '../config/api';
+  import './Home.css';
+  import './TaskList.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
@@ -49,30 +48,21 @@ const HodHome = ({ onLogout }) => {
   const [error, setError] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [pendingTasks, setPendingTasks] = useState([]);
-  const [monthlyStats, setMonthlyStats] = useState(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [statsError, setStatsError] = useState('');
   const [todayTasks, setTodayTasks] = useState([]);
   const [todayMeetings, setTodayMeetings] = useState([]);
-  const [todayDataLoading, setTodayDataLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState('today'); // 'today' or 'yesterday'
-  const [yesterdayDate, setYesterdayDate] = useState(null); // Actual date found for yesterday
-  const [yesterdayTasks, setYesterdayTasks] = useState([]);
-  const [yesterdayMeetings, setYesterdayMeetings] = useState([]);
+  const [monthlyStats, setMonthlyStats] = useState(null);
   const [dashboardViewType, setDashboardViewType] = useState('self'); // 'self' or 'team' for dashboard
-  const [dashboardTeamMember, setDashboardTeamMember] = useState(''); // selected team member for dashboard
-  const [showTeamMemberDropdown, setShowTeamMemberDropdown] = useState(false);
-  const [showAllTasks, setShowAllTasks] = useState(false);
-  const [showAllMeetings, setShowAllMeetings] = useState(false);
+  const [dashboardDateFilter, setDashboardDateFilter] = useState('all');
+  const [dashboardTaskTypeFilter, setDashboardTaskTypeFilter] = useState('');
+  const [dashboardStatusFilter, setDashboardStatusFilter] = useState('');
+  const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState('');
+  const [dashboardTeamMemberFilter, setDashboardTeamMemberFilter] = useState('');
+  const [showDashboardDateDropdown, setShowDashboardDateDropdown] = useState(false);
+  const [showDashboardTaskTypeDropdown, setShowDashboardTaskTypeDropdown] = useState(false);
+  const [showDashboardStatusDropdown, setShowDashboardStatusDropdown] = useState(false);
+  const [showDashboardCategoryDropdown, setShowDashboardCategoryDropdown] = useState(false);
+  const [showDashboardTeamMemberDropdown, setShowDashboardTeamMemberDropdown] = useState(false);
 
-  // Helper function for SVG donut chart calculations
-  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-    const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-    return {
-      x: centerX + (radius * Math.cos(angleInRadians)),
-      y: centerY + (radius * Math.sin(angleInRadians))
-    };
-  };
 
   useEffect(() => {
     // Get user profile from localStorage
@@ -88,6 +78,7 @@ const HodHome = ({ onLogout }) => {
       setError("No user profile found");
     }
     fetchHodData('self', '', 'self', '', 'all', true);
+    fetchHodDashboardData('self'); // Fetch dashboard data on mount
     fetchTeamMembers(); // Fetch team members on mount
   }, []);
 
@@ -114,30 +105,8 @@ const HodHome = ({ onLogout }) => {
     }
   }, [taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, userProfile]);
 
-  // Fetch data when user profile or dashboard view changes
-  useEffect(() => {
-    if (userProfile?.user_id) {
-      if (selectedDate === 'yesterday') {
-        // Fetch yesterday data when in yesterday mode
-        fetchLastWorkingDayData();
-      } else {
-        // Fetch today's data when in today mode
-        fetchMonthlyStats();
-      }
-    }
-  }, [userProfile, dashboardViewType, dashboardTeamMember, selectedDate]);
 
 
-  // Handle clicking outside dropdown to close it
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest('.dropdown-menu') && !event.target.closest('.filter-btn')) {
-        setShowTeamMemberDropdown(false);
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
 
   // Sync filter with current page on page changes
   useEffect(() => {
@@ -147,6 +116,21 @@ const HodHome = ({ onLogout }) => {
       setFilter('meeting');
     }
   }, [currentPage, filter]);
+
+  // Handle clicking outside dropdown to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.dropdown-menu') && !event.target.closest('.filter-btn')) {
+        setShowDashboardDateDropdown(false);
+        setShowDashboardTaskTypeDropdown(false);
+        setShowDashboardStatusDropdown(false);
+        setShowDashboardCategoryDropdown(false);
+        setShowDashboardTeamMemberDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
 
   // Fetch HOD data from backend
@@ -290,6 +274,47 @@ const HodHome = ({ onLogout }) => {
     }
   };
 
+  // Fetch HOD dashboard data
+  const fetchHodDashboardData = async (viewType = 'self', targetUserId = null) => {
+    try {
+      const token = localStorage.getItem("token");
+      const profile = JSON.parse(localStorage.getItem("profile"));
+
+      if (!token || !profile) {
+        setError("Authentication required");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/hod/dashboard/data`, {
+        method: 'POST',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          user_id: profile.user_id,
+          view_type: viewType,
+          target_user_id: targetUserId
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMonthlyStats(data.monthly_stats);
+        setTodayTasks(data.today.tasks || []);
+        setTodayMeetings(data.today.meetings || []);
+        setPendingTasks(data.pending_tasks || []);
+        console.log('HOD dashboard data loaded:', data);
+      } else {
+        console.error('Failed to fetch HOD dashboard data');
+        setError("Failed to load dashboard data");
+      }
+    } catch (err) {
+      console.error("Error fetching HOD dashboard data:", err);
+      setError("Network error while loading dashboard");
+    }
+  };
+
   // Fetch weekly report data
   const fetchWeeklyData = useCallback(async (filters = {}, showLoading = true) => {
     try {
@@ -330,109 +355,6 @@ const HodHome = ({ onLogout }) => {
     }
   }, []);
 
-  // Fetch monthly task statistics
-  const fetchMonthlyStats = async () => {
-    try {
-      setStatsLoading(true);
-      setStatsError('');
-
-      const profile = JSON.parse(localStorage.getItem("profile"));
-      if (!profile?.user_id) {
-        setStatsError("User profile not found");
-        return;
-      }
-
-      // Determine target user based on dashboard view
-      const targetUserId = dashboardViewType === 'team' && dashboardTeamMember
-        ? dashboardTeamMember
-        : profile.user_id;
-
-      const dashboardData = await api.getHodDashboardData(userProfile.user_id, dashboardViewType, dashboardTeamMember);
-      setMonthlyStats(dashboardData.monthly_stats);
-      setTodayTasks(dashboardData.today.tasks);
-      setTodayMeetings(dashboardData.today.meetings);
-      return; // Skip the rest since we got all data in one call
-
-    } catch (err) {
-      console.error("Error fetching monthly stats:", err);
-      setStatsError("Failed to load monthly statistics");
-    } finally {
-      setStatsLoading(false);
-    }
-  };
-
-  // Fetch today's tasks
-  const fetchTodayTasks = async () => {
-    try {
-      const profile = JSON.parse(localStorage.getItem("profile"));
-      if (!profile?.user_id) return;
-
-      // Determine target user based on dashboard view
-      const targetUserId = dashboardViewType === 'team' && dashboardTeamMember
-        ? dashboardTeamMember
-        : profile.user_id;
-
-      const tasksData = await api.getTodayTasks(targetUserId);
-      setTodayTasks(tasksData.tasks || []);
-    } catch (err) {
-      console.error("Error fetching today's tasks:", err);
-      setTodayTasks([]);
-    }
-  };
-
-  // Fetch today's meetings
-  const fetchTodayMeetings = async () => {
-    try {
-      const profile = JSON.parse(localStorage.getItem("profile"));
-      if (!profile?.user_id) return;
-
-      // Determine target user based on dashboard view
-      const targetUserId = dashboardViewType === 'team' && dashboardTeamMember
-        ? dashboardTeamMember
-        : profile.user_id;
-
-      const meetingsData = await api.getTodayMeetings(targetUserId);
-      setTodayMeetings(meetingsData.meetings || []);
-    } catch (err) {
-      console.error("Error fetching today's meetings:", err);
-      setTodayMeetings([]);
-    }
-  };
-
-  // Fetch last working day's tasks and meetings
-  const fetchLastWorkingDayData = async () => {
-    try {
-      const profile = JSON.parse(localStorage.getItem("profile"));
-      if (!profile?.user_id) return;
-
-      // Determine target user based on dashboard view
-      const targetUserId = dashboardViewType === 'team' && dashboardTeamMember
-        ? dashboardTeamMember
-        : profile.user_id;
-
-      const workingDayData = await api.getHodYesterdayData(userProfile.user_id, dashboardViewType, dashboardTeamMember);
-
-      if (workingDayData.found) {
-        setYesterdayTasks(workingDayData.tasks || []);
-        setYesterdayMeetings(workingDayData.meetings || []);
-        setYesterdayDate(workingDayData.date);
-
-        console.log(`Found last working day: ${workingDayData.date} (${workingDayData.days_back} days back)`);
-        console.log(`Tasks: ${(workingDayData.tasks || []).length}, Meetings: ${(workingDayData.meetings || []).length}`);
-      } else {
-        // No working days found, show empty state
-        setYesterdayTasks([]);
-        setYesterdayMeetings([]);
-        setYesterdayDate(null);
-        console.log("No working days found in last 30 days");
-      }
-    } catch (err) {
-      console.error("Error fetching last working day data:", err);
-      setYesterdayTasks([]);
-      setYesterdayMeetings([]);
-      setYesterdayDate(null);
-    }
-  };
 
   const openPopup = () => { setIsPopupOpen(true); };
   const closePopup = () => {
@@ -777,33 +699,6 @@ const HodHome = ({ onLogout }) => {
     }
   };
 
-  const handleDateToggle = async (newDate) => {
-    setSelectedDate(newDate);
-
-    // Data fetching is now handled by the useEffect based on selectedDate
-    console.log('Date toggled to:', newDate);
-  };
-
-  // Dynamic colors based on selected date
-  const getHeaderColors = () => {
-    if (selectedDate === 'yesterday') {
-      return {
-        planningHeader: '#2986cc',    // Yesterday's Task Header
-        planningSubheader: '#9fc5e8', // Yesterday's Task Subheader
-        meetingsHeader: '#e06666',    // Yesterday's Meetings Header
-        meetingsSubheader: '#f4cccc'  // Yesterday's Meetings Subheader
-      };
-    } else {
-      return {
-        planningHeader: '#166534',    // Today's Task Header
-        planningSubheader: '#9dcfb0', // Today's Task Subheader
-        meetingsHeader: '#e27326',    // Today's Meetings Header
-        meetingsSubheader: '#fed7aa'  // Today's Meetings Subheader
-      };
-    }
-  };
-
-  const colors = getHeaderColors();
 
   const handleLogout = () => {
     // Clear localStorage
@@ -960,56 +855,154 @@ const HodHome = ({ onLogout }) => {
               userRole={userProfile.user_type}
             />
           </div>
+        ) : currentPage === 'rnr' ? (
+          <div style={{ marginTop: '20px' }}>
+            <RnR />
+          </div>
         ) : (
            <div className="dashboard-container">
-             {/* Monthly Task Statistics Panel */}
-             <div style={{ marginTop: '15px' }}>
-               <TaskStatsPanel
-                 stats={monthlyStats}
-                 loading={statsLoading}
-                 error={statsError}
-               />
-             </div>
-
-             {/* Dashboard Filters - Same design as TaskList */}
+             {/* Dashboard Filter Panel */}
              <div className="professional-filter-bar" style={{ marginTop: '15px', marginBottom: '10px' }}>
-               <div className="filter-controls" style={{ justifyContent: 'flex-end', width: '100%', gap: '15px' }}>
+               <div className="filter-controls">
+                 {/* Date Filter */}
+                 <div className="filter-dropdown">
+                   <button
+                     className={`filter-btn ${dashboardDateFilter !== 'all' ? 'active' : ''}`}
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setShowDashboardDateDropdown(!showDashboardDateDropdown);
+                       setShowDashboardTaskTypeDropdown(false);
+                       setShowDashboardStatusDropdown(false);
+                       setShowDashboardCategoryDropdown(false);
+                       setShowDashboardTeamMemberDropdown(false);
+                     }}
+                   >
+                     {dashboardDateFilter === 'all' ? 'Date' :
+                      dashboardDateFilter === 'today' ? 'Today' :
+                      dashboardDateFilter === 'yesterday' ? 'Yesterday' :
+                      dashboardDateFilter === 'past_week' ? 'Past week' :
+                      dashboardDateFilter === 'past_month' ? 'Past month' : 'Date'}
+                     <FaChevronDown className="dropdown-arrow" />
+                   </button>
+                   {showDashboardDateDropdown && (
+                     <div className="dropdown-menu">
+                       <div className="dropdown-item" onClick={() => { setDashboardDateFilter('all'); setShowDashboardDateDropdown(false); }}>All</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardDateFilter('today'); setShowDashboardDateDropdown(false); }}>Today</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardDateFilter('yesterday'); setShowDashboardDateDropdown(false); }}>Yesterday</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardDateFilter('past_week'); setShowDashboardDateDropdown(false); }}>Past week</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardDateFilter('past_month'); setShowDashboardDateDropdown(false); }}>Past month</div>
+                     </div>
+                   )}
+                 </div>
+
+                 {/* Task Type Filter */}
+                 <div className="filter-dropdown">
+                   <button
+                     className={`filter-btn ${dashboardTaskTypeFilter ? 'active' : ''}`}
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setShowDashboardTaskTypeDropdown(!showDashboardTaskTypeDropdown);
+                       setShowDashboardDateDropdown(false);
+                       setShowDashboardStatusDropdown(false);
+                       setShowDashboardCategoryDropdown(false);
+                       setShowDashboardTeamMemberDropdown(false);
+                     }}
+                   >
+                     {dashboardTaskTypeFilter || 'Task Type'}
+                     <FaChevronDown className="dropdown-arrow" />
+                   </button>
+                   {showDashboardTaskTypeDropdown && (
+                     <div className="dropdown-menu">
+                       <div className="dropdown-item" onClick={() => { setDashboardTaskTypeFilter(''); setShowDashboardTaskTypeDropdown(false); }}>All</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardTaskTypeFilter('Fixed'); setShowDashboardTaskTypeDropdown(false); }}>Fixed</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardTaskTypeFilter('Variable'); setShowDashboardTaskTypeDropdown(false); }}>Variable</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardTaskTypeFilter('HOD Assigned'); setShowDashboardTaskTypeDropdown(false); }}>HOD Assigned</div>
+                     </div>
+                   )}
+                 </div>
+
+                 {/* Category Filter */}
+                 <div className="filter-dropdown">
+                   <button
+                     className={`filter-btn ${dashboardCategoryFilter ? 'active' : ''}`}
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setShowDashboardCategoryDropdown(!showDashboardCategoryDropdown);
+                       setShowDashboardDateDropdown(false);
+                       setShowDashboardTaskTypeDropdown(false);
+                       setShowDashboardStatusDropdown(false);
+                       setShowDashboardTeamMemberDropdown(false);
+                     }}
+                   >
+                     {dashboardCategoryFilter === 'self' ? 'Self' :
+                      dashboardCategoryFilter === 'assigned' ? 'Assigned' : 'Category'}
+                     <FaChevronDown className="dropdown-arrow" />
+                   </button>
+                   {showDashboardCategoryDropdown && (
+                     <div className="dropdown-menu">
+                       <div className="dropdown-item" onClick={() => { setDashboardCategoryFilter(''); setShowDashboardCategoryDropdown(false); }}>All</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardCategoryFilter('self'); setShowDashboardCategoryDropdown(false); }}>Self</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardCategoryFilter('assigned'); setShowDashboardCategoryDropdown(false); }}>Assigned</div>
+                     </div>
+                   )}
+                 </div>
+
+                 {/* Status Filter */}
+                 <div className="filter-dropdown">
+                   <button
+                     className={`filter-btn ${dashboardStatusFilter ? 'active' : ''}`}
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setShowDashboardStatusDropdown(!showDashboardStatusDropdown);
+                       setShowDashboardDateDropdown(false);
+                       setShowDashboardTaskTypeDropdown(false);
+                       setShowDashboardCategoryDropdown(false);
+                       setShowDashboardTeamMemberDropdown(false);
+                     }}
+                   >
+                     {dashboardStatusFilter || 'Status'}
+                     <FaChevronDown className="dropdown-arrow" />
+                   </button>
+                   {showDashboardStatusDropdown && (
+                     <div className="dropdown-menu">
+                       <div className="dropdown-item" onClick={() => { setDashboardStatusFilter(''); setShowDashboardStatusDropdown(false); }}>All</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardStatusFilter('In Progress'); setShowDashboardStatusDropdown(false); }}>In Progress</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardStatusFilter('Done'); setShowDashboardStatusDropdown(false); }}>Done</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardStatusFilter('Not Started'); setShowDashboardStatusDropdown(false); }}>Not Started</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardStatusFilter('Scheduled'); setShowDashboardStatusDropdown(false); }}>Scheduled</div>
+                       <div className="dropdown-item" onClick={() => { setDashboardStatusFilter('Cancelled'); setShowDashboardStatusDropdown(false); }}>Cancelled</div>
+                     </div>
+                   )}
+                 </div>
+
                  {/* Team Member Filter */}
                  <div className="filter-dropdown">
                    <button
-                     className={`filter-btn ${dashboardViewType === 'team' ? 'active' : ''}`}
-                     onClick={() => setShowTeamMemberDropdown(!showTeamMemberDropdown)}
+                     className={`filter-btn ${dashboardTeamMemberFilter ? 'active' : ''}`}
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setShowDashboardTeamMemberDropdown(!showDashboardTeamMemberDropdown);
+                       setShowDashboardDateDropdown(false);
+                       setShowDashboardTaskTypeDropdown(false);
+                       setShowDashboardStatusDropdown(false);
+                       setShowDashboardCategoryDropdown(false);
+                     }}
                    >
-                     {dashboardViewType === 'self' ? 'My Dashboard' : dashboardViewType === 'all' ? 'All Team Members' : (teamMembers.find(m => m.user_id === dashboardTeamMember)?.name || 'Team Member')}
+                     {dashboardTeamMemberFilter === 'all' ? 'All Team Members' :
+                      dashboardTeamMemberFilter ? (teamMembers?.find(m => m.user_id === dashboardTeamMemberFilter)?.name || 'Team Member') : 'Team Member'}
                      <FaChevronDown className="dropdown-arrow" />
                    </button>
-                   {showTeamMemberDropdown && (
+                   {showDashboardTeamMemberDropdown && (
                      <div className="dropdown-menu">
                        <div
                          className="dropdown-item"
-                         onClick={() => {
-                           setDashboardViewType('self');
-                           setDashboardTeamMember('');
-                           setShowTeamMemberDropdown(false);
-                         }}
-                         style={{
-                           fontWeight: dashboardViewType === 'self' ? '600' : '400',
-                           backgroundColor: dashboardViewType === 'self' ? '#f3f4f6' : 'white'
-                         }}
+                         onClick={() => { setDashboardViewType('self'); setDashboardTeamMemberFilter(''); setShowDashboardTeamMemberDropdown(false); }}
                        >
                          My Dashboard
                        </div>
                        <div
                          className="dropdown-item"
-                         onClick={() => {
-                           setDashboardViewType('all');
-                           setDashboardTeamMember('all');
-                           setShowTeamMemberDropdown(false);
-                         }}
-                         style={{
-                           fontWeight: dashboardViewType === 'all' ? '600' : '400',
-                           backgroundColor: dashboardViewType === 'all' ? '#f3f4f6' : 'white'
-                         }}
+                         onClick={() => { setDashboardViewType('all'); setDashboardTeamMemberFilter('all'); setShowDashboardTeamMemberDropdown(false); }}
                        >
                          All Team Members
                        </div>
@@ -1017,527 +1010,379 @@ const HodHome = ({ onLogout }) => {
                          <div
                            key={member.user_id}
                            className="dropdown-item"
-                           onClick={() => {
-                             setDashboardViewType('team');
-                             setDashboardTeamMember(member.user_id);
-                             setShowTeamMemberDropdown(false);
-                           }}
-                           style={{
-                             fontWeight: dashboardTeamMember === member.user_id ? '600' : '400',
-                             backgroundColor: dashboardTeamMember === member.user_id ? '#f3f4f6' : 'white'
-                           }}
+                           onClick={() => { setDashboardViewType('team'); setDashboardTeamMemberFilter(member.user_id); setShowDashboardTeamMemberDropdown(false); }}
                          >
                            {member.name}
                          </div>
                        )) : (
-                         <div className="dropdown-item disabled">
-                           No team members available
-                         </div>
+                         <div className="dropdown-item disabled">No team members available</div>
                        )}
                      </div>
                    )}
                  </div>
 
-                 {/* Date Filter Toggle */}
-                 <DateToggleSwitch
-                   onToggle={handleDateToggle}
-                   active={selectedDate === 'today' ? 'Today' : 'Yesterday'}
-                 />
+                 {/* Clear All Filters Button */}
+                 {(dashboardDateFilter !== 'all' || dashboardTaskTypeFilter || dashboardStatusFilter || dashboardCategoryFilter || dashboardTeamMemberFilter) && (
+                   <button
+                     className="clear-all-filters-btn"
+                     onClick={() => {
+                       setDashboardDateFilter('all');
+                       setDashboardTaskTypeFilter('');
+                       setDashboardStatusFilter('');
+                       setDashboardCategoryFilter('');
+                       setDashboardTeamMemberFilter('');
+                       setDashboardViewType('self');
+                     }}
+                     title="Clear all filters"
+                   >
+                     <FaTimes className="clear-all-icon" />
+                     Clear All
+                   </button>
+                 )}
                </div>
              </div>
 
-             {/* Today's Planning Section - Header and Table in Single Container */}
+             {/* Stats Cards Container */}
              <div style={{
-               background: 'white',
-               borderRadius: '12px',
-               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-               width: '100%',
-               overflow: 'hidden',
-               marginBottom: '30px'
+               display: 'flex',
+               gap: '20px',
+               marginTop: '20px',
+               marginBottom: '20px',
+               flexWrap: 'wrap'
              }}>
-               {/* Today's Planning Table Header */}
+               {/* Total Tasks Card */}
                <div style={{
-                 background: colors.planningHeader,
-                 borderRadius: '12px 12px 0 0',
-                 padding: '12px 20px',
-                 margin: '0',
-                 display: 'flex',
-                 justifyContent: 'space-between',
-                 alignItems: 'center'
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '250px',
+                 textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0',
-                   fontSize: '18px',
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
                    fontWeight: '600',
-                   color: 'white'
-                 }}>
-                   {selectedDate === 'yesterday'
-                     ? (yesterdayDate ? `Last Working Day Tasks` : "Yesterday's Tasks")
-                     : "Today's Planning"
-                   }
-                 </h3>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                   <span style={{
-                     fontSize: '14px',
-                     fontWeight: '500',
-                     color: 'white',
-                     opacity: '0.9'
-                   }}>
-                     {(() => {
-                       if (selectedDate === 'yesterday' && yesterdayDate) {
-                         // Show the actual working day found
-                         const date = new Date(yesterdayDate);
-                         const day = date.getDate();
-                         const month = date.toLocaleDateString('en-US', { month: 'short' });
-                         const year = date.getFullYear();
-                         return `${day} ${month} ${year}`;
-                       } else {
-                         // Show calendar yesterday or today
-                         const date = selectedDate === 'yesterday'
-                           ? new Date(Date.now() - 24 * 60 * 60 * 1000)
-                           : new Date();
-                         const day = date.getDate();
-                         const month = date.toLocaleDateString('en-US', { month: 'short' });
-                         const year = date.getFullYear();
-                         return `${day} ${month} ${year}`;
-                       }
-                     })()}
-                   </span>
-                   {/* View All button for tasks */}
-                   {(selectedDate === 'yesterday' ? yesterdayTasks : todayTasks).length > 10 && (
-                     <button
-                       onClick={() => setShowAllTasks(!showAllTasks)}
-                       style={{
-                         background: 'rgba(255, 255, 255, 0.2)',
-                         border: '1px solid rgba(255, 255, 255, 0.3)',
-                         color: 'white',
-                         padding: '6px 12px',
-                         borderRadius: '6px',
-                         fontSize: '12px',
-                         fontWeight: '500',
-                         cursor: 'pointer',
-                         transition: 'all 0.2s ease'
-                       }}
-                       onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.3)'}
-                       onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
-                     >
-                       {showAllTasks ? 'Show Less' : `View All (${(selectedDate === 'yesterday' ? yesterdayTasks : todayTasks).length})`}
-                     </button>
-                   )}
-                 </div>
+                   color: '#374151'
+                 }}>Total Tasks</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#3b82f6'
+                 }}>{monthlyStats?.total_tasks || 0}</div>
                </div>
 
-               {/* Today's Planning Table */}
+               {/* Self Tasks Card */}
                <div style={{
-                 padding: '0',
-                 margin: '0'
-               }}>
-               <table style={{
-                 width: '100%',
-                 borderCollapse: 'collapse',
-                 margin: '0'
-               }}>
-                 <thead>
-                   <tr style={{
-                     background: colors.planningSubheader,
-                     borderBottom: '2px solid #e2e8f0'
-                   }}>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '50px',
-                       width: 'auto'
-                     }}>S.No</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '120px',
-                       width: 'auto'
-                     }}>Task Name</th>
-                     {dashboardViewType !== 'self' && (
-                       <th style={{
-                         padding: '6px 8px',
-                         textAlign: 'center',
-                         fontWeight: '600',
-                         fontSize: '14px',
-                         color: 'black',
-                         borderRight: '1px solid #e5e7eb',
-                         minWidth: '80px',
-                         width: 'auto'
-                       }}>Owner</th>
-                     )}
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '80px',
-                       width: 'auto'
-                     }}>Deadline</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '80px',
-                       width: 'auto'
-                     }}>Task Type</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '70px',
-                       width: 'auto'
-                     }}>Status</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '100px',
-                       width: 'auto'
-                     }}>Time (in mins)</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       minWidth: '60px',
-                       width: 'auto'
-                     }}>Link</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {(selectedDate === 'yesterday' ? yesterdayTasks : todayTasks).length > 0 ? (
-                     (selectedDate === 'yesterday' ? yesterdayTasks : todayTasks)
-                       .slice(0, showAllTasks ? undefined : 10)
-                       .map((task, index) => (
-                       <tr key={task.task_id || index} style={{
-                         backgroundColor: 'white',
-                         borderBottom: '1px solid #e2e8f0'
-                       }}>
-                         <td style={{ padding: '6px 8px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
-                         <td style={{ padding: '6px 8px', color: '#374151', fontWeight: '500' }}>{task.task_name || task.name}</td>
-                         {dashboardViewType !== 'self' && (
-                           <td style={{ padding: '6px 8px', color: '#374151', fontWeight: '500' }}>{task.owner_name || 'N/A'}</td>
-                         )}
-                         <td style={{ padding: '6px 8px', color: '#374151' }}>{task.timeline || 'N/A'}</td>
-                         <td style={{ padding: '6px 8px', color: '#374151' }}>{task.task_type || 'work'}</td>
-                         <td style={{ padding: '8px 12px' }}>
-                           <span style={{
-                             padding: '4px 8px',
-                             borderRadius: '4px',
-                             fontSize: '12px',
-                             fontWeight: '500',
-                             backgroundColor: task.status === 'completed' ? '#dcfce7' :
-                                            task.status === 'in-progress' ? '#dbeafe' : '#fef3c7',
-                             color: task.status === 'completed' ? '#166534' :
-                                   task.status === 'in-progress' ? '#1e40af' : '#92400e'
-                           }}>
-                             {task.status}
-                           </span>
-                         </td>
-                         <td style={{ padding: '8px 12px', color: '#374151' }}>
-                           {task.time_in_mins || task.time || 'N/A'}
-                         </td>
-                         <td style={{ padding: '8px 12px', color: '#374151' }}>
-                           {task.file_link ? (
-                             <a href={task.file_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
-                               Link
-                             </a>
-                           ) : 'N/A'}
-                         </td>
-                       </tr>
-                     ))
-                   ) : (
-                     <tr>
-                       <td colSpan={dashboardViewType === 'self' ? 8 : 9} style={{
-                         padding: '40px 16px',
-                         textAlign: 'center',
-                         color: '#6b7280'
-                       }}>
-                         {selectedDate === 'yesterday'
-                           ? (yesterdayDate
-                               ? `No tasks found for ${yesterdayDate}`
-                               : "No working days found in the last 30 days")
-                           : "No tasks scheduled for today"
-                         }
-                       </td>
-                     </tr>
-                   )}
-                 </tbody>
-               </table>
-               </div>
-             </div>
-
-             {/* Today's Meetings Section - Header and Table in Single Container */}
-             <div style={{
-               background: 'white',
-               borderRadius: '12px',
-               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-               width: '100%',
-               overflow: 'hidden',
-               marginBottom: '20px'
-             }}>
-               {/* Today's Meetings Table Header */}
-               <div style={{
-                 background: colors.meetingsHeader,
-                 borderRadius: '12px 12px 0 0',
-                 padding: '12px 20px',
-                 margin: '0',
-                 display: 'flex',
-                 justifyContent: 'space-between',
-                 alignItems: 'center'
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '250px',
+                 textAlign: 'center'
                }}>
                  <h3 style={{
-                   margin: '0',
-                   fontSize: '18px',
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
                    fontWeight: '600',
-                   color: 'white'
-                 }}>
-                   {selectedDate === 'yesterday'
-                     ? (yesterdayDate ? `Last Working Day Meetings` : "Yesterday's Meetings")
-                     : "Today's Meetings"
-                   }
-                 </h3>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                   <span style={{
-                     fontSize: '14px',
-                     fontWeight: '500',
-                     color: 'white',
-                     opacity: '0.9'
-                   }}>
-                     {(() => {
-                       if (selectedDate === 'yesterday' && yesterdayDate) {
-                         // Show the actual working day found
-                         const date = new Date(yesterdayDate);
-                         const day = date.getDate();
-                         const month = date.toLocaleDateString('en-US', { month: 'short' });
-                         const year = date.getFullYear();
-                         return `${day} ${month} ${year}`;
-                       } else {
-                         // Show calendar yesterday or today
-                         const date = selectedDate === 'yesterday'
-                           ? new Date(Date.now() - 24 * 60 * 60 * 1000)
-                           : new Date();
-                         const day = date.getDate();
-                         const month = date.toLocaleDateString('en-US', { month: 'short' });
-                         const year = date.getFullYear();
-                         return `${day} ${month} ${year}`;
-                       }
-                     })()}
-                   </span>
-                   {/* View All button for meetings */}
-                   {(selectedDate === 'yesterday' ? yesterdayMeetings : todayMeetings).length > 10 && (
-                     <button
-                       onClick={() => setShowAllMeetings(!showAllMeetings)}
-                       style={{
-                         background: 'rgba(255, 255, 255, 0.2)',
-                         border: '1px solid rgba(255, 255, 255, 0.3)',
-                         color: 'white',
-                         padding: '6px 12px',
-                         borderRadius: '6px',
-                         fontSize: '12px',
-                         fontWeight: '500',
-                         cursor: 'pointer',
-                         transition: 'all 0.2s ease'
-                       }}
-                       onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.3)'}
-                       onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
-                     >
-                       {showAllMeetings ? 'Show Less' : `View All (${(selectedDate === 'yesterday' ? yesterdayMeetings : todayMeetings).length})`}
-                     </button>
-                   )}
-                 </div>
+                   color: '#374151'
+                 }}>Self Tasks</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#10b981'
+                 }}>{monthlyStats?.self_tasks || 0}</div>
                </div>
 
-               {/* Today's Meetings Table */}
+               {/* Master Tasks Card */}
                <div style={{
-                 padding: '0',
-                 margin: '0'
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '250px',
+                 textAlign: 'center'
                }}>
-               <table style={{
-                 width: '100%',
-                 borderCollapse: 'collapse',
-                 margin: '0'
-               }}>
-                 <thead>
-                   <tr style={{
-                     background: colors.meetingsSubheader,
-                     borderBottom: '2px solid #e2e8f0'
-                   }}>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '50px',
-                       width: 'auto'
-                     }}>S.No</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '120px',
-                       width: 'auto'
-                     }}>Meeting name</th>
-                     {dashboardViewType !== 'self' && (
-                       <th style={{
-                         padding: '6px 8px',
-                         textAlign: 'center',
-                         fontWeight: '600',
-                         fontSize: '14px',
-                         color: 'black',
-                         borderRight: '1px solid #e5e7eb',
-                         minWidth: '80px',
-                         width: 'auto'
-                       }}>Owner</th>
-                     )}
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '60px',
-                       width: 'auto'
-                     }}>Dept</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '80px',
-                       width: 'auto'
-                     }}>Co Person</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '100px',
-                       width: 'auto'
-                     }}>Time (in mins)</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '80px',
-                       width: 'auto'
-                     }}>Prop Slot</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       borderRight: '1px solid #e5e7eb',
-                       minWidth: '70px',
-                       width: 'auto'
-                     }}>Status</th>
-                     <th style={{
-                       padding: '6px 8px',
-                       textAlign: 'center',
-                       fontWeight: '600',
-                       fontSize: '14px',
-                       color: 'black',
-                       minWidth: '100px',
-                       width: 'auto'
-                     }}>Notes</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {(selectedDate === 'yesterday' ? yesterdayMeetings : todayMeetings).length > 0 ? (
-                     (selectedDate === 'yesterday' ? yesterdayMeetings : todayMeetings)
-                       .slice(0, showAllMeetings ? undefined : 10)
-                       .map((meeting, index) => (
-                       <tr key={meeting.meeting_id || index} style={{
-                         backgroundColor: 'white',
-                         borderBottom: '1px solid #e2e8f0'
-                       }}>
-                         <td style={{ padding: '6px 8px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
-                         <td style={{ padding: '6px 8px', color: '#374151', fontWeight: '500' }}>{meeting.meeting_name || meeting.name}</td>
-                         {dashboardViewType !== 'self' && (
-                           <td style={{ padding: '6px 8px', color: '#374151' }}>{meeting.owner_name || 'N/A'}</td>
-                         )}
-                         <td style={{ padding: '6px 8px', color: '#374151' }}>{meeting.dept || 'N/A'}</td>
-                         <td style={{ padding: '6px 8px', color: '#374151' }}>{meeting.co_person || 'N/A'}</td>
-                         <td style={{ padding: '6px 8px', color: '#374151' }}>{meeting.time || 'N/A'}</td>
-                         <td style={{ padding: '6px 8px', color: '#374151' }}>{meeting.prop_slot || 'N/A'}</td>
-                         <td style={{ padding: '8px 12px' }}>
-                           <span style={{
-                             padding: '4px 8px',
-                             borderRadius: '4px',
-                             fontSize: '12px',
-                             fontWeight: '500',
-                             backgroundColor: meeting.status === 'completed' ? '#dcfce7' :
-                                            meeting.status === 'scheduled' ? '#dbeafe' : '#fef3c7',
-                             color: meeting.status === 'completed' ? '#166534' :
-                                   meeting.status === 'scheduled' ? '#1e40af' : '#92400e'
-                           }}>
-                             {meeting.status}
-                           </span>
-                         </td>
-                         <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.notes || 'N/A'}</td>
-                       </tr>
-                     ))
-                   ) : (
-                     <tr>
-                       <td colSpan={dashboardViewType === 'self' ? 7 : 8} style={{
-                         padding: '40px 16px',
-                         textAlign: 'center',
-                         color: '#6b7280'
-                       }}>
-                         {selectedDate === 'yesterday'
-                           ? (yesterdayDate
-                               ? `No meetings found for ${yesterdayDate}`
-                               : "No working days found in the last 30 days")
-                           : "No meetings scheduled for today"
-                         }
-                       </td>
-                     </tr>
-                   )}
-                 </tbody>
-               </table>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>Master Tasks</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#f59e0b'
+                 }}>{tasks.filter(t => t.category === 'assigned').length}</div>
                </div>
              </div>
 
-            {/* Professional Dashboard Layout - COMMENTED OUT */}
-            {/*
+             {/* Status Cards Container */}
+             <div style={{
+               display: 'flex',
+               gap: '20px',
+               marginBottom: '20px',
+               flexWrap: 'wrap'
+             }}>
+               {/* Done Card */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '200px',
+                 textAlign: 'center'
+               }}>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>Done</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#22c55e'
+                 }}>{monthlyStats?.completed || 0}</div>
+               </div>
+
+               {/* In Progress Card */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '200px',
+                 textAlign: 'center'
+               }}>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>In Progress</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#3b82f6'
+                 }}>{monthlyStats?.in_progress || 0}</div>
+               </div>
+
+               {/* Not Started Card */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '200px',
+                 textAlign: 'center'
+               }}>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>Not Started</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#f97316'
+                 }}>{monthlyStats?.not_started || 0}</div>
+               </div>
+
+               {/* On Hold Card */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '200px',
+                 textAlign: 'center'
+               }}>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>On Hold</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#f59e0b'
+                 }}>{tasks.filter(t => t.status === 'On Hold').length}</div>
+               </div>
+
+               {/* Cancelled Card */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '200px',
+                 textAlign: 'center'
+               }}>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>Cancelled</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#ef4444'
+                 }}>{tasks.filter(t => t.status === 'Cancelled').length}</div>
+               </div>
+             </div>
+
+             {/* Team Member Cards Container */}
+             <div style={{
+               display: 'flex',
+               gap: '20px',
+               marginBottom: '20px',
+               flexWrap: 'wrap'
+             }}>
+               {/* HOD Card */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '200px',
+                 textAlign: 'center'
+               }}>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>{userProfile?.name || 'HOD'}</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#8b5cf6'
+                 }}>{tasks.filter(t => t.category === 'self').length}</div>
+               </div>
+
+               {/* Team Member Cards */}
+               {[...teamMembers].sort((a, b) => a.name.localeCompare(b.name)).map(member => {
+                 const memberTasks = tasks.filter(t => t.category === 'assigned' && t.users?.user_id === member.user_id).length;
+                 return (
+                   <div key={member.user_id} style={{
+                     background: 'white',
+                     borderRadius: '12px',
+                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                     padding: '20px',
+                     flex: '1',
+                     minWidth: '200px',
+                     textAlign: 'center'
+                   }}>
+                     <h3 style={{
+                       margin: '0 0 10px 0',
+                       fontSize: '16px',
+                       fontWeight: '600',
+                       color: '#374151'
+                     }}>{member.name}</h3>
+                     <div style={{
+                       fontSize: '36px',
+                       fontWeight: 'bold',
+                       color: '#8b5cf6'
+                     }}>{memberTasks}</div>
+                   </div>
+                 );
+               })}
+             </div>
+
+             {/* Task Type Cards Container */}
+             <div style={{
+               display: 'flex',
+               gap: '20px',
+               marginBottom: '20px',
+               flexWrap: 'wrap'
+             }}>
+               {/* Fixed Card */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '200px',
+                 textAlign: 'center'
+               }}>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>Fixed</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#059669'
+                 }}>{tasks.filter(t => t.task_type === 'Fixed').length}</div>
+               </div>
+
+               {/* Variable Card */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '200px',
+                 textAlign: 'center'
+               }}>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>Variable</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#dc2626'
+                 }}>{tasks.filter(t => t.task_type === 'Variable').length}</div>
+               </div>
+
+               {/* HOD Assigned Card */}
+               <div style={{
+                 background: 'white',
+                 borderRadius: '12px',
+                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                 padding: '20px',
+                 flex: '1',
+                 minWidth: '200px',
+                 textAlign: 'center'
+               }}>
+                 <h3 style={{
+                   margin: '0 0 10px 0',
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: '#374151'
+                 }}>HOD Assigned</h3>
+                 <div style={{
+                   fontSize: '36px',
+                   fontWeight: 'bold',
+                   color: '#7c3aed'
+                 }}>{tasks.filter(t => t.task_type === 'HOD Assigned').length}</div>
+               </div>
+             </div>
+
+            {/* Professional Dashboard Layout */}
             <div className="professional-dashboard">
 
-              Top Stats Row
+              {/* Top Stats Row */}
               <div className="stats-row">
                 <div className="stat-card-compact" onClick={() => handlePageChange('tasks')}>
                   <div className="stat-icon">📋</div>
@@ -1573,10 +1418,10 @@ const HodHome = ({ onLogout }) => {
                 </div>
               </div>
 
-              Main Content Row
+              {/* Main Content Row */}
               <div className="main-content-row-compact">
 
-                Left Panel - Simple Visible Donut Chart
+                {/* Left Panel - Simple Visible Donut Chart */}
                 <div className="chart-panel-compact">
                   <h3 className="section-title-compact">Task Distribution</h3>
                   <div className="simple-donut-container">
@@ -1605,7 +1450,7 @@ const HodHome = ({ onLogout }) => {
 
                       return (
                         <div className="simple-donut-wrapper">
-                          Main Stats
+                          {/* Main Stats */}
                           <div className="main-stats">
                             <div className="main-stat-item">
                               <span className="main-stat-number">{totalTasks}</span>
@@ -1617,12 +1462,12 @@ const HodHome = ({ onLogout }) => {
                             </div>
                           </div>
 
-                          Simple Donut Chart with Bright Colored Segments
+                          {/* Simple Donut Chart with Bright Colored Segments */}
                           <div className="simple-donut-chart">
                             <div className="donut-container">
-                              Bright colored segments
+                              {/* Bright colored segments */}
                               <div className="donut-segments">
-                                Completed segment
+                                {/* Completed segment */}
                                 {completed > 0 && (
                                   <div
                                     className="donut-segment completed"
@@ -1634,7 +1479,7 @@ const HodHome = ({ onLogout }) => {
                                   ></div>
                                 )}
 
-                                In Progress segment
+                                {/* In Progress segment */}
                                 {inProgress > 0 && (
                                   <div
                                     className="donut-segment in-progress"
@@ -1646,7 +1491,7 @@ const HodHome = ({ onLogout }) => {
                                   ></div>
                                 )}
 
-                                Pending segment
+                                {/* Pending segment */}
                                 {pending > 0 && (
                                   <div
                                     className="donut-segment pending"
@@ -1659,14 +1504,14 @@ const HodHome = ({ onLogout }) => {
                                 )}
                               </div>
 
-                              Center circle
+                              {/* Center circle */}
                               <div className="donut-center-bright">
                                 <div className="donut-center-number">{totalTasks}</div>
                                 <div className="donut-center-label">Tasks</div>
                               </div>
                             </div>
 
-                            Simple color indicators below
+                            {/* Simple color indicators below */}
                             <div className="color-indicators">
                               <div className="color-item">
                                 <div className="color-box completed-color"></div>
@@ -1683,7 +1528,7 @@ const HodHome = ({ onLogout }) => {
                             </div>
                           </div>
 
-                          Legend
+                          {/* Legend */}
                           <div className="simple-legend">
                             <div className="legend-row">
                               <div className="legend-item">
@@ -1708,10 +1553,10 @@ const HodHome = ({ onLogout }) => {
                   </div>
                 </div>
 
-                Right Panel - Compact Actions and Recent Activity
+                {/* Right Panel - Compact Actions and Recent Activity */}
                 <div className="activity-panel-compact">
 
-                  Quick Actions
+                  {/* Quick Actions */}
                   <div className="actions-section-compact">
                     <h3 className="section-title-compact">Quick Actions</h3>
                     <div className="action-buttons-grid-compact">
@@ -1730,7 +1575,7 @@ const HodHome = ({ onLogout }) => {
                     </div>
                   </div>
 
-                  Recent Items - More Compact with 4 items
+                  {/* Recent Items - More Compact with 4 items */}
                   <div className="activity-section-compact">
                     <h3 className="section-title-compact">Recent Items</h3>
                     <div className="activity-list-super-compact">
@@ -1763,7 +1608,6 @@ const HodHome = ({ onLogout }) => {
                 </div>
               </div>
             </div>
-            */}
 
           </div>
         )}
@@ -1777,6 +1621,7 @@ const HodHome = ({ onLogout }) => {
         editingTask={editingTask}
         updateTask={updateTask}
         mode="create"
+        isRestrictedEdit={editingTask?.itemType === 'task'}
       />
       <TaskPopup
         open={isAssignPopupOpen}

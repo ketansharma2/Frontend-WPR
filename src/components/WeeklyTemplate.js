@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./weeklyTemplate.css";
-import { FaTimes, FaSearch, FaChevronDown } from "react-icons/fa";
+import { FaTimes, FaSearch, FaChevronDown, FaExternalLinkAlt } from "react-icons/fa";
 import { API_ENDPOINTS } from "../config/api";
 
 export default function WeeklyTemplate({ tasks, loading, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, fetchWeeklyData, isAdminView = false }) {
@@ -55,7 +55,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
       tasktype: taskTypeFilter,
       category: categoryFilter,
       status: statusFilter,
-      teammember: (viewTypeFilter === 'team' && teamMemberFilter) ? teamMemberFilter : ''
+      teammember: ((viewTypeFilter === 'team' && teamMemberFilter) || (viewTypeFilter === 'all' && teamMemberFilter === 'all')) ? teamMemberFilter : ''
     });
   }, [fromDate, toDate, taskTypeFilter, categoryFilter, statusFilter, viewTypeFilter, teamMemberFilter]);
 
@@ -150,6 +150,7 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
 
     if (filterType === 'teammember') {
       if (!value) return isAdminView ? 'All Users' : 'My Tasks';
+      if (value === 'all') return 'All Team Members';
       const member = teamMembers?.find(m => m.user_id === value);
       return member ? member.name : 'Team Member';
     }
@@ -188,14 +189,30 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
 
     return true;
   }).sort((a, b) => {
-    // Primary sort: Show master tasks (source: "assigned") first, then self tasks
-    if (a.source === 'assigned' && b.source !== 'assigned') return -1;
-    if (a.source !== 'assigned' && b.source === 'assigned') return 1;
+    // For "All Team Members" view, sort by owner name first, then by date
+    if (viewTypeFilter === 'all') {
+      // Get owner names
+      const ownerNameA = a.source === 'assigned' ? (a.assigned_to_user?.name || 'Unknown') : (a.users?.name || 'Unknown');
+      const ownerNameB = b.source === 'assigned' ? (b.assigned_to_user?.name || 'Unknown') : (b.users?.name || 'Unknown');
 
-    // Secondary sort: Latest tasks first (by updated_at or created_at)
-    const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
-    const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
-    return dateB - dateA; // Descending order (newest first)
+      // Primary sort: Owner name in ascending order (A-Z)
+      if (ownerNameA < ownerNameB) return -1;
+      if (ownerNameA > ownerNameB) return 1;
+
+      // Secondary sort: Latest tasks first (by updated_at or created_at)
+      const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
+      const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
+      return dateB - dateA; // Descending order (newest first)
+    } else {
+      // Default sorting: Show master tasks first, then self tasks, then by date
+      if (a.source === 'assigned' && b.source !== 'assigned') return -1;
+      if (a.source !== 'assigned' && b.source === 'assigned') return 1;
+
+      // Secondary sort: Latest tasks first (by updated_at or created_at)
+      const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
+      const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
+      return dateB - dateA; // Descending order (newest first)
+    }
   });
 
   return (
@@ -372,6 +389,12 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
                   >
                     {isAdminView ? 'All Users' : 'My Tasks'}
                   </div>
+                  <div
+                    className="dropdown-item"
+                    onClick={() => { setViewTypeFilter('all'); setTeamMemberFilter('all'); setShowTeamMemberDropdown(false); }}
+                  >
+                    All Team Members
+                  </div>
                   {teamMembers.map(member => (
                     <div
                       key={member.user_id}
@@ -436,31 +459,31 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
         <table className="report-table">
           <tbody>
             <tr className="header-row">
+              <th>Task Name</th>
               <th>Date</th>
               <th>Timeline</th>
-              <th>Task Name</th>
               <th>Task Type</th>
               <th>Status</th>
-              <th>Owner</th>
+              {(viewTypeFilter === 'all' || viewTypeFilter === 'team') && <th>Owner</th>}
               <th>Assignee</th>
               <th>Link</th>
             </tr>
             {allTasks.length > 0 ? (
               allTasks.map((task, index) => (
                 <tr key={index} style={task.source === 'assigned' ? { backgroundColor: '#cfe2f3' } : {}} className={task.source === 'assigned' ? 'assigned-row' : ''}>
+                  <td style={{ textAlign: 'left' }}>{task.task_name || task.name || "Untitled Task"}</td>
                   <td>{formatDate(task.date || task.dueDate)}</td>
                   <td>{formatDate(task.timeline || task.prop_slot)}</td>
-                  <td>{task.task_name || task.name || "Untitled Task"}</td>
                   <td>{task.source === 'assigned' ? 'Master' : (task.task_type || task.type || task.dept || "Work")}</td>
                   <td>{task.status}</td>
-                  <td>{task.source === 'assigned' ? (task.assigned_to_user?.name || 'Unknown') : (task.users?.name || 'Unknown')}</td>
+                  {(viewTypeFilter === 'all' || viewTypeFilter === 'team') && <td>{task.source === 'assigned' ? (task.assigned_to_user?.name || 'Unknown') : (task.users?.name || 'Unknown')}</td>}
                   <td>{task.source === 'assigned' ? (task.assigned_by_user?.name || 'Unknown') : 'Self'}</td>
-                  <td>{task.file_link || task.attachments ? <a href={task.file_link || task.attachments} target="_blank" rel="noopener noreferrer">Link</a> : 'No link'}</td>
+                  <td>{task.file_link || task.attachments ? <a href={task.file_link || task.attachments} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }} title="Open link"><FaExternalLinkAlt style={{ fontSize: '14px' }} /></a> : 'NA'}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="8" style={{
+                <td colSpan={(viewTypeFilter === 'all' || viewTypeFilter === 'team') ? 8 : 7} style={{
                   padding: '40px 16px',
                   textAlign: 'center',
                   color: '#6b7280'

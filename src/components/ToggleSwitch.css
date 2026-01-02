@@ -1,206 +1,104 @@
 .toggle-wrapper {
-  width: 120px;
-  height: 32px;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
   position: relative;
-  padding: 2px;
-  cursor: pointer;
-  justify-content: space-between;
-  color: #475569;
+  display: flex;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  padding: 0.25rem;
+  overflow: hidden;
+  user-select: none;
+  outline: none;
+  width: 140px;
+  height: 40px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
 }
 
-.toggle-wrapper:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
-  border-color: #94a3b8;
+.toggle-wrapper:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
-.toggle-option {
+.indicator {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  height: calc(100% - 0.5rem);
+  width: calc(50% - 0.25rem);
+  border-radius: 9999px;
+  background: linear-gradient(to right, #3b82f6, #4f46e5);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.45);
+  transition: transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 1;
+}
+
+.segment {
+  position: relative;
+  z-index: 10;
   width: 50%;
-  text-align: center;
-  z-index: 2;
+  height: 100%;
   font-size: 12px;
   font-weight: 600;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 6px 0;
-  border-radius: 16px;
-  position: relative;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #374151;
   user-select: none;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.toggle-option.active {
+.segment.active {
   color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  font-weight: 700;
-}
-
-.toggle-option:not(.active) {
-  color: #64748b;
-  opacity: 0.8;
-}
-
-.toggle-option:hover:not(.active) {
-  color: #475569;
-  opacity: 1;
-}
-
-.toggle-pill {
-  position: absolute;
-  width: calc(50% - 2px);
-  height: calc(100% - 4px);
-  background: linear-gradient(135deg, #1565c0 0%, #42a5f5 100%);
-  border-radius: 16px;
-  top: 2px;
-  left: 2px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1;
-  box-shadow: 0 2px 8px rgba(21, 101, 192, 0.25);
-}
-
-.toggle-pill::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
-  border-radius: 16px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.toggle-wrapper:hover .toggle-pill::before {
-  opacity: 1;
-}
-
-/* Moves left or right */
-.toggle-pill.left {
-  left: 2px;
-  transform: translateX(0);
-}
-
-.toggle-pill.right {
-  left: calc(50% + 2px);
-  transform: translateX(0);
-}
-
-/* Active states for better visual feedback */
-.toggle-wrapper[data-active="Tasks"] .toggle-option:nth-child(1) {
-  color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.toggle-wrapper[data-active="Meeting"] .toggle-option:nth-child(3) {
-  color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Smooth transition when wrapper gets data-active attribute */
-.toggle-wrapper[data-active="Tasks"] .toggle-pill {
-  left: 2px;
-}
-
-.toggle-wrapper[data-active="Meeting"] .toggle-pill {
-  left: calc(50% + 2px);
-}
-
-/* Enhanced pulse animation for active state */
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 2px 8px rgba(21, 101, 192, 0.25);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(21, 101, 192, 0.35);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 2px 8px rgba(21, 101, 192, 0.25);
-  }
-}
-
-.toggle-wrapper:active .toggle-pill {
-  animation: pulse 0.2s ease-in-out;
-}
-
-/* Loading state */
-.toggle-wrapper.loading {
-  pointer-events: none;
-  opacity: 0.7;
-}
-
-.toggle-wrapper.loading .toggle-pill {
-  animation: pulse 1s infinite ease-in-out;
-}
-
-/* Focus state for accessibility */
-.toggle-wrapper:focus-visible {
-  outline: 2px solid #1565c0;
-  outline-offset: 2px;
 }
 
 /* Mobile responsive */
 @media (max-width: 640px) {
   .toggle-wrapper {
     width: 110px;
-    height: 28px;
-    font-size: 11px;
+    height: 36px;
+    padding: 0.2rem;
+    font-size: 0.8rem;
   }
-  
-  .toggle-option {
-    font-size: 11px;
-    padding: 4px 0;
+
+  .indicator {
+    top: 0.2rem;
+    left: 0.2rem;
+    height: calc(100% - 0.4rem);
+    width: calc(50% - 0.2rem);
   }
-  
-  .toggle-pill {
-    width: calc(50% - 2px);
-    height: calc(100% - 4px);
+
+  .segment {
+    padding: 0.6rem 0;
+    font-size: 0.8rem;
   }
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
   .toggle-wrapper {
-    border-width: 2px;
-    border-color: #000000;
+    border: 2px solid #000000;
   }
-  
-  .toggle-pill {
+
+  .indicator {
     background: #000000;
     border: 1px solid #ffffff;
   }
-  
-  .toggle-option.active {
+
+  .segment.active {
     color: #ffffff;
   }
-  
-  .toggle-option:not(.active) {
+
+  .segment:not(.active) {
     color: #000000;
   }
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .toggle-wrapper,
-  .toggle-option,
-  .toggle-pill {
+  .indicator {
     transition: none;
-    animation: none;
-  }
-  
-  .toggle-wrapper:hover {
-    transform: none;
   }
 }

@@ -5,7 +5,8 @@ import {
   FaTimes,
   FaEllipsisV,
   FaSearch,
-  FaChevronDown
+  FaChevronDown,
+  FaExternalLinkAlt
 } from "react-icons/fa";
 
 export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, dashboardViewType, showFilterBar = true, showMyTasksOption = true, isAdminView = false, userRole }) {
@@ -115,10 +116,9 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
   const formatDate = (dateString) => {
     if (!dateString) return "--";
     const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    return `${day} ${month}`;
   };
 
   // Helper function to get display name based on item type
@@ -876,12 +876,34 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                 <>
                   <th style={{
                     padding: '8px 12px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    color: 'white',
+                    borderRight: '1px solid #e5e7eb',
+                    minWidth: '120px',
+                    width: 'auto'
+                  }}>Task Name</th>
+                  {teamMemberFilter === 'all' && (
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'white',
+                      borderRight: '1px solid #e5e7eb',
+                      minWidth: '100px',
+                      width: 'auto'
+                    }}>Owner</th>
+                  )}
+                  <th style={{
+                    padding: '8px 12px',
                     textAlign: 'center',
                     fontWeight: '600',
                     fontSize: '14px',
                     color: 'white',
                     borderRight: '1px solid #e5e7eb',
-                    minWidth: '70px',
+                    minWidth: '90px',
                     width: 'auto'
                   }}>Date</th>
                   <th style={{
@@ -891,7 +913,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                     fontSize: '14px',
                     color: 'white',
                     borderRight: '1px solid #e5e7eb',
-                    minWidth: '70px',
+                    minWidth: '90px',
                     width: 'auto'
                   }}>Timeline</th>
                   <th style={{
@@ -901,17 +923,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                     fontSize: '14px',
                     color: 'white',
                     borderRight: '1px solid #e5e7eb',
-                    minWidth: '200px',
-                    width: 'auto'
-                  }}>Task Name</th>
-                  <th style={{
-                    padding: '8px 12px',
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    fontSize: '14px',
-                    color: 'white',
-                    borderRight: '1px solid #e5e7eb',
-                    minWidth: '80px',
+                    minWidth: '100px',
                     width: 'auto'
                   }}>Type</th>
                   <th style={{
@@ -923,7 +935,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                     borderRight: '1px solid #e5e7eb',
                     minWidth: '90px',
                     width: 'auto'
-                  }}>Time (in mins)</th>
+                  }}>Time</th>
                   <th style={{
                     padding: '8px 12px',
                     textAlign: 'center',
@@ -931,7 +943,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                     fontSize: '14px',
                     color: 'white',
                     borderRight: '1px solid #e5e7eb',
-                    minWidth: '70px',
+                    minWidth: '100px',
                     width: 'auto'
                   }}>Status</th>
                   <th style={{
@@ -944,16 +956,18 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                     minWidth: '60px',
                     width: 'auto'
                   }}>Link</th>
-                  <th style={{
-                    padding: '8px 12px',
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    fontSize: '14px',
-                    color: 'white',
-                    borderRight: '1px solid #e5e7eb',
-                    minWidth: '100px',
-                    width: 'auto'
-                  }}>{viewTypeFilter === 'all' ? 'Owner' : 'Assignee'}</th>
+                  {teamMemberFilter !== 'all' && (
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'white',
+                      borderRight: '1px solid #e5e7eb',
+                      minWidth: '100px',
+                      width: 'auto'
+                    }}>Assign By</th>
+                  )}
                   <th style={{
                     padding: '8px 12px',
                     textAlign: 'center',
@@ -978,7 +992,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                   {task.itemType === 'meeting' ? (
                     <>
                       <td style={{ padding: '8px 12px', color: '#374151' }}>{formatDate(getDueDate(task)) || 'Not set'}</td>
-                      <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{getDisplayName(task)}</td>
+                      <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500', textAlign: 'left' }}>{getDisplayName(task)}</td>
                       {viewTypeFilter === 'all' && (
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{task.owner_name || 'Unknown'}</td>
                       )}
@@ -1054,12 +1068,15 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                     </>
                   ) : (
                     <>
-                      <td style={{ padding: '8px 12px', color: '#374151' }}>{formatDate(getDueDate(task)) || 'Not set'}</td>
-                      <td style={{ padding: '8px 12px', color: '#374151' }}>{getTimeline(task) ? formatDate(getTimeline(task)) : 'Not set'}</td>
-                      <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{getDisplayName(task)}</td>
-                      <td style={{ padding: '8px 12px', color: '#374151' }}>{getTaskType(task)}</td>
-                      <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>{getTimeInMins(task) || 'Not set'}</td>
-                      <td style={{ padding: '8px 12px' }}>
+                      <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500', textAlign: 'left' }}>{getDisplayName(task)}</td>
+                      {teamMemberFilter === 'all' && (
+                        <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>{task.users?.name || 'Unknown'}</td>
+                      )}
+                      <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', whiteSpace: 'nowrap' }}>{formatDate(getDueDate(task)) || 'Not set'}</td>
+                      <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', whiteSpace: 'nowrap' }}>{getTimeline(task) ? formatDate(getTimeline(task)) : 'Not set'}</td>
+                      <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', whiteSpace: 'nowrap' }}>{getTaskType(task)}</td>
+                      <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', whiteSpace: 'nowrap' }}>{getTimeInMins(task) || 'Not set'}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <span style={{
                           padding: '4px 8px',
                           borderRadius: '4px',
@@ -1081,14 +1098,17 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, filte
                             rel="noopener noreferrer"
                             style={{ color: '#3b82f6' }}
                             onClick={(e) => e.stopPropagation()}
+                            title="Open link"
                           >
-                            Link
+                            <FaExternalLinkAlt style={{ fontSize: '14px' }} />
                           </a>
-                        ) : 'N/A'}
+                        ) : 'NA'}
                       </td>
-                      <td style={{ padding: '8px 12px', color: '#374151' }}>
-                        {task.category === 'self' && viewTypeFilter !== 'all' ? 'Self' : (task.assigned_by_user?.name || task.users?.name || 'Unknown')}
-                      </td>
+                      {teamMemberFilter !== 'all' && (
+                        <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>
+                          {task.category === 'self' && viewTypeFilter !== 'all' ? 'Self' : (task.assigned_by_user?.name || task.users?.name || 'Unknown')}
+                        </td>
+                      )}
                       <td style={{ padding: '6px 8px', textAlign: 'center' }}>
                         <FaEllipsisV
                           style={{ cursor: 'pointer' }}

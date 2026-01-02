@@ -8,7 +8,9 @@ import TaskDetails from './TaskDetails';
 import ProfilePanel from './ProfilePanel';
 import TaskStatsPanel from './TaskStatsPanel';
 import DateToggleSwitch from './DateToggleSwitch';
+import RnR from './RnR';
 import { api } from '../config/api';
+import { FaEllipsisV } from 'react-icons/fa';
 import './Home.css';
 
 
@@ -45,6 +47,8 @@ const Home = ({ onLogout }) => {
   const [yesterdayDate, setYesterdayDate] = useState(null); // Actual date found for yesterday
   const [yesterdayTasks, setYesterdayTasks] = useState([]);
   const [yesterdayMeetings, setYesterdayMeetings] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(null);
+  const [hasAutoPopulated, setHasAutoPopulated] = useState(false);
 
   // Helper function for SVG donut chart calculations
   const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
@@ -53,6 +57,15 @@ const Home = ({ onLogout }) => {
       x: centerX + (radius * Math.cos(angleInRadians)),
       y: centerY + (radius * Math.sin(angleInRadians))
     };
+  };
+
+  // Helper function to format dates as "31 Dec"
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    return `${day} ${month}`;
   };
 
   useEffect(() => {
@@ -110,6 +123,14 @@ const Home = ({ onLogout }) => {
         .finally(() => setTodayDataLoading(false));
     }
   }, [userProfile]);
+
+  // Auto-populate fixed tasks when dashboard loads
+  useEffect(() => {
+    if (userProfile?.user_id && currentPage === 'dashboard' && !hasAutoPopulated) {
+      autoPopulateFixedTasks();
+      setHasAutoPopulated(true);
+    }
+  }, [userProfile, currentPage, hasAutoPopulated]);
 
   // Fetch tasks from backend
   const fetchTasks = async (category = 'all') => {
@@ -275,6 +296,53 @@ const Home = ({ onLogout }) => {
     } catch (err) {
       console.error("Error fetching today's meetings:", err);
       setTodayMeetings([]);
+    }
+  };
+
+
+  // Click outside handler for menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.task-menu') && !event.target.closest('.menu-icon')) {
+        setMenuOpen(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // Auto-populate fixed tasks for today
+  const autoPopulateFixedTasks = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/fixed-tasks/auto-populate`, {
+        method: 'POST',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Auto-populate result:', result);
+        if (result.populated_tasks?.length > 0) {
+          alert(`✅ Success: ${result.populated_tasks.length} fixed tasks populated for today!`);
+        }
+        // Refresh today's tasks
+        fetchTodayTasks();
+      } else {
+        const error = await response.json();
+        alert(`❌ Failed: ${error.error || 'Unknown error occurred'}`);
+      }
+    } catch (error) {
+      console.error('Error auto-populating fixed tasks:', error);
+      alert('❌ Failed: Network error while auto-populating tasks');
     }
   };
 
@@ -767,6 +835,8 @@ const Home = ({ onLogout }) => {
             setCategoryFilter={setCategoryFilter}
             userRole={userProfile.user_type}
           />
+        ) : currentPage === 'rnr' ? (
+          <RnR />
         ) : (
            <div className="dashboard-container">
              {/* Monthly Task Statistics Panel */}
@@ -792,7 +862,7 @@ const Home = ({ onLogout }) => {
               borderRadius: '12px',
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
               width: '100%',
-              overflow: 'hidden',
+              overflow: 'visible',
               marginBottom: '30px'
             }}>
               {/* Today's Planning Table Header */}
@@ -812,7 +882,7 @@ const Home = ({ onLogout }) => {
                   color: 'white'
                 }}>
                   {selectedDate === 'yesterday'
-                    ? (yesterdayDate ? `Last Working Day Tasks` : "Yesterday's Tasks")
+                    ? (yesterdayDate ? `Previous Day Tasks` : "Yesterday's Tasks")
                     : "Today's Planning"
                   }
                 </h3>
@@ -921,6 +991,14 @@ const Home = ({ onLogout }) => {
                       color: 'black',
                       width: '80px'
                     }}>Link</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      width: '60px'
+                    }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -932,7 +1010,7 @@ const Home = ({ onLogout }) => {
                       }}>
                         <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
                         <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{task.task_name || task.name}</td>
-                        <td style={{ padding: '8px 12px', color: '#374151' }}>{task.timeline || 'N/A'}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{formatDate(task.timeline) || 'N/A'}</td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{task.task_type || 'work'}</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{
@@ -958,11 +1036,60 @@ const Home = ({ onLogout }) => {
                             </a>
                           ) : 'N/A'}
                         </td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', position: 'relative' }}>
+                          <FaEllipsisV
+                            className="menu-icon"
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpen(menuOpen === `task-${index}` ? null : `task-${index}`);
+                            }}
+                          />
+                          {menuOpen === `task-${index}` && (
+                            <div className="task-menu" style={{
+                              position: 'absolute',
+                              background: 'white',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                              zIndex: 1000,
+                              marginTop: '5px',
+                              left: '-80px'
+                            }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const today = new Date().toISOString().split('T')[0];
+                                  const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
+                                  const isPastDate = taskDate !== today;
+                                  if (isPastDate && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
+                                    alert(`You can't edit past tasks`);
+                                    setMenuOpen(null);
+                                    return;
+                                  }
+                                  editTask(task);
+                                  setMenuOpen(null);
+                                }}
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  padding: '8px 16px',
+                                  border: 'none',
+                                  background: 'none',
+                                  textAlign: 'left',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Edit Item
+                              </button>
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" style={{
+                      <td colSpan="9" style={{
                         padding: '40px 16px',
                         textAlign: 'center',
                         color: '#6b7280'
@@ -987,7 +1114,7 @@ const Home = ({ onLogout }) => {
               borderRadius: '12px',
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
               width: '100%',
-              overflow: 'hidden',
+              overflow: 'visible',
               marginBottom: '20px'
             }}>
               {/* Today's Meetings Table Header */}
@@ -1007,7 +1134,7 @@ const Home = ({ onLogout }) => {
                   color: 'white'
                 }}>
                   {selectedDate === 'yesterday'
-                    ? (yesterdayDate ? `Last Working Day Meetings` : "Yesterday's Meetings")
+                    ? (yesterdayDate ? `Previous Day Meetings` : "Yesterday's Meetings")
                     : "Today's Meetings"
                   }
                 </h3>
@@ -1125,6 +1252,14 @@ const Home = ({ onLogout }) => {
                       color: 'black',
                       width: '15%'
                     }}>Notes</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
+                      width: '60px'
+                    }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1155,6 +1290,55 @@ const Home = ({ onLogout }) => {
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.notes || 'N/A'}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', position: 'relative' }}>
+                          <FaEllipsisV
+                            className="menu-icon"
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpen(menuOpen === `meeting-${index}` ? null : `meeting-${index}`);
+                            }}
+                          />
+                          {menuOpen === `meeting-${index}` && (
+                            <div className="task-menu" style={{
+                              position: 'absolute',
+                              background: 'white',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                              zIndex: 1000,
+                              marginTop: '5px',
+                              left: '-80px'
+                            }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const today = new Date().toISOString().split('T')[0];
+                                  const taskDate = meeting.date ? new Date(meeting.date).toISOString().split('T')[0] : null;
+                                  const isPastDate = taskDate !== today;
+                                  if (isPastDate && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
+                                    alert(`You can't edit past meetings`);
+                                    setMenuOpen(null);
+                                    return;
+                                  }
+                                  editTask(meeting);
+                                  setMenuOpen(null);
+                                }}
+                                style={{
+                                  display: 'block',
+                                  width: '100%',
+                                  padding: '8px 16px',
+                                  border: 'none',
+                                  background: 'none',
+                                  textAlign: 'left',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Edit Item
+                              </button>
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     ))
                   ) : (
@@ -1421,6 +1605,7 @@ const Home = ({ onLogout }) => {
         addTask={addTask}
         editingTask={editingTask}
         updateTask={updateTask}
+        isRestrictedEdit={editingTask?.is_fixed === true}
       />
       <ProfilePanel
         open={isProfileOpen}

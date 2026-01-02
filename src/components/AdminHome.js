@@ -83,7 +83,16 @@ const AdminHome = ({ onLogout }) => {
 
    // Default dates for dept analytics
    const today = new Date();
-   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+   // Calculate Monday of current week
+   const mondayOfWeek = new Date(today);
+   const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+   const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, subtract 6 days; otherwise subtract (day-1)
+   mondayOfWeek.setDate(today.getDate() - daysToSubtract);
+
+   // Calculate Saturday of current week
+   const saturdayOfWeek = new Date(today);
+   const daysToAdd = 6 - dayOfWeek; // Saturday is day 6, so add (6 - currentDay) days
+   saturdayOfWeek.setDate(today.getDate() + daysToAdd);
    const formatDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
    const [currentPage, setCurrentPage] = useState('dashboard');
@@ -136,8 +145,8 @@ const AdminHome = ({ onLogout }) => {
    const [showAllMeetings, setShowAllMeetings] = useState(false);
    // Dept Analytics filters
    const [deptAnalyticsData, setDeptAnalyticsData] = useState({});
-   const [deptAnalyticsFromDate, setDeptAnalyticsFromDate] = useState(formatDate(firstOfMonth));
-   const [deptAnalyticsToDate, setDeptAnalyticsToDate] = useState(formatDate(today));
+   const [deptAnalyticsFromDate, setDeptAnalyticsFromDate] = useState(formatDate(mondayOfWeek));
+   const [deptAnalyticsToDate, setDeptAnalyticsToDate] = useState(formatDate(saturdayOfWeek));
    const [deptAnalyticsDeptFilter, setDeptAnalyticsDeptFilter] = useState('all');
    const [showDeptAnalyticsDeptDropdown, setShowDeptAnalyticsDeptDropdown] = useState(false);
    const [availableDepartments, setAvailableDepartments] = useState([]);
@@ -347,7 +356,7 @@ const AdminHome = ({ onLogout }) => {
 
   // Fetch dept analytics when filters change
   useEffect(() => {
-    if (userProfile && currentPage === 'dept-analytics') {
+    if (userProfile && (currentPage === 'dept-analytics' || currentPage === 'dashboard')) {
       fetchDeptAnalytics();
     }
   }, [deptAnalyticsDeptFilter, deptAnalyticsFromDate, deptAnalyticsToDate, userProfile, currentPage]);
@@ -828,107 +837,6 @@ const AdminHome = ({ onLogout }) => {
         return (
           <div style={{
             backgroundColor: '#e0e0e0',
-            minHeight: '100vh',
-            padding: '50px'
-          }}>
-            {/* Completely blank analytics page */}
-          </div>
-        );
-      case "tasks":
-        return (
-          <div style={{ marginTop: '20px' }}>
-            <TaskList
-              tasks={tasks.filter(task => task.itemType === 'task')}
-              onEdit={editTask}
-              onViewDetails={onViewDetails}
-              onDelete={deleteTask}
-              filter='task'
-              setFilter={handleFilterChange}
-              dateFilter={taskDateFilter}
-              setDateFilter={setTaskDateFilter}
-              taskTypeFilter={taskTypeFilter}
-              setTaskTypeFilter={setTaskTypeFilter}
-              statusFilter={taskStatusFilter}
-              setStatusFilter={setTaskStatusFilter}
-              categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
-              viewTypeFilter={taskViewTypeFilter}
-              setViewTypeFilter={setTaskViewTypeFilter}
-              teamMemberFilter={taskTeamMemberFilter}
-              setTeamMemberFilter={setTaskTeamMemberFilter}
-              teamMembers={teamMembers}
-              dashboardViewType={dashboardViewType}
-              showMyTasksOption={false}
-              isAdminView={true}
-              userRole={userProfile?.user_type}
-            />
-          </div>
-        );
-      case "meetings":
-        return (
-          <TaskList
-            tasks={tasks.filter(task => task.itemType === 'meeting')}
-            onEdit={editTask}
-            onViewDetails={onViewDetails}
-            onDelete={deleteTask}
-            filter={filter}
-            setFilter={handleFilterChange}
-            dateFilter={meetingDateFilter}
-            setDateFilter={setMeetingDateFilter}
-            taskTypeFilter={taskTypeFilter}
-            setTaskTypeFilter={setTaskTypeFilter}
-            statusFilter={meetingStatusFilter}
-            setStatusFilter={setMeetingStatusFilter}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
-            viewTypeFilter={meetingViewTypeFilter}
-            setViewTypeFilter={setMeetingViewTypeFilter}
-            teamMemberFilter={meetingTeamMemberFilter}
-            setTeamMemberFilter={setMeetingTeamMemberFilter}
-            teamMembers={teamMembers}
-            isAdminView={true}
-            showMyTasksOption={false}
-            userRole={userProfile?.user_type}
-          />
-        );
-      case "calendar":
-        return (
-          <div style={{ padding: '0 50px' }}>
-            <WeeklyTemplate
-              tasks={weeklyTasks}
-              loading={weeklyLoading}
-              filter={filter}
-              setFilter={setFilter}
-              dateFilter={weeklyDateFilter}
-              setDateFilter={setWeeklyDateFilter}
-              taskTypeFilter={weeklyTaskTypeFilter}
-              setTaskTypeFilter={setWeeklyTaskTypeFilter}
-              statusFilter={weeklyStatusFilter}
-              setStatusFilter={setWeeklyStatusFilter}
-              categoryFilter={weeklyCategoryFilter}
-              setCategoryFilter={setWeeklyCategoryFilter}
-              viewTypeFilter={weeklyViewTypeFilter}
-              setViewTypeFilter={setWeeklyViewTypeFilter}
-              teamMemberFilter={weeklyTeamMemberFilter}
-              setTeamMemberFilter={setWeeklyTeamMemberFilter}
-              teamMembers={teamMembers}
-              fetchWeeklyData={fetchWeeklyData}
-              isAdminView={true}
-            />
-          </div>
-        );
-      case "users":
-        return (
-          <AdminUsersErrorBoundary>
-            <AdminUsers />
-          </AdminUsersErrorBoundary>
-        );
-      case "individual-analytics":
-        return <IndividualAnalytics />;
-      case "dept-analytics":
-        return (
-          <div style={{
-            backgroundColor: '#e0e0e0',
             minHeight: '100vh'
           }}>
             <div className="professional-filter-bar">
@@ -1083,6 +991,97 @@ const AdminHome = ({ onLogout }) => {
             </div>
           </div>
         );
+      case "tasks":
+        return (
+          <div style={{ marginTop: '20px' }}>
+            <TaskList
+              tasks={tasks.filter(task => task.itemType === 'task')}
+              onEdit={editTask}
+              onViewDetails={onViewDetails}
+              onDelete={deleteTask}
+              filter='task'
+              setFilter={handleFilterChange}
+              dateFilter={taskDateFilter}
+              setDateFilter={setTaskDateFilter}
+              taskTypeFilter={taskTypeFilter}
+              setTaskTypeFilter={setTaskTypeFilter}
+              statusFilter={taskStatusFilter}
+              setStatusFilter={setTaskStatusFilter}
+              categoryFilter={categoryFilter}
+              setCategoryFilter={setCategoryFilter}
+              viewTypeFilter={taskViewTypeFilter}
+              setViewTypeFilter={setTaskViewTypeFilter}
+              teamMemberFilter={taskTeamMemberFilter}
+              setTeamMemberFilter={setTaskTeamMemberFilter}
+              teamMembers={teamMembers}
+              dashboardViewType={dashboardViewType}
+              showMyTasksOption={false}
+              isAdminView={true}
+              userRole={userProfile?.user_type}
+            />
+          </div>
+        );
+      case "meetings":
+        return (
+          <TaskList
+            tasks={tasks.filter(task => task.itemType === 'meeting')}
+            onEdit={editTask}
+            onViewDetails={onViewDetails}
+            onDelete={deleteTask}
+            filter={filter}
+            setFilter={handleFilterChange}
+            dateFilter={meetingDateFilter}
+            setDateFilter={setMeetingDateFilter}
+            taskTypeFilter={taskTypeFilter}
+            setTaskTypeFilter={setTaskTypeFilter}
+            statusFilter={meetingStatusFilter}
+            setStatusFilter={setMeetingStatusFilter}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+            viewTypeFilter={meetingViewTypeFilter}
+            setViewTypeFilter={setMeetingViewTypeFilter}
+            teamMemberFilter={meetingTeamMemberFilter}
+            setTeamMemberFilter={setMeetingTeamMemberFilter}
+            teamMembers={teamMembers}
+            isAdminView={true}
+            showMyTasksOption={false}
+            userRole={userProfile?.user_type}
+          />
+        );
+      case "calendar":
+        return (
+          <div style={{ padding: '0 50px' }}>
+            <WeeklyTemplate
+              tasks={weeklyTasks}
+              loading={weeklyLoading}
+              filter={filter}
+              setFilter={setFilter}
+              dateFilter={weeklyDateFilter}
+              setDateFilter={setWeeklyDateFilter}
+              taskTypeFilter={weeklyTaskTypeFilter}
+              setTaskTypeFilter={setWeeklyTaskTypeFilter}
+              statusFilter={weeklyStatusFilter}
+              setStatusFilter={setWeeklyStatusFilter}
+              categoryFilter={weeklyCategoryFilter}
+              setCategoryFilter={setWeeklyCategoryFilter}
+              viewTypeFilter={weeklyViewTypeFilter}
+              setViewTypeFilter={setWeeklyViewTypeFilter}
+              teamMemberFilter={weeklyTeamMemberFilter}
+              setTeamMemberFilter={setWeeklyTeamMemberFilter}
+              teamMembers={teamMembers}
+              fetchWeeklyData={fetchWeeklyData}
+              isAdminView={true}
+            />
+          </div>
+        );
+      case "users":
+        return (
+          <AdminUsersErrorBoundary>
+            <AdminUsers />
+          </AdminUsersErrorBoundary>
+        );
+      case "individual-analytics":
+        return <IndividualAnalytics />;
     }
   };
 
@@ -1143,7 +1142,7 @@ const AdminHome = ({ onLogout }) => {
         </div>
       )}
 
-      <main style={currentPage === 'dept-analytics' ? { backgroundColor: '#e0e0e0', padding: '20px 50px 50px 50px' } : { backgroundColor: '#e0e0e0' }}>
+      <main style={(currentPage === 'dept-analytics' || currentPage === 'dashboard') ? { backgroundColor: '#e0e0e0', padding: '20px 50px 50px 50px' } : { backgroundColor: '#e0e0e0' }}>
         {renderPage()}
       </main>
 

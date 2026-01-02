@@ -3,6 +3,7 @@ import { api } from "../config/api";
 import "./AdminUsers.css";
 
 export default function AdminUsers() {
+  // Removed activeTab state since only one section remains
   const [users, setUsers] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -15,7 +16,7 @@ export default function AdminUsers() {
     designation: "",
     user_type: "employee"
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
@@ -184,180 +185,184 @@ export default function AdminUsers() {
         </button>
       </div>
 
-      {error && (
-        <div style={{
-          backgroundColor: '#f8d7da',
-          color: '#721c24',
-          padding: '12px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          border: '1px solid #f5c6cb'
-        }}>
-          {error}
-        </div>
-      )}
 
-      {/* User Management Table - Same design as dashboard */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-        width: '100%',
-        overflow: 'hidden'
-      }}>
+      <>
+        {error && (
+          <div style={{
+            backgroundColor: '#f8d7da',
+            color: '#721c24',
+            padding: '12px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '1px solid #f5c6cb'
+          }}>
+            {error}
+          </div>
+        )}
 
-        {/* Table */}
+        {/* User Management Table - Same design as dashboard */}
         <div style={{
-          padding: '0',
-          margin: '0'
-        }}>
-        <table style={{
+          background: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
           width: '100%',
-          borderCollapse: 'collapse',
-          margin: '0',
-          borderSpacing: '0'
+          overflow: 'hidden'
         }}>
-          <thead>
-            <tr style={{
-              background: '#5580ff',
-              borderBottom: '2px solid #e2e8f0'
-            }}>
-              <th style={{
-                padding: '8px 12px',
-                textAlign: 'center',
-                fontWeight: '600',
-                fontSize: '14px',
-                color: 'white',
-                borderRight: '1px solid #e5e7eb',
-                width: '60px'
-              }}>S.No</th>
-              <th style={{
-                padding: '8px 12px',
-                textAlign: 'center',
-                fontWeight: '600',
-                fontSize: '14px',
-                color: 'white',
-                borderRight: '1px solid #e5e7eb',
-                minWidth: '150px',
-                width: 'auto'
-              }}>Name</th>
-              <th style={{
-                padding: '8px 12px',
-                textAlign: 'center',
-                fontWeight: '600',
-                fontSize: '14px',
-                color: 'white',
-                borderRight: '1px solid #e5e7eb',
-                minWidth: '200px',
-                width: 'auto'
-              }}>Email</th>
-              <th style={{
-                padding: '8px 12px',
-                textAlign: 'center',
-                fontWeight: '600',
-                fontSize: '14px',
-                color: 'white',
-                borderRight: '1px solid #e5e7eb',
-                minWidth: '120px',
-                width: 'auto'
-              }}>Department</th>
-              <th style={{
-                padding: '8px 12px',
-                textAlign: 'center',
-                fontWeight: '600',
-                fontSize: '14px',
-                color: 'white',
-                borderRight: '1px solid #e5e7eb',
-                minWidth: '150px',
-                width: 'auto'
-              }}>Designation</th>
-              <th style={{
-                padding: '8px 12px',
-                textAlign: 'center',
-                fontWeight: '600',
-                fontSize: '14px',
-                color: 'white',
-                borderRight: '1px solid #e5e7eb',
-                minWidth: '100px',
-                width: 'auto'
-              }}>User Type</th>
-              <th style={{
-                padding: '8px 12px',
-                textAlign: 'center',
-                fontWeight: '600',
-                fontSize: '14px',
-                color: 'white',
-                minWidth: '120px',
-                width: 'auto'
-              }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 ? (
-              <tr>
-                <td colSpan="7" style={{
-                  padding: '40px 16px',
+
+          {/* Table */}
+          <div style={{
+            padding: '0',
+            margin: '0'
+          }}>
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            margin: '0',
+            borderSpacing: '0'
+          }}>
+            <thead>
+              <tr style={{
+                background: '#5580ff',
+                borderBottom: '2px solid #e2e8f0'
+              }}>
+                <th style={{
+                  padding: '8px 12px',
                   textAlign: 'center',
-                  color: '#6b7280'
-                }}>
-                  No users found. Create your first user to get started.
-                </td>
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: 'white',
+                  borderRight: '1px solid #e5e7eb',
+                  width: '60px'
+                }}>S.No</th>
+                <th style={{
+                  padding: '8px 12px',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: 'white',
+                  borderRight: '1px solid #e5e7eb',
+                  minWidth: '150px',
+                  width: 'auto'
+                }}>Name</th>
+                <th style={{
+                  padding: '8px 12px',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: 'white',
+                  borderRight: '1px solid #e5e7eb',
+                  minWidth: '200px',
+                  width: 'auto'
+                }}>Email</th>
+                <th style={{
+                  padding: '8px 12px',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: 'white',
+                  borderRight: '1px solid #e5e7eb',
+                  minWidth: '120px',
+                  width: 'auto'
+                }}>Department</th>
+                <th style={{
+                  padding: '8px 12px',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: 'white',
+                  borderRight: '1px solid #e5e7eb',
+                  minWidth: '150px',
+                  width: 'auto'
+                }}>Designation</th>
+                <th style={{
+                  padding: '8px 12px',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: 'white',
+                  borderRight: '1px solid #e5e7eb',
+                  minWidth: '100px',
+                  width: 'auto'
+                }}>User Type</th>
+                <th style={{
+                  padding: '8px 12px',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  color: 'white',
+                  minWidth: '120px',
+                  width: 'auto'
+                }}>Actions</th>
               </tr>
-            ) : (
-              users.map((user, index) => (
-                <tr key={user.user_id} style={{
-                  backgroundColor: index % 2 === 0 ? '#f8fafc' : 'white',
-                  borderBottom: '1px solid #e2e8f0'
-                }}>
-                  <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
-                  <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{user.name}</td>
-                  <td style={{ padding: '8px 12px', color: '#374151' }}>{user.email}</td>
-                  <td style={{ padding: '8px 12px', color: '#374151' }}>{user.dept || 'N/A'}</td>
-                  <td style={{ padding: '8px 12px', color: '#374151' }}>{user.role || 'N/A'}</td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      backgroundColor: user.user_type === 'Admin' ? '#dbeafe' :
-                                     user.user_type === 'HOD' ? '#fef3c7' : '#dcfce7',
-                      color: user.user_type === 'Admin' ? '#1e40af' :
-                           user.user_type === 'HOD' ? '#92400e' : '#166534'
-                    }}>
-                      {user.user_type === 'Team Member' ? 'Team Member' :
-                       user.user_type === 'HOD' ? 'HOD' :
-                       user.user_type === 'Admin' ? 'Admin' :
-                       user.user_type}
-                    </span>
+            </thead>
+            <tbody>
+              {users.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{
+                    padding: '40px 16px',
+                    textAlign: 'center',
+                    color: '#6b7280'
+                  }}>
+                    No users found. Create your first user to get started.
                   </td>
-                  <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                    <button
-                      onClick={() => handleEdit(user)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
+                </tr>
+              ) : (
+                users.map((user, index) => (
+                  <tr key={user.user_id} style={{
+                    backgroundColor: index % 2 === 0 ? '#f8fafc' : 'white',
+                    borderBottom: '1px solid #e2e8f0'
+                  }}>
+                    <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
+                    <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{user.name}</td>
+                    <td style={{ padding: '8px 12px', color: '#374151' }}>{user.email}</td>
+                    <td style={{ padding: '8px 12px', color: '#374151' }}>{user.dept || 'N/A'}</td>
+                    <td style={{ padding: '8px 12px', color: '#374151' }}>{user.role || 'N/A'}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <span style={{
+                        padding: '4px 8px',
                         borderRadius: '4px',
                         fontSize: '12px',
                         fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
-                    >
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                        backgroundColor: user.user_type === 'Admin' ? '#dbeafe' :
+                                        user.user_type === 'HOD' ? '#fef3c7' : '#dcfce7',
+                        color: user.user_type === 'Admin' ? '#1e40af' :
+                              user.user_type === 'HOD' ? '#92400e' : '#166534'
+                      }}>
+                        {user.user_type === 'Team Member' ? 'Team Member' :
+                         user.user_type === 'HOD' ? 'HOD' :
+                         user.user_type === 'Admin' ? 'Admin' :
+                         user.user_type}
+                      </span>
+                    </td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                      <button
+                        onClick={() => handleEdit(user)}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          </div>
         </div>
-      </div>
+      </>
+
 
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>

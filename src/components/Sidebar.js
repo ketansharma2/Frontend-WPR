@@ -7,6 +7,7 @@ import {
   FaCalendarAlt,
   FaUserCog,
   FaChartBar,
+  FaClipboardList,
 } from "react-icons/fa";
 
 export default function Sidebar({ currentPage, onPageChange, userRole }) {
@@ -38,6 +39,12 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
       roles: ['team member', 'hod', 'admin']
     },
     {
+      id: 'rnr',
+      label: 'R&R',
+      icon: FaClipboardList,
+      roles: ['team member', 'hod']
+    },
+    {
       id: 'users',
       label: 'User Management',
       icon: FaUserCog,
@@ -46,12 +53,6 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
     {
       id: 'individual-analytics',
       label: 'Individual Analytics',
-      icon: FaChartBar,
-      roles: ['admin']
-    },
-    {
-      id: 'dept-analytics',
-      label: 'Dept Analytics',
       icon: FaChartBar,
       roles: ['admin']
     },

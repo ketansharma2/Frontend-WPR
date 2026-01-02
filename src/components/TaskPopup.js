@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from "react";
 import ToggleSwitch from "./ToggleSwitch";
+import { api } from "../config/api";
 import "./TaskPopup.css";
 
-export default function TaskPopup({ open, onClose, addTask, editingTask, updateTask, mode = "create", teamMembers = [] }) {
+export default function TaskPopup({ open, onClose, addTask, editingTask, updateTask, mode = "create", teamMembers = [], isRestrictedEdit = false }) {
   const [isMeeting, setIsMeeting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isMounted, setIsMounted] = useState(false);
+  const [taskSuggestions, setTaskSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [meetingTeamMembers, setMeetingTeamMembers] = useState([]);
+
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
 
   // Task state
   const [taskName, setTaskName] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [timeline, setTimeline] = useState('');
+  const [dueDate, setDueDate] = useState(getTodayDate());
+  const [timeline, setTimeline] = useState(getTodayDate());
   const [time, setTime] = useState('');
   const [taskType, setTaskType] = useState('Fixed');
   const [status, setStatus] = useState('Not Started');
@@ -20,9 +27,11 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
 
   // Meeting state
   const [meetingName, setMeetingName] = useState('');
-  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingDate, setMeetingDate] = useState(getTodayDate());
   const [dept, setDept] = useState('Marketing');
   const [participants, setParticipants] = useState('');
+  const [selectedCoPersons, setSelectedCoPersons] = useState([]);
+  const [showCoPersonDropdown, setShowCoPersonDropdown] = useState(false);
   const [meetingTime, setMeetingTime] = useState('');
   const [timeSlot, setTimeSlot] = useState('');
   const [meetingStatus, setMeetingStatus] = useState('Scheduled');
@@ -57,6 +66,50 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
     return () => setIsMounted(false);
   }, []);
 
+  // Fetch task suggestions when creating a new task
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (open && !editingTask && !isMeeting && mode === "create") {
+        try {
+          const profile = JSON.parse(localStorage.getItem("profile"));
+          if (profile?.user_id) {
+            const data = await api.getTaskSuggestions(profile.user_id);
+            console.log("Task suggestions fetched:", data.suggestions);
+            setTaskSuggestions(data.suggestions || []);
+          }
+        } catch (err) {
+          console.error("Failed to fetch task suggestions:", err);
+          setTaskSuggestions([]);
+        }
+      }
+    };
+
+    fetchSuggestions();
+  }, [open, editingTask, isMeeting, mode]);
+
+  // Fetch meeting team members when creating a new meeting
+  useEffect(() => {
+    if (open && isMeeting && !editingTask && mode === "create") {
+      api.getMeetingsMembers().then(data => {
+        setMeetingTeamMembers(data.members || []);
+      }).catch(err => {
+        console.error("Failed to fetch meeting members:", err);
+        setMeetingTeamMembers([]);
+      });
+    }
+  }, [open, isMeeting, editingTask, mode]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.coperson-dropdown-container') && !event.target.closest('.coperson-input')) {
+        setShowCoPersonDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     // Only populate form if component is mounted and popup is open
     if (!isMounted || !open) return;
@@ -70,7 +123,10 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         setMeetingName(editingTask.meeting_name || editingTask.name || '');
         setMeetingDate(editingTask.date || '');
         setDept(editingTask.dept || editingTask.department || 'Marketing');
-        setParticipants(editingTask.co_person || editingTask.participants || '');
+        const coPersonValue = editingTask.co_person || editingTask.participants || '';
+        setParticipants(coPersonValue);
+        // Parse comma-separated co-persons into array for checkbox state
+        setSelectedCoPersons(coPersonValue ? coPersonValue.split(',').map(name => name.trim()).filter(name => name) : []);
         setMeetingTime(editingTask.time_in_mins || '');
         setTimeSlot(editingTask.prop_slot || editingTask.timeSlot || '');
         setMeetingStatus(editingTask.status || 'Scheduled');
@@ -98,8 +154,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   const clearForm = () => {
     // Clear task fields
     setTaskName('');
-    setDueDate('');
-    setTimeline('');
+    setDueDate(getTodayDate());
+    setTimeline(getTodayDate());
     setTime('');
     setTaskType('Fixed');
     setStatus('Not Started');
@@ -109,9 +165,11 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
 
     // Clear meeting fields
     setMeetingName('');
-    setMeetingDate('');
+    setMeetingDate(getTodayDate());
     setDept('Marketing');
     setParticipants('');
+    setSelectedCoPersons([]);
+    setShowCoPersonDropdown(false);
     setMeetingTime('');
     setTimeSlot('');
     setMeetingStatus('Scheduled');
@@ -132,6 +190,22 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
     setIsMeeting(type === 'meeting');
     clearForm();
   };
+
+  // Handle co-person checkbox selection
+  const handleCoPersonToggle = (memberName) => {
+    setSelectedCoPersons(prev => {
+      const isSelected = prev.includes(memberName);
+      const newSelection = isSelected
+        ? prev.filter(name => name !== memberName)
+        : [...prev, memberName];
+
+      // Update the participants field with comma-separated values
+      setParticipants(newSelection.join(', '));
+      return newSelection;
+    });
+  };
+
+
 
   const handleCreate = async () => {
     if (mode === "assign") {
@@ -165,18 +239,31 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         updateTask(updatedMeeting);
       } else {
         // For editing tasks
-        const updatedTask = {
-          ...editingTask,
-          task_name: taskName,
-          date: dueDate,
-          timeline: timeline,
-          time_in_mins: time,
-          task_type: taskType,
-          status: status,
-          file_link: attachments,
-          itemType: 'task',
-        };
-        updateTask(updatedTask);
+        if (isRestrictedEdit) {
+          const updatedTask = {
+            ...editingTask,
+            time_in_mins: time,
+            status: status,
+            file_link: attachments,
+            remarks: remarks,
+            itemType: 'task',
+          };
+          updateTask(updatedTask);
+        } else {
+          const updatedTask = {
+            ...editingTask,
+            task_name: taskName,
+            date: dueDate,
+            timeline: timeline,
+            time_in_mins: time,
+            task_type: taskType,
+            status: status,
+            file_link: attachments,
+            remarks: remarks,
+            itemType: 'task',
+          };
+          updateTask(updatedTask);
+        }
       }
     } else {
       if (isMeeting) {
@@ -371,32 +458,72 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
               // TASK FORM
               <>
                 {/* Task Name */}
-                <div className="field-box span-12">
+                <div className={`field-box span-12 ${isRestrictedEdit ? 'restricted-field' : ''}`}>
                   <label className="field-label required">Task Name</label>
-                  <input
-                    type="text"
-                    className="enhanced-input"
-                    placeholder="Enter task name"
-                    value={taskName}
-                    onChange={(e) => setTaskName(e.target.value)}
-                    required
-                  />
+                  <div className="custom-dropdown-container">
+                    <input
+                      type="text"
+                      className="enhanced-input"
+                      placeholder="Enter task name"
+                      value={taskName}
+                      onChange={(e) => setTaskName(e.target.value)}
+                      onFocus={() => !isRestrictedEdit && setShowSuggestions(true)}
+                      onBlur={(e) => {
+                        // Don't hide if clicking on dropdown items
+                        const relatedTarget = e.relatedTarget;
+                        if (relatedTarget && relatedTarget.closest('.custom-suggestions-dropdown')) {
+                          return;
+                        }
+                        setTimeout(() => setShowSuggestions(false), 200);
+                      }}
+                      disabled={isRestrictedEdit}
+                      readOnly={isRestrictedEdit}
+                      title={isRestrictedEdit ? "This field is restricted and cannot be edited" : ""}
+                      required
+                    />
+                    {!isRestrictedEdit && showSuggestions && taskSuggestions.length > 0 && (
+                      <div
+                        className="custom-suggestions-dropdown"
+                        onMouseDown={(e) => e.preventDefault()} // Prevent blur when clicking dropdown
+                      >
+                        {taskSuggestions.map((suggestion, index) => (
+                          <div
+                            key={index}
+                            className="suggestion-item"
+                            onClick={() => {
+                              setTaskName(suggestion.task_name);
+                              setTaskType(suggestion.task_type);
+                              // Keep date as today, status as default "Not Started"
+                              setShowSuggestions(false);
+                            }}
+                          >
+                            <span className="suggestion-text">{suggestion.task_name}</span>
+                            <span className="suggestion-status">{suggestion.status}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Date */}
-                <div className="field-box span-6">
+                <div className={`field-box span-6 ${isRestrictedEdit ? 'restricted-field' : ''}`}>
                   <label className="field-label required">Date</label>
                   <input
                     type="date"
                     className="enhanced-input"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
+                    min={getTodayDate()}
+                    disabled={isRestrictedEdit}
+                    readOnly={isRestrictedEdit}
+                    title={isRestrictedEdit ? "This field is restricted and cannot be edited" : ""}
                     required
                   />
                 </div>
 
                 {/* Timeline */}
-                <div className="field-box span-6">
+                <div className={`field-box span-6 ${isRestrictedEdit ? 'restricted-field' : ''}`}>
                   <label className="field-label">Timeline</label>
                   <input
                     type="date"
@@ -404,6 +531,10 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     placeholder="Select timeline date"
                     value={timeline}
                     onChange={(e) => setTimeline(e.target.value)}
+                    min={getTodayDate()}
+                    disabled={isRestrictedEdit}
+                    readOnly={isRestrictedEdit}
+                    title={isRestrictedEdit ? "This field is restricted and cannot be edited" : ""}
                   />
                 </div>
 
@@ -420,9 +551,9 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                 </div>
 
                 {/* Task Type */}
-                <div className="field-box span-6">
+                <div className={`field-box span-6 ${isRestrictedEdit ? 'restricted-field' : ''}`}>
                   <label className="field-label">Task Type</label>
-                  <select className="enhanced-select" value={taskType} onChange={(e) => setTaskType(e.target.value)}>
+                  <select className="enhanced-select" value={taskType} onChange={(e) => setTaskType(e.target.value)} disabled={isRestrictedEdit} title={isRestrictedEdit ? "This field is restricted and cannot be edited" : ""}>
                     <option>Fixed</option>
                     <option>Variable</option>
                     <option>HOD Assigned</option>
@@ -490,6 +621,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     className="enhanced-input"
                     value={meetingDate}
                     onChange={(e) => setMeetingDate(e.target.value)}
+                    min={getTodayDate()}
                     required
                   />
                 </div>
@@ -515,13 +647,69 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                 {/* Coperson */}
                 <div className="field-box span-6">
                   <label className="field-label">Coperson</label>
-                  <input
-                    type="text"
-                    className="enhanced-input"
-                    placeholder="Enter co-person name"
-                    value={participants}
-                    onChange={(e) => setParticipants(e.target.value)}
-                  />
+                  <div className="coperson-dropdown-container">
+                    <input
+                      type="text"
+                      className="enhanced-input coperson-input"
+                      placeholder="Select co-persons"
+                      value={participants}
+                      onClick={() => setShowCoPersonDropdown(!showCoPersonDropdown)}
+                      readOnly
+                    />
+                    {showCoPersonDropdown && (
+                      <div className="dropdown-menu">
+                        {/* Special options */}
+                        <div className="dropdown-item">
+                          <label className="coperson-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={selectedCoPersons.includes('All')}
+                              onChange={() => handleCoPersonToggle('All')}
+                              className="coperson-checkbox"
+                            />
+                            <span className="coperson-name">All</span>
+                          </label>
+                        </div>
+                        <div className="dropdown-item">
+                          <label className="coperson-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={selectedCoPersons.includes('Other')}
+                              onChange={() => handleCoPersonToggle('Other')}
+                              className="coperson-checkbox"
+                            />
+                            <span className="coperson-name">Other</span>
+                          </label>
+                        </div>
+                        <div className="dropdown-item">
+                          <label className="coperson-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={selectedCoPersons.includes('Team Meet')}
+                              onChange={() => handleCoPersonToggle('Team Meet')}
+                              className="coperson-checkbox"
+                            />
+                            <span className="coperson-name">Team Meet</span>
+                          </label>
+                        </div>
+                        { (isMeeting ? meetingTeamMembers : teamMembers) && (isMeeting ? meetingTeamMembers : teamMembers).length > 0 ? (isMeeting ? meetingTeamMembers : teamMembers).map(member => (
+                          <div key={member.user_id} className="dropdown-item">
+                            <label className="coperson-checkbox-label">
+                              <input
+                                type="checkbox"
+                                checked={selectedCoPersons.includes(member.name)}
+                                onChange={() => handleCoPersonToggle(member.name)}
+                                className="coperson-checkbox"
+                              />
+                              <span className="coperson-name">{member.name}</span>
+                            </label>
+                          </div>
+                        )) : (
+                          <div className="dropdown-item disabled">No team members available</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Time in mins */}

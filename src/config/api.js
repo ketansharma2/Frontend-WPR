@@ -100,10 +100,13 @@ export const api = {
     }),
   
   // Tasks
-  getTasks: () => 
+  getTasks: () =>
     apiRequest(API_ENDPOINTS.TASKS),
-  
-  createTask: (taskData) => 
+
+  getTaskSuggestions: (userId) =>
+    apiRequest(buildApiUrl(API_ENDPOINTS.TASKS + '/suggestions/:userId', { userId })),
+
+  createTask: (taskData) =>
     apiRequest(API_ENDPOINTS.TASKS, {
       method: 'POST',
       body: JSON.stringify(taskData)
@@ -136,11 +139,14 @@ export const api = {
       body: JSON.stringify(meetingData)
     }),
   
-  deleteMeeting: (meetingId) => 
+  deleteMeeting: (meetingId) =>
     apiRequest(buildApiUrl(API_ENDPOINTS.MEETINGS, { meetingId }), {
       method: 'DELETE'
     }),
-  
+
+  getMeetingsMembers: () =>
+    apiRequest(API_ENDPOINTS.MEETINGS + '/members'),
+
   // Admin - Users
   getUsers: () =>
     apiRequest(API_ENDPOINTS.ADMIN_USERS),

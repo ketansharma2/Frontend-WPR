@@ -70,7 +70,6 @@ const SelfVsAssignedPieChart = ({ data }) => {
             <Cell key={`cell-${index}`} fill={entry.color} />
           ))}
         </Pie>
-        <Tooltip content={<CustomTooltip />} />
         <Legend
           verticalAlign="bottom"
           align="center"
