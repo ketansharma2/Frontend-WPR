@@ -102,7 +102,7 @@ const AdminHome = ({ onLogout }) => {
    const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
    const [editingTask, setEditingTask] = useState(null);
    const [filter, setFilter] = useState('task');
-   const [taskDateFilter, setTaskDateFilter] = useState('all');
+   const [taskDateFilter, setTaskDateFilter] = useState('today');
    const [meetingDateFilter, setMeetingDateFilter] = useState('all');
    const [weeklyDateFilter, setWeeklyDateFilter] = useState('all');
    const [taskTypeFilter, setTaskTypeFilter] = useState('');
@@ -114,8 +114,8 @@ const AdminHome = ({ onLogout }) => {
    const [weeklyCategoryFilter, setWeeklyCategoryFilter] = useState('');
    const [weeklyViewTypeFilter, setWeeklyViewTypeFilter] = useState('all');
    const [weeklyTeamMemberFilter, setWeeklyTeamMemberFilter] = useState('');
-   const [taskViewTypeFilter, setTaskViewTypeFilter] = useState('self'); // 'self' or 'team' for tasks
-   const [taskTeamMemberFilter, setTaskTeamMemberFilter] = useState(''); // for team view tasks
+   const [taskViewTypeFilter, setTaskViewTypeFilter] = useState('all'); // 'self' or 'team' for tasks
+   const [taskTeamMemberFilter, setTaskTeamMemberFilter] = useState('all'); // for team view tasks
    const [meetingViewTypeFilter, setMeetingViewTypeFilter] = useState('self'); // 'self' or 'team' for meetings
    const [meetingTeamMemberFilter, setMeetingTeamMemberFilter] = useState(''); // for team view meetings
    const [teamMembers, setTeamMembers] = useState([]); // list of team members
