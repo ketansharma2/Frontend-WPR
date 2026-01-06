@@ -151,6 +151,7 @@ const AdminHome = ({ onLogout }) => {
    const [deptAnalyticsDeptFilter, setDeptAnalyticsDeptFilter] = useState('all');
    const [showDeptAnalyticsDeptDropdown, setShowDeptAnalyticsDeptDropdown] = useState(false);
    const [availableDepartments, setAvailableDepartments] = useState([]);
+   const [userCountsFromTasks, setUserCountsFromTasks] = useState({});
 
   useEffect(() => {
     // Get user profile from localStorage
@@ -192,6 +193,18 @@ const AdminHome = ({ onLogout }) => {
       }
     }
   }, [taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, userProfile]);
+
+  // Calculate user counts from tasks
+  useEffect(() => {
+    const counts = {};
+    tasks.forEach(task => {
+      const user = task.owner_name || task.assigned_by_user?.name;
+      if (user) {
+        counts[user] = (counts[user] || 0) + 1;
+      }
+    });
+    setUserCountsFromTasks(counts);
+  }, [tasks]);
 
   // Fetch data when user profile or dashboard view changes
   // useEffect(() => {
@@ -327,6 +340,7 @@ const AdminHome = ({ onLogout }) => {
       console.error('Error fetching departments:', error);
     }
   };
+
 
   // Fetch department analytics data
   const fetchDeptAnalytics = async () => {
@@ -833,165 +847,6 @@ const AdminHome = ({ onLogout }) => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case "dashboard":
-      default:
-        return (
-          <div style={{
-            backgroundColor: '#e0e0e0',
-            minHeight: '100vh'
-          }}>
-            <div className="professional-filter-bar">
-              <div className="filter-controls" style={{ gap: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '280px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#495057', whiteSpace: 'nowrap' }}>Date Range:</span>
-                  <input
-                    type="date"
-                    value={deptAnalyticsFromDate}
-                    onChange={(e) => setDeptAnalyticsFromDate(e.target.value)}
-                    style={{
-                      padding: '4px 6px',
-                      border: '1px solid #ced4da',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      width: '100px'
-                    }}
-                  />
-                  <span style={{ fontSize: '11px', color: '#6c757d' }}>to</span>
-                  <input
-                    type="date"
-                    value={deptAnalyticsToDate}
-                    onChange={(e) => setDeptAnalyticsToDate(e.target.value)}
-                    style={{
-                      padding: '4px 6px',
-                      border: '1px solid #ced4da',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      width: '100px'
-                    }}
-                  />
-                  {(deptAnalyticsFromDate || deptAnalyticsToDate) && (
-                    <button
-                      onClick={() => {
-                        setDeptAnalyticsFromDate('');
-                        setDeptAnalyticsToDate('');
-                      }}
-                      style={{
-                        padding: '4px 6px',
-                        background: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        cursor: 'pointer',
-                        marginLeft: '4px'
-                      }}
-                      title="Clear dates"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-                <div className="filter-dropdown">
-                  <button
-                    className={`filter-btn ${deptAnalyticsDeptFilter !== 'all' ? 'active' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeptAnalyticsDeptDropdown(!showDeptAnalyticsDeptDropdown);
-                    }}
-                  >
-                    Department: {deptAnalyticsDeptFilter === 'all' ? 'All' : deptAnalyticsDeptFilter}
-                    <FaChevronDown className="dropdown-arrow" />
-                  </button>
-                  {showDeptAnalyticsDeptDropdown && (
-                    <div className="dropdown-menu">
-                      <div className="dropdown-item" onClick={() => { setDeptAnalyticsDeptFilter('all'); setShowDeptAnalyticsDeptDropdown(false); }}>All</div>
-                      {availableDepartments.map(dept => (
-                        <div
-                          key={dept}
-                          className="dropdown-item"
-                          onClick={() => { setDeptAnalyticsDeptFilter(dept); setShowDeptAnalyticsDeptDropdown(false); }}
-                        >
-                          {dept}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Chart Display */}
-            <div style={{ padding: '20px 50px' }}>
-              <div style={{
-                display: 'flex',
-                gap: '20px',
-                marginTop: '20px',
-                marginBottom: '20px',
-                justifyContent: 'center',
-                flexWrap: 'wrap'
-              }}>
-                {/* Main Distribution Chart */}
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  flex: '1',
-                  minWidth: '300px'
-                }}>
-                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
-                    {deptAnalyticsDeptFilter === 'all' ? 'Department Task Distribution' : `Task Distribution - ${deptAnalyticsDeptFilter}`}
-                  </h4>
-                  {deptAnalyticsDeptFilter === 'all' ? (
-                    <DeptBreakdownChart data={deptAnalyticsData.dept_breakdown || {}} />
-                  ) : (
-                    <MemberBreakdownChart data={deptAnalyticsData.member_breakdown || {}} />
-                  )}
-                </div>
-
-                {/* Status Distribution Chart */}
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  flex: '1',
-                  minWidth: '300px'
-                }}>
-                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
-                    Task Status Distribution - {deptAnalyticsDeptFilter === 'all' ? 'All Departments' : deptAnalyticsDeptFilter}
-                  </h4>
-                  <DeptStatusChart key={deptAnalyticsDeptFilter} data={deptAnalyticsData} />
-                </div>
-              </div>
-
-              <div style={{
-                display: 'flex',
-                gap: '20px',
-                marginTop: '20px',
-                marginBottom: '20px',
-                justifyContent: 'center',
-                flexWrap: 'wrap'
-              }}>
-                {/* Self vs Assigned Tasks Chart */}
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  flex: '1',
-                  minWidth: '300px'
-                }}>
-                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
-                    Self vs Assigned Tasks - {deptAnalyticsDeptFilter === 'all' ? 'All Departments' : deptAnalyticsDeptFilter}
-                  </h4>
-                  {console.log('Rendering SelfVsAssignedPieChart with data:', { self: deptAnalyticsData.self_tasks || 0, assigned: deptAnalyticsData.assigned_tasks || 0 })}
-                  <SelfVsAssignedPieChart data={{ self: deptAnalyticsData.self_tasks || 0, assigned: deptAnalyticsData.assigned_tasks || 0 }} />
-                </div>
-              </div>
-            </div>
-          </div>
-        );
       case "tasks":
         return (
           <div style={{ marginTop: '20px' }}>
@@ -1082,9 +937,271 @@ const AdminHome = ({ onLogout }) => {
           </AdminUsersErrorBoundary>
         );
       case "individual-analytics":
-        return <IndividualAnalytics />;
+        return (<IndividualAnalytics />);
       case "rnr":
-        return <AdminRnR />;
+        return (<AdminRnR />);
+      default:
+        return (
+          <div style={{
+            backgroundColor: '#e0e0e0',
+            minHeight: '100vh'
+          }}>
+            <div className="professional-filter-bar">
+              <div className="filter-controls" style={{ gap: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '280px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#495057', whiteSpace: 'nowrap' }}>Date Range:</span>
+                  <input
+                    type="date"
+                    value={deptAnalyticsFromDate}
+                    onChange={(e) => setDeptAnalyticsFromDate(e.target.value)}
+                    style={{
+                      padding: '4px 6px',
+                      border: '1px solid #ced4da',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      width: '100px'
+                    }}
+                  />
+                  <span style={{ fontSize: '11px', color: '#6c757d' }}>to</span>
+                  <input
+                    type="date"
+                    value={deptAnalyticsToDate}
+                    onChange={(e) => setDeptAnalyticsToDate(e.target.value)}
+                    style={{
+                      padding: '4px 6px',
+                      border: '1px solid #ced4da',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      width: '100px'
+                    }}
+                  />
+                  {(deptAnalyticsFromDate || deptAnalyticsToDate) && (
+                    <button
+                      onClick={() => {
+                        setDeptAnalyticsFromDate('');
+                        setDeptAnalyticsToDate('');
+                      }}
+                      style={{
+                        padding: '4px 6px',
+                        background: '#dc3545',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        cursor: 'pointer',
+                        marginLeft: '4px'
+                      }}
+                      title="Clear dates"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <div className="filter-dropdown">
+                  <button
+                    className={`filter-btn ${deptAnalyticsDeptFilter !== 'all' ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDeptAnalyticsDeptDropdown(!showDeptAnalyticsDeptDropdown);
+                    }}
+                  >
+                    Department: {deptAnalyticsDeptFilter === 'all' ? 'All' : deptAnalyticsDeptFilter}
+                    <FaChevronDown className="dropdown-arrow" />
+                  </button>
+                  {showDeptAnalyticsDeptDropdown && (
+                    <div className="dropdown-menu">
+                      <div className="dropdown-item" onClick={() => { setDeptAnalyticsDeptFilter('all'); setShowDeptAnalyticsDeptDropdown(false); }}>All</div>
+                      {availableDepartments.map(dept => (
+                        <div
+                          key={dept}
+                          className="dropdown-item"
+                          onClick={() => { setDeptAnalyticsDeptFilter(dept); setShowDeptAnalyticsDeptDropdown(false); }}
+                        >
+                          {dept}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="dashboard-stats">
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
+                <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>Total Tasks</h3>
+                <p style={{ fontSize: '15px', margin: '0' }}>{(deptAnalyticsData.self_tasks || 0) + (deptAnalyticsData.assigned_tasks || 0)}</p>
+              </div>
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
+                <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>Self Tasks</h3>
+                <p style={{ fontSize: '15px', margin: '0' }}>{deptAnalyticsData.self_tasks || 0}</p>
+              </div>
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
+                <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>HOD Assigned Tasks</h3>
+                <p style={{ fontSize: '15px', margin: '0' }}>{deptAnalyticsData.assigned_tasks || 0}</p>
+              </div>
+            </div>
+
+            {/* Dept Wise Cards */}
+            <div className="dashboard-stats" style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+              {availableDepartments.map((dept) => {
+                const getDeptCount = () => {
+                  if (deptAnalyticsDeptFilter === 'all') {
+                    return deptAnalyticsData.dept_breakdown?.[dept] || 0;
+                  } else if (deptAnalyticsDeptFilter === dept) {
+                    // For the selected dept, sum the member breakdown counts
+                    return Object.values(deptAnalyticsData.member_breakdown || {}).reduce((sum, count) => sum + count, 0);
+                  } else {
+                    return 0;
+                  }
+                };
+                return (
+                  <div key={dept} className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px', flex: '1' }}>
+                    <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>{dept}</h3>
+                    <p style={{ fontSize: '15px', margin: '0' }}>{getDeptCount()}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* User and Status Cards */}
+            <div style={{ padding: '20px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                {/* User Wise Cards */}
+                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', maxWidth: '600px', flex: '1' }}>
+                  <h4 style={{ marginTop: 0, marginBottom: '10px', color: '#333', textAlign: 'center' }}>Member wise distribution</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 40px', listStyle: 'none', padding: '0', justifyContent: 'center' }}>
+                    {teamMembers.map((member) => (
+                      <div key={member.user_id} style={{ display: 'flex', alignItems: 'center', fontSize: '0.9rem', whiteSpace: 'nowrap', color: '#333' }}>
+                        <span style={{ color: '#666', marginRight: '12px', fontSize: '1rem' }}>•</span>
+                        {member.name} <span style={{ marginLeft: '8px', color: '#666' }}>{deptAnalyticsData.member_breakdown?.[member.name] || 0}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right side: Status and Task Type */}
+                <div style={{ flex: '1', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {/* Status Wise Distribution Card */}
+                  <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flex: '1', minWidth: '300px' }}>
+                    <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>Status wise distribution</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '10px' }}>
+                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#666' }}>Done</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.done || 0}</div>
+                      </div>
+                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#666' }}>In Progress</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.in_progress || 0}</div>
+                      </div>
+                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#666' }}>Not Started</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.not_started || 0}</div>
+                      </div>
+                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#666' }}>Cancelled</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.cancelled || 0}</div>
+                      </div>
+                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#666' }}>On Hold</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.on_hold || 0}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Task Type Distribution Card */}
+                  <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flex: '1', minWidth: '300px' }}>
+                    <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>Task type distribution</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#666' }}>Fixed</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.fixed || 0}</div>
+                      </div>
+                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#666' }}>Variable</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.variable || 0}</div>
+                      </div>
+                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#666' }}>HOD Assigned</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.hod_assigned || 0}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Chart Display */}
+            <div style={{ padding: '20px 50px' }}>
+              <div style={{
+                display: 'flex',
+                gap: '20px',
+                marginTop: '20px',
+                marginBottom: '20px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                {/* Main Distribution Chart */}
+                <div style={{
+                  background: 'white',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  flex: '1',
+                  minWidth: '300px'
+                }}>
+                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
+                    {deptAnalyticsDeptFilter === 'all' ? 'Department Task Distribution' : `Task Distribution - ${deptAnalyticsDeptFilter}`}
+                  </h4>
+                  {deptAnalyticsDeptFilter === 'all' ? (
+                    <DeptBreakdownChart data={deptAnalyticsData.dept_breakdown || {}} />
+                  ) : (
+                    <MemberBreakdownChart data={deptAnalyticsData.member_breakdown || {}} />
+                  )}
+                </div>
+
+                {/* Status Distribution Chart */}
+                <div style={{
+                  background: 'white',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  flex: '1',
+                  minWidth: '300px'
+                }}>
+                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
+                    Task Status Distribution - {deptAnalyticsDeptFilter === 'all' ? 'All Departments' : deptAnalyticsDeptFilter}
+                  </h4>
+                  <DeptStatusChart key={deptAnalyticsDeptFilter} data={deptAnalyticsData} />
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                gap: '20px',
+                marginTop: '20px',
+                marginBottom: '20px',
+                justifyContent: 'center',
+                flexWrap: 'wrap'
+              }}>
+                {/* Self vs Assigned Tasks Chart */}
+                <div style={{
+                  background: 'white',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  flex: '1',
+                  minWidth: '300px'
+                }}>
+                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
+                    Self vs Assigned Tasks - {deptAnalyticsDeptFilter === 'all' ? 'All Departments' : deptAnalyticsDeptFilter}
+                  </h4>
+                  <SelfVsAssignedPieChart data={{ self: deptAnalyticsData.self_tasks || 0, assigned: deptAnalyticsData.assigned_tasks || 0 }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
     }
   };
 
@@ -1094,8 +1211,7 @@ const AdminHome = ({ onLogout }) => {
         <p>Loading...</p>
       </div>
     );
-  }
-
+    }
   return (
     <div className="home-container">
       <Sidebar

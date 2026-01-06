@@ -1497,56 +1497,108 @@ const HodHome = ({ onLogout }) => {
                marginBottom: '10px',
                flexWrap: 'wrap'
              }}>
-               {/* HOD Card */}
-               <div style={{
-                 background: 'white',
-                 borderRadius: '6px',
-                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '10px 5px',
-                 flex: '1',
-                 minWidth: '120px',
-                 textAlign: 'center'
-               }}>
-                 <h3 style={{
-                   margin: '0 0 5px 0',
-                   fontSize: '15px',
-                   fontWeight: '600',
-                   color: '#374151'
-                 }}>{userProfile?.name || 'HOD'}</h3>
-                 <div style={{
-                   fontSize: '15px',
-                   fontWeight: 'bold',
-                   color: '#8b5cf6'
-                 }}>{filteredTasks.filter(t => t.category === 'self').length}</div>
-               </div>
+               {/* Calculate member counts from tasks filtered only by date */}
+               {(() => {
+                 const dateFilteredTasks = dashboardTasks.filter(task => {
+                   // Date filter only
+                   const taskDate = new Date(task.date);
+                   const today = new Date();
+                   const yesterday = new Date(today);
+                   yesterday.setDate(yesterday.getDate() - 1);
 
-               {/* Team Member Cards */}
-               {[...teamMembers].sort((a, b) => a.name.localeCompare(b.name)).map(member => {
-                 const memberTasks = filteredTasks.filter(t => t.category === 'assigned' && t.users?.user_id === member.user_id).length;
+                   // For past_week: last week's Monday to Saturday
+                   const dayOfWeek = today.getDay();
+                   const daysToLastSaturday = (dayOfWeek + 1) % 7;
+                   const lastSaturday = new Date(today);
+                   lastSaturday.setDate(today.getDate() - daysToLastSaturday);
+                   const lastMonday = new Date(lastSaturday);
+                   lastMonday.setDate(lastSaturday.getDate() - 5);
+
+                   // For past_month: first to last of last month
+                   const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                   const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+
+                   // For all: current month
+                   const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                   const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+                   if (dashboardDateFilter === 'today' && taskDate.toDateString() !== today.toDateString()) return false;
+                   if (dashboardDateFilter === 'yesterday' && taskDate.toDateString() !== yesterday.toDateString()) return false;
+                   if (dashboardDateFilter === 'past_week' && (taskDate < lastMonday || taskDate > lastSaturday)) return false;
+                   if (dashboardDateFilter === 'past_month' && (taskDate < firstOfLastMonth || taskDate > lastOfLastMonth)) return false;
+                   if (dashboardDateFilter === 'all' && (taskDate < startOfCurrentMonth || taskDate > endOfCurrentMonth)) return false;
+
+                   return true;
+                 });
+
+                 const memberCounts = {};
+                 dateFilteredTasks.forEach(task => {
+                   let userId;
+                   if (task.category === 'self') {
+                     userId = task.user_id;
+                   } else if (task.category === 'assigned') {
+                     userId = task.assigned_to;
+                   }
+                   if (userId) {
+                     memberCounts[userId] = (memberCounts[userId] || 0) + 1;
+                   }
+                 });
+
                  return (
-                   <div key={member.user_id} style={{
-                     background: 'white',
-                     borderRadius: '6px',
-                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                     padding: '10px 5px',
-                     flex: '1',
-                     minWidth: '120px',
-                     textAlign: 'center'
-                   }}>
-                     <h3 style={{
-                       margin: '0 0 5px 0',
-                       fontSize: '15px',
-                       fontWeight: '600',
-                       color: '#374151'
-                     }}>{member.name}</h3>
+                   <>
+                     {/* HOD Card */}
                      <div style={{
-                       fontSize: '15px',
-                       fontWeight: 'bold',
-                       color: '#8b5cf6'
-                     }}>{memberTasks}</div>
-                   </div>
+                       background: 'white',
+                       borderRadius: '6px',
+                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                       padding: '10px 5px',
+                       flex: '1',
+                       minWidth: '120px',
+                       textAlign: 'center'
+                     }}>
+                       <h3 style={{
+                         margin: '0 0 5px 0',
+                         fontSize: '15px',
+                         fontWeight: '600',
+                         color: '#374151'
+                       }}>{userProfile?.name || 'HOD'}</h3>
+                       <div style={{
+                         fontSize: '15px',
+                         fontWeight: 'bold',
+                         color: '#8b5cf6'
+                       }}>{memberCounts[userProfile?.user_id] || 0}</div>
+                     </div>
+
+                     {/* Team Member Cards */}
+                     {[...teamMembers].sort((a, b) => a.name.localeCompare(b.name)).map(member => {
+                       const memberTasks = memberCounts[member.user_id] || 0;
+                       return (
+                         <div key={member.user_id} style={{
+                           background: 'white',
+                           borderRadius: '6px',
+                           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                           padding: '10px 5px',
+                           flex: '1',
+                           minWidth: '120px',
+                           textAlign: 'center'
+                         }}>
+                           <h3 style={{
+                             margin: '0 0 5px 0',
+                             fontSize: '15px',
+                             fontWeight: '600',
+                             color: '#374151'
+                           }}>{member.name}</h3>
+                           <div style={{
+                             fontSize: '15px',
+                             fontWeight: 'bold',
+                             color: '#8b5cf6'
+                           }}>{memberTasks}</div>
+                         </div>
+                       );
+                     })}
+                   </>
                  );
-               })}
+               })()}
              </div>
 
              {/* Task Type Distribution Heading */}
@@ -1565,74 +1617,113 @@ const HodHome = ({ onLogout }) => {
                marginBottom: '10px',
                flexWrap: 'wrap'
              }}>
-               {/* Fixed Card */}
-               <div style={{
-                 background: 'white',
-                 borderRadius: '6px',
-                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '10px 5px',
-                 flex: '1',
-                 minWidth: '120px',
-                 textAlign: 'center'
-               }}>
-                 <h3 style={{
-                   margin: '0 0 5px 0',
-                   fontSize: '15px',
-                   fontWeight: '600',
-                   color: '#374151'
-                 }}>Fixed</h3>
-                 <div style={{
-                   fontSize: '15px',
-                   fontWeight: 'bold',
-                   color: '#059669'
-                 }}>{filteredTasks.filter(t => t.task_type === 'Fixed').length}</div>
-               </div>
+               {/* Calculate task type counts from tasks filtered only by date */}
+               {(() => {
+                 const dateFilteredTasks = dashboardTasks.filter(task => {
+                   // Date filter only
+                   const taskDate = new Date(task.date);
+                   const today = new Date();
+                   const yesterday = new Date(today);
+                   yesterday.setDate(yesterday.getDate() - 1);
 
-               {/* Variable Card */}
-               <div style={{
-                 background: 'white',
-                 borderRadius: '6px',
-                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '10px 5px',
-                 flex: '1',
-                 minWidth: '120px',
-                 textAlign: 'center'
-               }}>
-                 <h3 style={{
-                   margin: '0 0 5px 0',
-                   fontSize: '15px',
-                   fontWeight: '600',
-                   color: '#374151'
-                 }}>Variable</h3>
-                 <div style={{
-                   fontSize: '15px',
-                   fontWeight: 'bold',
-                   color: '#dc2626'
-                 }}>{filteredTasks.filter(t => t.task_type === 'Variable').length}</div>
-               </div>
+                   // For past_week: last week's Monday to Saturday
+                   const dayOfWeek = today.getDay();
+                   const daysToLastSaturday = (dayOfWeek + 1) % 7;
+                   const lastSaturday = new Date(today);
+                   lastSaturday.setDate(today.getDate() - daysToLastSaturday);
+                   const lastMonday = new Date(lastSaturday);
+                   lastMonday.setDate(lastSaturday.getDate() - 5);
 
-               {/* HOD Assigned Card */}
-               <div style={{
-                 background: 'white',
-                 borderRadius: '6px',
-                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                 padding: '10px 5px',
-                 flex: '1',
-                 minWidth: '120px',
-                 textAlign: 'center'
-               }}>
-                 <h3 style={{
-                   margin: '0 0 5px 0',
-                   fontSize: '15px',
-                   fontWeight: '600',
-                   color: '#374151'
-                 }}>HOD Assigned</h3>
-                 <div style={{
-                   fontSize: '15px',
-                   fontWeight: 'bold',
-                   color: '#7c3aed'
-                 }}>{filteredTasks.filter(t => t.task_type === 'HOD Assigned').length}</div>
-               </div>
+                   // For past_month: first to last of last month
+                   const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                   const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+
+                   // For all: current month
+                   const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                   const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+                   if (dashboardDateFilter === 'today' && taskDate.toDateString() !== today.toDateString()) return false;
+                   if (dashboardDateFilter === 'yesterday' && taskDate.toDateString() !== yesterday.toDateString()) return false;
+                   if (dashboardDateFilter === 'past_week' && (taskDate < lastMonday || taskDate > lastSaturday)) return false;
+                   if (dashboardDateFilter === 'past_month' && (taskDate < firstOfLastMonth || taskDate > lastOfLastMonth)) return false;
+                   if (dashboardDateFilter === 'all' && (taskDate < startOfCurrentMonth || taskDate > endOfCurrentMonth)) return false;
+
+                   return true;
+                 });
+
+                 return (
+                   <>
+                     {/* Fixed Card */}
+                     <div style={{
+                       background: 'white',
+                       borderRadius: '6px',
+                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                       padding: '10px 5px',
+                       flex: '1',
+                       minWidth: '120px',
+                       textAlign: 'center'
+                     }}>
+                       <h3 style={{
+                         margin: '0 0 5px 0',
+                         fontSize: '15px',
+                         fontWeight: '600',
+                         color: '#374151'
+                       }}>Fixed</h3>
+                       <div style={{
+                         fontSize: '15px',
+                         fontWeight: 'bold',
+                         color: '#059669'
+                       }}>{dateFilteredTasks.filter(t => t.task_type === 'Fixed').length}</div>
+                     </div>
+
+                     {/* Variable Card */}
+                     <div style={{
+                       background: 'white',
+                       borderRadius: '6px',
+                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                       padding: '10px 5px',
+                       flex: '1',
+                       minWidth: '120px',
+                       textAlign: 'center'
+                     }}>
+                       <h3 style={{
+                         margin: '0 0 5px 0',
+                         fontSize: '15px',
+                         fontWeight: '600',
+                         color: '#374151'
+                       }}>Variable</h3>
+                       <div style={{
+                         fontSize: '15px',
+                         fontWeight: 'bold',
+                         color: '#dc2626'
+                       }}>{dateFilteredTasks.filter(t => t.task_type === 'Variable').length}</div>
+                     </div>
+
+                     {/* HOD Assigned Card */}
+                     <div style={{
+                       background: 'white',
+                       borderRadius: '6px',
+                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                       padding: '10px 5px',
+                       flex: '1',
+                       minWidth: '120px',
+                       textAlign: 'center'
+                     }}>
+                       <h3 style={{
+                         margin: '0 0 5px 0',
+                         fontSize: '15px',
+                         fontWeight: '600',
+                         color: '#374151'
+                       }}>HOD Assigned</h3>
+                       <div style={{
+                         fontSize: '15px',
+                         fontWeight: 'bold',
+                         color: '#7c3aed'
+                       }}>{dateFilteredTasks.filter(t => t.task_type === 'HOD Assigned').length}</div>
+                     </div>
+                   </>
+                 );
+               })()}
              </div>
            </div>
 
@@ -1764,7 +1855,7 @@ const HodHome = ({ onLogout }) => {
                  </thead>
                  <tbody>
                    {(() => {
-                     const filteredTasks = tasks.filter(task => {
+                     const filteredTasks = dashboardTasks.filter(task => {
                        // Date filter
                        if (dashboardDateFilter !== 'all') {
                          const taskDate = new Date(task.date);
@@ -1792,13 +1883,17 @@ const HodHome = ({ onLogout }) => {
                        if (dashboardCategoryFilter && task.category !== dashboardCategoryFilter) return false;
 
                        // Team member filter
-                       if (dashboardTeamMemberFilter) {
-                         if (dashboardTeamMemberFilter === 'all') {
-                           if (task.category !== 'assigned') return false;
-                         } else {
-                           if (task.category !== 'assigned' || task.users?.user_id !== dashboardTeamMemberFilter) return false;
+                       if (dashboardViewType === 'all') {
+                         // For 'all team members' view, show all tasks (both self and assigned)
+                         // No additional filtering needed as backend already filtered
+                       } else if (dashboardViewType === 'team') {
+                         if (dashboardTeamMemberFilter) {
+                           // For specific team member, show their self tasks and tasks assigned to them
+                           if (task.category === 'self' && task.user_id !== dashboardTeamMemberFilter) return false;
+                           if (task.category === 'assigned' && task.assigned_to !== dashboardTeamMemberFilter) return false;
                          }
                        } else {
+                         // For 'self' view, show only self tasks
                          if (task.category !== 'self') return false;
                        }
 

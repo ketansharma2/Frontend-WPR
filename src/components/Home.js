@@ -11,7 +11,7 @@ import DateToggleSwitch from './DateToggleSwitch';
 import TaskHistoryPopup from './TaskHistoryPopup';
 import RnR from './RnR';
 import { api } from '../config/api';
-import { FaEllipsisV } from 'react-icons/fa';
+import { FaEllipsisV, FaExternalLinkAlt } from 'react-icons/fa';
 import './Home.css';
 
 
@@ -388,6 +388,7 @@ const Home = ({ onLogout }) => {
         setYesterdayTasks([]);
         setYesterdayMeetings([]);
         setYesterdayDate(null);
+        setIsRemarksRequired(false); // Allow auto-populate to run
         console.log("No working days found in last 30 days");
       }
     } catch (err) {
@@ -395,6 +396,7 @@ const Home = ({ onLogout }) => {
       setYesterdayTasks([]);
       setYesterdayMeetings([]);
       setYesterdayDate(null);
+      setIsRemarksRequired(false); // Allow auto-populate to run even on error
     }
   };
 
@@ -426,7 +428,7 @@ const Home = ({ onLogout }) => {
           date: task.date,
           dept: task.dept,
           co_person: task.co_person,
-          time: task.time_in_mins,
+          time: task.time,
           prop_slot: task.prop_slot,
           status: task.status || 'Scheduled',
           notes: task.notes
@@ -488,6 +490,30 @@ const Home = ({ onLogout }) => {
             return [...prevTasks, newTask];
           }
         });
+
+        // Also update todayTasks or yesterdayTasks for dashboard display
+        const today = new Date().toISOString().split('T')[0];
+        console.log('DEBUG: newTask.date:', newTask.date);
+        console.log('DEBUG: today:', today);
+        console.log('DEBUG: yesterdayDate:', yesterdayDate);
+        console.log('DEBUG: newTask.itemType:', newTask.itemType);
+        if (newTask.date === today) {
+          console.log('DEBUG: Updating today state');
+          if (newTask.itemType === 'task') {
+            setTodayTasks(prev => [...prev, newTask]);
+          } else {
+            setTodayMeetings(prev => [...prev, newTask]);
+          }
+        } else if (newTask.date === yesterdayDate) {
+          console.log('DEBUG: Updating yesterday state');
+          if (newTask.itemType === 'task') {
+            setYesterdayTasks(prev => [...prev, newTask]);
+          } else {
+            setYesterdayMeetings(prev => [...prev, newTask]);
+          }
+        } else {
+          console.log('DEBUG: No state update for dashboard - date does not match today or yesterday');
+        }
         
         if (task.itemType === 'task') setFilter('task');
         else if (task.itemType === 'meeting') setFilter('meeting');
@@ -584,19 +610,19 @@ const Home = ({ onLogout }) => {
           // Update todayTasks
           if (updatedTask.itemType === 'task') {
             setTodayTasks(prev => prev.map(task => {
-              const isMatch = task.task_id === updatedTask.task_id || task._id === updatedTask._id;
+              const isMatch = task.task_id === updatedTask.task_id;
               return isMatch ? { ...task, ...updatedTask, ...updatedTaskData } : task;
             }));
           } else {
             setTodayMeetings(prev => prev.map(meeting => {
-              const isMatch = meeting.meeting_id === updatedTask.meeting_id || meeting._id === updatedTask._id;
+              const isMatch = meeting.meeting_id === updatedTask.meeting_id;
               return isMatch ? { ...meeting, ...updatedTask, ...updatedTaskData } : meeting;
             }));
           }
         } else {
           // Update yesterdayTasks
           setYesterdayTasks(prev => prev.map(task => {
-            const isMatch = task.task_id === updatedTask.task_id || task._id === updatedTask._id;
+            const isMatch = task.task_id === updatedTask.task_id;
             return isMatch ? { ...task, ...updatedTask, ...updatedTaskData } : task;
           }));
         }
@@ -1040,6 +1066,15 @@ const Home = ({ onLogout }) => {
                       fontWeight: '600',
                       fontSize: '14px',
                       color: 'black',
+                      borderRight: '1px solid #e5e7eb',
+                      width: '150px'
+                    }}>Remarks</th>
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'black',
                       width: '80px'
                     }}>Link</th>
                     <th style={{
@@ -1060,7 +1095,7 @@ const Home = ({ onLogout }) => {
                         borderBottom: '1px solid #e2e8f0'
                       }}>
                         <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
-                        <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{task.task_name || task.name}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500', textAlign: 'left' }}>{task.task_name || task.name}</td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{formatDate(task.timeline) || 'N/A'}</td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{task.task_type || 'work'}</td>
                         <td style={{ padding: '8px 12px' }}>
@@ -1080,10 +1115,13 @@ const Home = ({ onLogout }) => {
                         <td style={{ padding: '8px 12px', color: '#374151' }}>
                           {task.time_in_mins || task.time || 'N/A'}
                         </td>
+                        <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'left' }}>
+                          {task.remarks ? (task.remarks.length > 15 ? `${task.remarks.substring(0, 15)}...` : task.remarks) : 'N/A'}
+                        </td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>
                           {task.file_link ? (
                             <a href={task.file_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
-                              Link
+                              <FaExternalLinkAlt style={{ fontSize: '14px' }} />
                             </a>
                           ) : 'N/A'}
                         </td>
@@ -1110,6 +1148,17 @@ const Home = ({ onLogout }) => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  const today = new Date().toISOString().split('T')[0];
+                                  const yesterday = new Date();
+                                  yesterday.setDate(yesterday.getDate() - 1);
+                                  const yesterdayStr = yesterday.toISOString().split('T')[0];
+                                  const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
+                                  const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
+                                  if (isBeforeYesterday && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
+                                    alert(`You can't edit tasks from before yesterday`);
+                                    setMenuOpen(null);
+                                    return;
+                                  }
                                   editTask(task);
                                   setMenuOpen(null);
                                 }}
@@ -1151,7 +1200,7 @@ const Home = ({ onLogout }) => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="9" style={{
+                      <td colSpan="10" style={{
                         padding: '40px 16px',
                         textAlign: 'center',
                         color: '#6b7280'
@@ -1332,7 +1381,7 @@ const Home = ({ onLogout }) => {
                         borderBottom: '1px solid #e2e8f0'
                       }}>
                         <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
-                        <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{meeting.meeting_name || meeting.name}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500', textAlign: 'left' }}>{meeting.meeting_name || meeting.name}</td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.dept || 'N/A'}</td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.co_person || 'N/A'}</td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.time || 'N/A'}</td>
@@ -1351,7 +1400,7 @@ const Home = ({ onLogout }) => {
                             {meeting.status}
                           </span>
                         </td>
-                        <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.notes || 'N/A'}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.notes ? (meeting.notes.length > 10 ? `${meeting.notes.substring(0, 10)}...` : meeting.notes) : 'N/A'}</td>
                         <td style={{ padding: '6px 8px', textAlign: 'center', position: 'relative' }}>
                           <FaEllipsisV
                             className="menu-icon"
@@ -1376,10 +1425,13 @@ const Home = ({ onLogout }) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const today = new Date().toISOString().split('T')[0];
+                                  const yesterday = new Date();
+                                  yesterday.setDate(yesterday.getDate() - 1);
+                                  const yesterdayStr = yesterday.toISOString().split('T')[0];
                                   const taskDate = meeting.date ? new Date(meeting.date).toISOString().split('T')[0] : null;
-                                  const isPastDate = taskDate !== today;
-                                  if (isPastDate && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
-                                    alert(`You can't edit past meetings`);
+                                  const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
+                                  if (isBeforeYesterday && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
+                                    alert(`You can't edit meetings from before yesterday`);
                                     setMenuOpen(null);
                                     return;
                                   }

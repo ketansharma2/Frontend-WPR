@@ -79,6 +79,8 @@ const RnR = () => {
         url += `?user_id=${userId}`;
       }
 
+      console.log('DEBUG: fetchFixedTasks called with userId:', userId, 'URL:', url);
+
       const response = await fetch(url, {
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -88,7 +90,10 @@ const RnR = () => {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('DEBUG: fetchFixedTasks response:', result);
         setFixedTasks(result || []);
+      } else {
+        console.error('DEBUG: fetchFixedTasks failed with status:', response.status);
       }
     } catch (error) {
       console.error('Error fetching fixed tasks:', error);

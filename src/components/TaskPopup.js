@@ -127,7 +127,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         setParticipants(coPersonValue);
         // Parse comma-separated co-persons into array for checkbox state
         setSelectedCoPersons(coPersonValue ? coPersonValue.split(',').map(name => name.trim()).filter(name => name) : []);
-        setMeetingTime(editingTask.time_in_mins || '');
+        setMeetingTime(editingTask.time || '');
         setTimeSlot(editingTask.prop_slot || editingTask.timeSlot || '');
         setMeetingStatus(editingTask.status || 'Scheduled');
         setAgenda(editingTask.notes || editingTask.agenda || '');
@@ -230,7 +230,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
           date: meetingDate,
           dept: dept,
           co_person: participants,
-          time_in_mins: meetingTime,
+          time: meetingTime,
           prop_slot: timeSlot,
           status: meetingStatus,
           notes: agenda,
@@ -273,7 +273,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
           date: meetingDate,
           dept: dept,
           co_person: participants,
-          time_in_mins: meetingTime,
+          time: meetingTime,
           prop_slot: timeSlot,
           status: meetingStatus,
           notes: agenda,
