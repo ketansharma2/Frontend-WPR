@@ -68,6 +68,11 @@ const HodHome = ({ onLogout }) => {
   const [showDashboardCategoryDropdown, setShowDashboardCategoryDropdown] = useState(false);
   const [showDashboardTeamMemberDropdown, setShowDashboardTeamMemberDropdown] = useState(false);
   const [menuOpen, setMenuOpen] = useState(null);
+  const [hasAutoPopulated, setHasAutoPopulated] = useState(false);
+  const [isRemarksRequired, setIsRemarksRequired] = useState(null);
+  const [yesterdayTasks, setYesterdayTasks] = useState([]);
+  const [yesterdayMeetings, setYesterdayMeetings] = useState([]);
+  const [yesterdayDate, setYesterdayDate] = useState(null);
 
   // Fetch HOD data from backend
   async function fetchHodData(taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, category = 'all', dateFilter = 'all', showLoading = true) {
@@ -320,6 +325,85 @@ const HodHome = ({ onLogout }) => {
     }
   };
 
+  // Auto-populate fixed tasks for team members
+  const autoPopulateFixedTasks = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/hod/fixed-tasks/auto-populate`, {
+        method: 'POST',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('HOD Auto-populate result:', result);
+        if (result.populated_tasks?.length > 0) {
+          alert(`✅ Success: ${result.populated_tasks.length} fixed tasks populated for team members today!`);
+        }
+        // Refresh dashboard data
+        fetchHodDashboardData();
+      } else {
+        const error = await response.json();
+        alert(`❌ Failed: ${error.error || 'Unknown error occurred'}`);
+      }
+    } catch (error) {
+      console.error('Error auto-populating fixed tasks:', error);
+      alert('❌ Failed: Network error while auto-populating tasks');
+    }
+  };
+
+  // Fetch last working day's tasks and meetings for remarks check
+  const fetchLastWorkingDayData = async () => {
+    try {
+      const profile = JSON.parse(localStorage.getItem("profile"));
+      if (!profile?.user_id) return;
+
+      // For HOD, we need to check remarks for all team members
+      const workingDayData = await api.getLastWorkingDayTasks(profile.user_id);
+
+      if (workingDayData.found) {
+        // Get tasks from the response (only self_tasks now)
+        const tasks = workingDayData.tasks;
+
+        // Fetch meetings for the same date
+        const meetingsData = await api.getMeetingsByDate(profile.user_id, workingDayData.date);
+        const meetings = meetingsData.meetings || [];
+
+        setYesterdayTasks(tasks);
+        setYesterdayMeetings(meetings);
+        setYesterdayDate(workingDayData.date);
+
+        // Check if any yesterday's tasks have unfilled remarks
+        const hasUnfilledRemarks = tasks.some(task => !task.remarks || task.remarks.trim() === '');
+        setIsRemarksRequired(hasUnfilledRemarks);
+
+        console.log(`Found last working day: ${workingDayData.date} (${workingDayData.days_back} days back)`);
+        console.log(`Tasks: ${tasks.length}, Meetings: ${meetings.length}, Remarks required: ${hasUnfilledRemarks}`);
+      } else {
+        // No working days found, allow auto-populate
+        setYesterdayTasks([]);
+        setYesterdayMeetings([]);
+        setYesterdayDate(null);
+        setIsRemarksRequired(false);
+        console.log("No working days found in last 30 days");
+      }
+    } catch (err) {
+      console.error("Error fetching last working day data:", err);
+      setYesterdayTasks([]);
+      setYesterdayMeetings([]);
+      setYesterdayDate(null);
+      setIsRemarksRequired(false); // Allow auto-populate even on error
+    }
+  };
+
   // Fetch weekly report data
   const fetchWeeklyData = useCallback(async (filters = {}, showLoading = true) => {
     try {
@@ -373,7 +457,7 @@ const HodHome = ({ onLogout }) => {
     } else {
       setError("No user profile found");
     }
-    fetchHodData('self', '', 'self', '', 'all', true);
+    fetchHodData('self', '', 'self', '', 'all', 'all', true);
     fetchHodDashboardData('self'); // Fetch dashboard data on mount
     fetchTeamMembers(); // Fetch team members on mount
   }, []);
@@ -431,16 +515,31 @@ const HodHome = ({ onLogout }) => {
   }, [dashboardViewType, dashboardTeamMemberFilter, userProfile]);
 
    // Refetch tasks and meetings data when dashboard view type or team member changes
+    useEffect(() => {
+      if (userProfile) {
+        setDashboardTasks([]); // Clear tasks to show loading state
+        const taskViewType = dashboardViewType === 'all' ? 'all' : dashboardViewType;
+        const taskTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
+        const meetingViewType = dashboardViewType === 'all' ? 'all' : dashboardViewType;
+        const meetingTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
+        fetchDashboardTasks(taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, 'all', false);
+      }
+    }, [dashboardViewType, dashboardTeamMemberFilter, userProfile]);
+
+   // Check remarks requirement when dashboard loads
    useEffect(() => {
-     if (userProfile) {
-       setDashboardTasks([]); // Clear tasks to show loading state
-       const taskViewType = dashboardViewType === 'all' ? 'all' : dashboardViewType;
-       const taskTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
-       const meetingViewType = dashboardViewType === 'all' ? 'all' : dashboardViewType;
-       const meetingTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
-       fetchDashboardTasks(taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, 'all', false);
+     if (userProfile?.user_id && currentPage === 'dashboard' && isRemarksRequired === null) {
+       fetchLastWorkingDayData();
      }
-   }, [dashboardViewType, dashboardTeamMemberFilter, userProfile]);
+   }, [userProfile, currentPage, isRemarksRequired]);
+
+   // Auto-populate fixed tasks when dashboard loads and remarks are checked
+   useEffect(() => {
+     if (userProfile?.user_id && currentPage === 'dashboard' && !hasAutoPopulated && isRemarksRequired === false) {
+       autoPopulateFixedTasks();
+       setHasAutoPopulated(true);
+     }
+   }, [userProfile, currentPage, hasAutoPopulated, isRemarksRequired]);
 
 
 
@@ -963,6 +1062,7 @@ const HodHome = ({ onLogout }) => {
         currentView={currentPage}
         onLogout={handleLogout}
         user={userProfile}
+        isAddDisabled={isRemarksRequired}
       />
 
       {/* Error display - positioned to not affect layout */}
@@ -2013,10 +2113,21 @@ const HodHome = ({ onLogout }) => {
                                    const yesterdayStr = yesterday.toISOString().split('T')[0];
                                    const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
                                    const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
-                                   if (isBeforeYesterday && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
-                                     alert(`You can't edit tasks from before yesterday`);
-                                     setMenuOpen(null);
-                                     return;
+
+                                   // For HOD users, allow editing yesterday's tasks but not tasks from before yesterday
+                                   if (userProfile?.user_type === 'hod' || userProfile?.user_type === 'HOD') {
+                                     if (isBeforeYesterday) {
+                                       alert(`HOD can only edit today's and yesterday's tasks`);
+                                       setMenuOpen(null);
+                                       return;
+                                     }
+                                   } else {
+                                     // For regular users, same restriction as before
+                                     if (isBeforeYesterday) {
+                                       alert(`You can't edit tasks from before yesterday`);
+                                       setMenuOpen(null);
+                                       return;
+                                     }
                                    }
                                    editTask(task);
                                    setMenuOpen(null);
@@ -2250,12 +2361,27 @@ const HodHome = ({ onLogout }) => {
                                onClick={(e) => {
                                  e.stopPropagation();
                                  const today = new Date().toISOString().split('T')[0];
+                                 const yesterday = new Date();
+                                 yesterday.setDate(yesterday.getDate() - 1);
+                                 const yesterdayStr = yesterday.toISOString().split('T')[0];
                                  const meetingDate = meeting.date ? new Date(meeting.date).toISOString().split('T')[0] : null;
-                                 const isPastDate = meetingDate !== today;
-                                 if (isPastDate && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
-                                   alert(`You can't edit past meetings`);
-                                   setMenuOpen(null);
-                                   return;
+                                 const isBeforeYesterday = meetingDate && meetingDate < yesterdayStr;
+
+                                 // For HOD users, allow editing yesterday's meetings but not meetings from before yesterday
+                                 if (userProfile?.user_type === 'hod' || userProfile?.user_type === 'HOD') {
+                                   if (isBeforeYesterday) {
+                                     alert(`HOD can only edit today's and yesterday's meetings`);
+                                     setMenuOpen(null);
+                                     return;
+                                   }
+                                 } else {
+                                   // For regular users, same restriction as before
+                                   const isPastDate = meetingDate !== today;
+                                   if (isPastDate) {
+                                     alert(`You can't edit past meetings`);
+                                     setMenuOpen(null);
+                                     return;
+                                   }
                                  }
                                  editTask(meeting);
                                  setMenuOpen(null);

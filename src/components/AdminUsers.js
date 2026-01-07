@@ -9,13 +9,13 @@ export default function AdminUsers() {
   const [editingUser, setEditingUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    name: "",
-    dept: "",
-    designation: "",
-    user_type: "employee"
-  });
+     email: "",
+     password: "",
+     name: "",
+     dept: "",
+     designation: "",
+     user_type: "Team Member"
+   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -73,7 +73,7 @@ export default function AdminUsers() {
         name: "",
         dept: "",
         designation: "",
-        user_type: "employee"
+        user_type: "Team Member"
       });
       setShowPassword(false);
       fetchUsers(); // Refresh the users list
@@ -94,7 +94,7 @@ export default function AdminUsers() {
       name: user.name || "",
       dept: user.dept || "",
       designation: user.role || "", // Designation from role field
-      user_type: user.user_type || "employee" // User type from user_type field
+      user_type: user.user_type || "Team Member" // User type from user_type field
     });
     setShowPassword(false);
     setShowModal(true);
@@ -125,7 +125,7 @@ export default function AdminUsers() {
       name: "",
       dept: "",
       designation: "",
-      user_type: "employee"
+      user_type: "Team Member"
     });
     setShowPassword(false);
     setShowModal(true);
@@ -323,14 +323,17 @@ export default function AdminUsers() {
                         borderRadius: '4px',
                         fontSize: '12px',
                         fontWeight: '500',
-                        backgroundColor: user.user_type === 'Admin' ? '#dbeafe' :
-                                        user.user_type === 'HOD' ? '#fef3c7' : '#dcfce7',
-                        color: user.user_type === 'Admin' ? '#1e40af' :
-                              user.user_type === 'HOD' ? '#92400e' : '#166534'
+                        backgroundColor: (user.user_type === 'Admin' || user.user_type === 'admin') ? '#dbeafe' :
+                                        (user.user_type === 'HOD' || user.user_type === 'hod') ? '#fef3c7' : '#dcfce7',
+                        color: (user.user_type === 'Admin' || user.user_type === 'admin') ? '#1e40af' :
+                              (user.user_type === 'HOD' || user.user_type === 'hod') ? '#92400e' : '#166534'
                       }}>
                         {user.user_type === 'Team Member' ? 'Team Member' :
                          user.user_type === 'HOD' ? 'HOD' :
                          user.user_type === 'Admin' ? 'Admin' :
+                         user.user_type === 'employee' ? 'Team Member' :
+                         user.user_type === 'hod' ? 'HOD' :
+                         user.user_type === 'admin' ? 'Admin' :
                          user.user_type}
                       </span>
                     </td>
@@ -476,9 +479,9 @@ export default function AdminUsers() {
                       onChange={(e) => setFormData({...formData, user_type: e.target.value})}
                       disabled={loading}
                     >
-                      <option value="employee">Team Member</option>
-                      <option value="hod">HOD</option>
-                      <option value="admin">Admin</option>
+                      <option value="Team Member">Team Member</option>
+                      <option value="HOD">HOD</option>
+                      <option value="Admin">Admin</option>
                     </select>
                   </div>
                 </div>
