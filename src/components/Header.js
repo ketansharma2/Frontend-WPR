@@ -53,7 +53,7 @@ const Header = ({ addTask, openPopup, openAssignPopup, currentView, onLogout, us
                 <span className="create-task-plus">+</span>
                 <span className="create-task-text">Task/Meeting</span>
               </button>
-              {user?.user_type === 'HOD' && (
+              {(user?.user_type === 'HOD' || user?.user_type === 'Sub Admin') && (
                 <button className="cu-header__assign-task" onClick={openAssignPopup}>
                   <span className="assign-task-text">Assign Task</span>
                 </button>

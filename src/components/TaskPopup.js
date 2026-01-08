@@ -451,6 +451,24 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     placeholder="Enter task remarks"
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
+                    disabled={(() => {
+                      try {
+                        const profile = JSON.parse(localStorage.getItem("profile"));
+                        return mode === "assign" && (profile?.user_type === 'hod' || profile?.user_type === 'HOD');
+                      } catch {
+                        return false;
+                      }
+                    })()}
+                    style={{
+                      backgroundColor: (() => {
+                        try {
+                          const profile = JSON.parse(localStorage.getItem("profile"));
+                          return mode === "assign" && (profile?.user_type === 'hod' || profile?.user_type === 'HOD') ? '#ffebee' : undefined;
+                        } catch {
+                          return undefined;
+                        }
+                      })()
+                    }}
                   />
                 </div>
               </>

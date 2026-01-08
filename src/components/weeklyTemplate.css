@@ -85,6 +85,12 @@
   padding: 6px 8px;
 }
 
+.report-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .report-table tbody tr:nth-child(even) {
   background-color: white;
 }

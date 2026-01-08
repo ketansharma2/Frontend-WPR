@@ -189,17 +189,20 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
 
     return true;
   }).sort((a, b) => {
-    // For "All Team Members" view, sort by owner name first, then by date
+    // For "All Team Members" view, sort by source first (master tasks at top), then by owner name, then by date
     if (viewTypeFilter === 'all') {
-      // Get owner names
+      // Primary sort: Master tasks first
+      if (a.source === 'assigned' && b.source !== 'assigned') return -1;
+      if (a.source !== 'assigned' && b.source === 'assigned') return 1;
+
+      // Secondary sort: Owner name in ascending order (A-Z)
       const ownerNameA = a.source === 'assigned' ? (a.assigned_to_user?.name || 'Unknown') : (a.users?.name || 'Unknown');
       const ownerNameB = b.source === 'assigned' ? (b.assigned_to_user?.name || 'Unknown') : (b.users?.name || 'Unknown');
 
-      // Primary sort: Owner name in ascending order (A-Z)
       if (ownerNameA < ownerNameB) return -1;
       if (ownerNameA > ownerNameB) return 1;
 
-      // Secondary sort: Latest tasks first (by updated_at or created_at)
+      // Tertiary sort: Latest tasks first (by updated_at or created_at)
       const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
       const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
       return dateB - dateA; // Descending order (newest first)
@@ -389,17 +392,20 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
                   >
                     {isAdminView ? 'All Users' : 'My Tasks'}
                   </div>
-                  <div
-                    className="dropdown-item"
-                    onClick={() => { setViewTypeFilter('all'); setTeamMemberFilter('all'); setShowTeamMemberDropdown(false); }}
-                  >
-                    All Team Members
-                  </div>
                   {teamMembers.map(member => (
                     <div
                       key={member.user_id}
                       className="dropdown-item"
-                      onClick={() => { setViewTypeFilter('team'); setTeamMemberFilter(member.user_id); setShowTeamMemberDropdown(false); }}
+                      onClick={() => {
+                        if (member.user_id === 'all') {
+                          setViewTypeFilter('all');
+                          setTeamMemberFilter('all');
+                        } else {
+                          setViewTypeFilter('team');
+                          setTeamMemberFilter(member.user_id);
+                        }
+                        setShowTeamMemberDropdown(false);
+                      }}
                     >
                       {member.name}
                     </div>

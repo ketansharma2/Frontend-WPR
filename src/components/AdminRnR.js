@@ -97,32 +97,32 @@ const AdminRnR = () => {
   };
 
   // Fetch all users for the dropdown
-  const fetchAllUsers = async () => {
-    try {
-      const token = localStorage.getItem("token");
+   const fetchAllUsers = async () => {
+     try {
+       const token = localStorage.getItem("token");
 
-      if (!token) {
-        console.error("Authentication required");
-        return;
-      }
+       if (!token) {
+         console.error("Authentication required");
+         return;
+       }
 
-      const response = await fetch(`${API_BASE_URL}/admin/rnr/members`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
+       const response = await fetch(`${API_BASE_URL}/sub-admin/users`, {
+         headers: {
+           "Authorization": `Bearer ${token}`,
+           "Content-Type": "application/json"
+         }
+       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setAllUsers(data.members || []);
-      } else {
-        console.error('Failed to fetch users');
-      }
-    } catch (err) {
-      console.error("Error fetching users:", err);
-    }
-  };
+       if (response.ok) {
+         const data = await response.json();
+         setAllUsers(data.users || []);
+       } else {
+         console.error('Failed to fetch users');
+       }
+     } catch (err) {
+       console.error("Error fetching users:", err);
+     }
+   };
 
   // Handle edit R&R
   const handleEditRnr = (rnrItem) => {

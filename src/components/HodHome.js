@@ -675,7 +675,8 @@ const HodHome = ({ onLogout }) => {
           task_type: task.type || 'work',
           status: task.status || 'pending',
           file_link: task.attachments,
-          description: task.description || '' // Add description field
+          description: task.description || '', // Add description field
+          remarks: task.remarks
         };
 
         console.log('API data being sent:', apiData); // Debug log
@@ -734,7 +735,11 @@ const HodHome = ({ onLogout }) => {
 
   const editTask = (task) => {
     setEditingTask(task);
-    setIsPopupOpen(true);
+    if (task.category === 'assigned') {
+      setIsAssignPopupOpen(true);
+    } else {
+      setIsPopupOpen(true);
+    }
     // Don't force page change - let the current page stay as is
     // setCurrentPage('tasks');
   };
@@ -785,7 +790,8 @@ const HodHome = ({ onLogout }) => {
           time: updatedTask.time_in_mins || updatedTask.time,
           task_type: updatedTask.task_type || updatedTask.type,
           status: updatedTask.status,
-          file_link: updatedTask.file_link || updatedTask.attachments
+          file_link: updatedTask.file_link || updatedTask.attachments,
+          remarks: updatedTask.remarks
         };
       }
 
@@ -1124,6 +1130,7 @@ const HodHome = ({ onLogout }) => {
               teamMembers={teamMembers}
               dashboardViewType={dashboardViewType}
               userRole={userProfile.user_type}
+              yesterdayDate={yesterdayDate}
               showFilterBar={true}
             />
           </div>
@@ -1173,6 +1180,7 @@ const HodHome = ({ onLogout }) => {
               setTeamMemberFilter={setMeetingTeamMemberFilter}
               teamMembers={teamMembers}
               userRole={userProfile.user_type}
+              yesterdayDate={yesterdayDate}
             />
           </div>
         ) : currentPage === 'rnr' ? (
@@ -2114,10 +2122,12 @@ const HodHome = ({ onLogout }) => {
                                    const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
                                    const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
 
-                                   // For HOD users, allow editing yesterday's tasks but not tasks from before yesterday
+                                   // For HOD users, allow editing today's and previous working day's tasks
                                    if (userProfile?.user_type === 'hod' || userProfile?.user_type === 'HOD') {
-                                     if (isBeforeYesterday) {
-                                       alert(`HOD can only edit today's and yesterday's tasks`);
+                                     const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
+                                     const isBeforeLastWorkingDay = taskDate && taskDate < lastWorkingDayStr;
+                                     if (isBeforeLastWorkingDay) {
+                                       alert(`HOD can only edit today's and previous working day tasks`);
                                        setMenuOpen(null);
                                        return;
                                      }
@@ -2367,10 +2377,12 @@ const HodHome = ({ onLogout }) => {
                                  const meetingDate = meeting.date ? new Date(meeting.date).toISOString().split('T')[0] : null;
                                  const isBeforeYesterday = meetingDate && meetingDate < yesterdayStr;
 
-                                 // For HOD users, allow editing yesterday's meetings but not meetings from before yesterday
+                                 // For HOD users, allow editing today's and previous working day's meetings
                                  if (userProfile?.user_type === 'hod' || userProfile?.user_type === 'HOD') {
-                                   if (isBeforeYesterday) {
-                                     alert(`HOD can only edit today's and yesterday's meetings`);
+                                   const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
+                                   const isBeforeLastWorkingDay = meetingDate && meetingDate < lastWorkingDayStr;
+                                   if (isBeforeLastWorkingDay) {
+                                     alert(`HOD can only edit today's and previous working day meetings`);
                                      setMenuOpen(null);
                                      return;
                                    }

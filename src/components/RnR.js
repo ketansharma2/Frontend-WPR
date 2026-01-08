@@ -101,33 +101,42 @@ const RnR = () => {
   };
 
   // Fetch team members for the dropdown
-  const fetchTeamMembers = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const profile = JSON.parse(localStorage.getItem("profile"));
+   const fetchTeamMembers = async () => {
+     try {
+       const token = localStorage.getItem("token");
+       const profile = JSON.parse(localStorage.getItem("profile"));
 
-      if (!token || !profile) {
-        console.error("Authentication required");
-        return;
-      }
+       if (!token || !profile) {
+         console.error("Authentication required");
+         return;
+       }
 
-      const response = await fetch(`${API_BASE_URL}/hod/meetings/team-members/${profile.dept}/${profile.user_id}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
+       let url, responseKey;
+       if (profile.user_type === 'Sub Admin') {
+         url = `${API_BASE_URL}/sub-admin/users`;
+         responseKey = 'users';
+       } else {
+         url = `${API_BASE_URL}/hod/meetings/team-members/${profile.dept}/${profile.user_id}`;
+         responseKey = 'team_members';
+       }
 
-      if (response.ok) {
-        const data = await response.json();
-        setTeamMembers(data.team_members || []);
-      } else {
-        console.error('Failed to fetch team members');
-      }
-    } catch (err) {
-      console.error("Error fetching team members:", err);
-    }
-  };
+       const response = await fetch(url, {
+         headers: {
+           "Authorization": `Bearer ${token}`,
+           "Content-Type": "application/json"
+         }
+       });
+
+       if (response.ok) {
+         const data = await response.json();
+         setTeamMembers(data[responseKey] || []);
+       } else {
+         console.error('Failed to fetch team members');
+       }
+     } catch (err) {
+       console.error("Error fetching team members:", err);
+     }
+   };
 
   // Fetch user profile and team members on component mount
    useEffect(() => {
@@ -361,7 +370,7 @@ const RnR = () => {
         <h1 style={{ fontSize: '24px' }}>Roles and Responsibilities</h1>
       </div>
 
-      {userProfile?.user_type === 'HOD' && (
+      {(userProfile?.user_type === 'HOD' || userProfile?.user_type === 'Sub Admin') && (
         <div style={{
           display: 'flex',
           justifyContent: 'flex-start',
@@ -421,7 +430,7 @@ const RnR = () => {
                       onMouseEnter={(e) => e.target.style.backgroundColor = '#f3f4f6'}
                       onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
                     >
-                      {userProfile.name} (HOD)
+                      {userProfile.name} ({userProfile.user_type})
                     </div>
                   )}
                   {/* Team Members */}
@@ -936,7 +945,7 @@ const RnR = () => {
                     onChange={(e) => setFixedTaskForm({...fixedTaskForm, assignedBy: e.target.value})}
                   />
                 </div>
-                {userProfile?.user_type === 'HOD' && (
+                {(userProfile?.user_type === 'HOD' || userProfile?.user_type === 'Sub Admin') && (
                   <div className="field-box span-3">
                     <label className="field-label">Assign to</label>
                     <select
@@ -944,7 +953,7 @@ const RnR = () => {
                       value={fixedTaskForm.assignTo}
                       onChange={(e) => setFixedTaskForm({...fixedTaskForm, assignTo: e.target.value})}
                     >
-                      <option value={userProfile?.user_id}>Assign to me (HOD)</option>
+                      <option value={userProfile?.user_id}>Assign to me</option>
                       {teamMembers.map(member => (
                         <option key={member.user_id} value={member.user_id}>
                           {member.name}

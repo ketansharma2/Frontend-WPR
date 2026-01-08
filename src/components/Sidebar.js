@@ -18,31 +18,31 @@ export default function Sidebar({ currentPage, onPageChange, userRole }) {
       id: 'dashboard',
       label: 'Dashboard',
       icon: FaHome,
-      roles: ['team member', 'hod', 'admin']
+      roles: ['team member', 'hod', 'admin', 'sub admin']
     },
     {
       id: 'tasks',
       label: 'Tasks',
       icon: FaListUl,
-      roles: ['team member', 'hod', 'admin']
+      roles: ['team member', 'hod', 'admin', 'sub admin']
     },
     {
       id: 'meetings',
       label: 'Meetings',
       icon: FaUsers,
-      roles: ['team member', 'hod', 'admin']
+      roles: ['team member', 'hod', 'admin', 'sub admin']
     },
     {
       id: 'calendar',
       label: 'Weekly View',
       icon: FaCalendarAlt,
-      roles: ['team member', 'hod', 'admin']
+      roles: ['team member', 'hod', 'admin', 'sub admin']
     },
     {
       id: 'rnr',
       label: 'R&R',
       icon: FaClipboardList,
-      roles: ['team member', 'hod', 'admin']
+      roles: ['team member', 'hod', 'admin', 'sub admin']
     },
     {
       id: 'users',

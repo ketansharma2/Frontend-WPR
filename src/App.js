@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import Home from './components/Home';
 import HodHome from './components/HodHome';
 import AdminHome from './components/AdminHome';
+import SubAdminHome from './components/SubAdminHome';
 import Login from './components/Login';
 import './App.css';
 
 function App() {
-  const [view, setView] = useState('login'); // 'home', 'hod-home', 'admin-home', 'login'
+  const [view, setView] = useState('login'); // 'home', 'hod-home', 'admin-home', 'sub-admin-home', 'login'
   const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
@@ -22,6 +23,8 @@ function App() {
         // Route based on user type
         if (userProfile.user_type === "Admin") {
           setView("admin-home");
+        } else if (userProfile.user_type === "Sub Admin") {
+          setView("sub-admin-home");
         } else if (userProfile.user_type === "HOD") {
           setView("hod-home");
         } else {
@@ -51,6 +54,8 @@ function App() {
     // Route based on user role
     if (userData.profile.user_type === "Admin") {
       setView("admin-home");
+    } else if (userData.profile.user_type === "Sub Admin") {
+      setView("sub-admin-home");
     } else if (userData.profile.user_type === "HOD") {
       setView("hod-home");
     } else {
@@ -66,6 +71,8 @@ function App() {
         <HodHome onLogout={handleLogout} />
       ) : view === 'admin-home' ? (
         <AdminHome onLogout={handleLogout} />
+      ) : view === 'sub-admin-home' ? (
+        <SubAdminHome onLogout={handleLogout} />
       ) : (
         <Login onLogin={handleLogin} />
       )}

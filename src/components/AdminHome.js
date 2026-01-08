@@ -583,7 +583,8 @@ const AdminHome = ({ onLogout }) => {
           task_type: task.type || 'work',
           status: task.status || 'pending',
           file_link: task.attachments,
-          description: task.description || '' // Add description field
+          description: task.description || '', // Add description field
+          remarks: task.remarks
         };
 
         console.log('API data being sent:', apiData); // Debug log
@@ -679,7 +680,8 @@ const AdminHome = ({ onLogout }) => {
           time: updatedTask.time_in_mins || updatedTask.time,
           task_type: updatedTask.task_type || updatedTask.type,
           status: updatedTask.status,
-          file_link: updatedTask.file_link || updatedTask.attachments
+          file_link: updatedTask.file_link || updatedTask.attachments,
+          remarks: updatedTask.remarks
         };
       }
 

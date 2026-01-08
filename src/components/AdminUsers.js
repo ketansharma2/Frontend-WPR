@@ -324,13 +324,16 @@ export default function AdminUsers() {
                         fontSize: '12px',
                         fontWeight: '500',
                         backgroundColor: (user.user_type === 'Admin' || user.user_type === 'admin') ? '#dbeafe' :
-                                        (user.user_type === 'HOD' || user.user_type === 'hod') ? '#fef3c7' : '#dcfce7',
+                                        (user.user_type === 'HOD' || user.user_type === 'hod') ? '#fef3c7' :
+                                        (user.user_type === 'Sub Admin') ? '#f59e0b' : '#dcfce7',
                         color: (user.user_type === 'Admin' || user.user_type === 'admin') ? '#1e40af' :
-                              (user.user_type === 'HOD' || user.user_type === 'hod') ? '#92400e' : '#166534'
+                              (user.user_type === 'HOD' || user.user_type === 'hod') ? '#92400e' :
+                              (user.user_type === 'Sub Admin') ? '#92400e' : '#166534'
                       }}>
                         {user.user_type === 'Team Member' ? 'Team Member' :
                          user.user_type === 'HOD' ? 'HOD' :
                          user.user_type === 'Admin' ? 'Admin' :
+                         user.user_type === 'Sub Admin' ? 'Sub Admin' :
                          user.user_type === 'employee' ? 'Team Member' :
                          user.user_type === 'hod' ? 'HOD' :
                          user.user_type === 'admin' ? 'Admin' :
@@ -481,6 +484,7 @@ export default function AdminUsers() {
                     >
                       <option value="Team Member">Team Member</option>
                       <option value="HOD">HOD</option>
+                      <option value="Sub Admin">Sub Admin</option>
                       <option value="Admin">Admin</option>
                     </select>
                   </div>

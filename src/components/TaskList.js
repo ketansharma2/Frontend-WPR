@@ -9,7 +9,7 @@ import {
   FaExternalLinkAlt
 } from "react-icons/fa";
 
-export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onViewHistory, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, dashboardViewType, showFilterBar = true, showMyTasksOption = true, isAdminView = false, userRole }) {
+export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onViewHistory, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, dashboardViewType, showFilterBar = true, showMyTasksOption = true, isAdminView = false, userRole, yesterdayDate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateActive, setDateActive] = useState('');
   const [activeFilters, setActiveFilters] = useState({
@@ -672,17 +672,19 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                       {filter === 'task' ? 'My Tasks' : 'My Meetings'}
                     </div>
                   )}
-                  <div
-                    className="dropdown-item"
-                    onClick={() => { setViewTypeFilter('all'); setTeamMemberFilter('all'); setShowTeamMemberDropdown(false); }}
-                  >
-                    All Team Members
-                  </div>
                   {teamMembers && teamMembers.length > 0 ? teamMembers.map(member => (
                     <div
                       key={member.user_id}
                       className="dropdown-item"
-                      onClick={() => { setViewTypeFilter('team'); setTeamMemberFilter(member.user_id); setShowTeamMemberDropdown(false); }}
+                      onClick={() => {
+                        if (member.user_id === 'all') {
+                          setViewTypeFilter('all');
+                        } else {
+                          setViewTypeFilter('team');
+                        }
+                        setTeamMemberFilter(member.user_id);
+                        setShowTeamMemberDropdown(false);
+                      }}
                     >
                       {member.name}
                     </div>
@@ -1040,10 +1042,11 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                                 const yesterday = new Date();
                                 yesterday.setDate(yesterday.getDate() - 1);
                                 const yesterdayStr = yesterday.toISOString().split('T')[0];
+                                const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
                                 const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
-                                const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
-                                if (isBeforeYesterday && userRole !== 'hod' && userRole !== 'HOD') {
-                                  alert(`You can't edit tasks from before yesterday`);
+                                const isBeforeLastWorkingDay = taskDate && taskDate < lastWorkingDayStr;
+                                if (isBeforeLastWorkingDay) {
+                                  alert(`You can't edit meetings from before the previous working day`);
                                   setMenuOpen(null);
                                   return;
                                 }
@@ -1134,10 +1137,11 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                                 const yesterday = new Date();
                                 yesterday.setDate(yesterday.getDate() - 1);
                                 const yesterdayStr = yesterday.toISOString().split('T')[0];
+                                const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
                                 const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
-                                const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
-                                if (isBeforeYesterday && userRole !== 'hod' && userRole !== 'HOD') {
-                                  alert(`You can't edit tasks from before yesterday`);
+                                const isBeforeLastWorkingDay = taskDate && taskDate < lastWorkingDayStr;
+                                if (isBeforeLastWorkingDay) {
+                                  alert(`You can't edit tasks from before the previous working day`);
                                   setMenuOpen(null);
                                   return;
                                 }
