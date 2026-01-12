@@ -1045,7 +1045,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                                 const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
                                 const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
                                 const isBeforeLastWorkingDay = taskDate && taskDate < lastWorkingDayStr;
-                                if (isBeforeLastWorkingDay) {
+                                if (isBeforeLastWorkingDay && userRole !== 'hod' && userRole !== 'HOD') {
                                   alert(`You can't edit meetings from before the previous working day`);
                                   setMenuOpen(null);
                                   return;
@@ -1109,7 +1109,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                       </td>
                       {teamMemberFilter !== 'all' && (
                         <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>
-                          {task.category === 'self' && viewTypeFilter !== 'all' ? 'Self' : (task.assigned_by_user?.name || task.users?.name || 'Unknown')}
+                          {task.category === 'self' && viewTypeFilter !== 'all' ? 'Self' : (task.category === 'assigned' ? (task.assigned_by_user?.name || 'Unknown') : (task.users?.name || 'Unknown'))}
                         </td>
                       )}
                       <td style={{ padding: '6px 8px', textAlign: 'center' }}>
@@ -1140,7 +1140,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                                 const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
                                 const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
                                 const isBeforeLastWorkingDay = taskDate && taskDate < lastWorkingDayStr;
-                                if (isBeforeLastWorkingDay) {
+                                if (isBeforeLastWorkingDay && userRole !== 'hod' && userRole !== 'HOD' && task.category !== 'assigned') {
                                   alert(`You can't edit tasks from before the previous working day`);
                                   setMenuOpen(null);
                                   return;

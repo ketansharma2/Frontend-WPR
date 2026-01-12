@@ -175,11 +175,11 @@ const RnR = () => {
 
    // Refetch R&R and fixed tasks data when user filter changes
    useEffect(() => {
-     if (userProfile) {
-       fetchRnrData(selectedRnrUser || null);
-       fetchFixedTasks(selectedRnrUser || null);
+     if (userProfile && selectedRnrUser) {
+       fetchRnrData(selectedRnrUser);
+       fetchFixedTasks(selectedRnrUser);
      }
-   }, [selectedRnrUser, userProfile]);
+   }, [selectedRnrUser]);
 
    // Update fixed task form assignTo when selectedRnrUser changes
    useEffect(() => {

@@ -128,12 +128,16 @@ const Home = ({ onLogout }) => {
     }
   }, [userProfile]);
 
-  // Check remarks requirement when dashboard loads
+  // Check remarks requirement when dashboard loads, and fetch yesterday data for tasks page
   useEffect(() => {
-    if (userProfile?.user_id && currentPage === 'dashboard' && isRemarksRequired === null) {
-      fetchLastWorkingDayData();
+    if (userProfile?.user_id && (currentPage === 'dashboard' || currentPage === 'tasks' || currentPage === 'meetings')) {
+      if (currentPage === 'dashboard' && isRemarksRequired === null) {
+        fetchLastWorkingDayData();
+      } else if ((currentPage === 'tasks' || currentPage === 'meetings') && !yesterdayDate) {
+        fetchLastWorkingDayData();
+      }
     }
-  }, [userProfile, currentPage, isRemarksRequired]);
+  }, [userProfile, currentPage, isRemarksRequired, yesterdayDate]);
 
   // Auto-populate fixed tasks when dashboard loads and remarks are checked
   useEffect(() => {
@@ -544,14 +548,19 @@ const Home = ({ onLogout }) => {
     if (task.itemType === 'meeting') {
       return task.meeting_id || task._id;
     }
-    // For tasks, prefer task_id over _id for consistency
+    // For assigned tasks, use task_id (same as self tasks)
+    if (task.category === 'assigned') {
+      return task.task_id || task.id || task._id;
+    }
+    // For self tasks, prefer task_id over _id for consistency
     return task.task_id || task._id;
   };
 
   const updateTask = async (updatedTask) => {
     try {
       const token = localStorage.getItem("token");
-      const endpoint = updatedTask.itemType === 'meeting' ? 'meetings' : 'tasks';
+      let endpoint = updatedTask.itemType === 'meeting' ? 'meetings' : 'tasks';
+      let url = `${API_BASE_URL}/${endpoint}`;
 
       // Get the correct ID for the API call
       const taskIdForAPI = getTaskIdForAPI(updatedTask);
@@ -559,6 +568,13 @@ const Home = ({ onLogout }) => {
       if (!taskIdForAPI) {
         setError(`Cannot update ${updatedTask.itemType}: No valid ID found`);
         return;
+      }
+
+      // For assigned tasks, use master endpoint
+      if (updatedTask.category === 'assigned') {
+        url = `${API_BASE_URL}/tasks/master/${taskIdForAPI}`;
+      } else {
+        url = `${API_BASE_URL}/${endpoint}/${taskIdForAPI}`;
       }
 
       let apiData;
@@ -573,6 +589,13 @@ const Home = ({ onLogout }) => {
           prop_slot: updatedTask.prop_slot || updatedTask.timeSlot,
           status: updatedTask.status,
           notes: updatedTask.notes || updatedTask.agenda
+        };
+      } else if (updatedTask.category === 'assigned') {
+        // For assigned tasks, only update allowed fields
+        apiData = {
+          status: updatedTask.status,
+          upload_closing: updatedTask.upload_closing,
+          remarks: updatedTask.remarks
         };
       } else {
         // Map task fields to backend format for update - Include description
@@ -589,7 +612,7 @@ const Home = ({ onLogout }) => {
         };
       }
 
-      const response = await fetch(`${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
+      const response = await fetch(url, {
         method: 'PUT',
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -610,7 +633,7 @@ const Home = ({ onLogout }) => {
           // Update todayTasks
           if (updatedTask.itemType === 'task') {
             setTodayTasks(prev => prev.map(task => {
-              const isMatch = task.task_id === updatedTask.task_id;
+              const isMatch = task.task_id === updatedTask.task_id || task.id === updatedTask.id;
               return isMatch ? { ...task, ...updatedTask, ...updatedTaskData } : task;
             }));
           } else {
@@ -622,7 +645,7 @@ const Home = ({ onLogout }) => {
         } else {
           // Update yesterdayTasks
           setYesterdayTasks(prev => prev.map(task => {
-            const isMatch = task.task_id === updatedTask.task_id;
+            const isMatch = task.task_id === updatedTask.task_id || task.id === updatedTask.id;
             return isMatch ? { ...task, ...updatedTask, ...updatedTaskData } : task;
           }));
         }
@@ -634,10 +657,12 @@ const Home = ({ onLogout }) => {
             const isMatch =
               (task._id && updatedTask._id && task._id === updatedTask._id) ||
               (task.task_id && updatedTask.task_id && task.task_id === updatedTask.task_id) ||
+              (task.id && updatedTask.id && task.id === updatedTask.id) ||
               (task.meeting_id && updatedTask.meeting_id && task.meeting_id === updatedTask.meeting_id) ||
               // Fallback matching for different ID field names
               (task._id && updatedTaskData._id && task._id === updatedTaskData._id) ||
               (task.task_id && updatedTaskData.task_id && task.task_id === updatedTaskData.task_id) ||
+              (task.id && updatedTaskData.id && task.id === updatedTaskData.id) ||
               (task.meeting_id && updatedTaskData.meeting_id && task.meeting_id === updatedTaskData.meeting_id);
 
             if (isMatch) {
@@ -1146,22 +1171,20 @@ const Home = ({ onLogout }) => {
                               left: '-80px'
                             }}>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const today = new Date().toISOString().split('T')[0];
-                                  const yesterday = new Date();
-                                  yesterday.setDate(yesterday.getDate() - 1);
-                                  const yesterdayStr = yesterday.toISOString().split('T')[0];
-                                  const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
-                                  const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
-                                  if (isBeforeYesterday && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
-                                    alert(`You can't edit tasks from before yesterday`);
-                                    setMenuOpen(null);
-                                    return;
-                                  }
-                                  editTask(task);
-                                  setMenuOpen(null);
-                                }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const today = new Date().toISOString().split('T')[0];
+                                      const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : null;
+                                      const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
+                                      const isBeforeLastWorkingDay = taskDate && lastWorkingDayStr && taskDate < lastWorkingDayStr;
+                                      if (isBeforeLastWorkingDay && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD' && task.category !== 'assigned') {
+                                        alert(`You can't edit tasks from before the previous working day`);
+                                        setMenuOpen(null);
+                                        return;
+                                      }
+                                      editTask(task);
+                                      setMenuOpen(null);
+                                    }}
                                 style={{
                                   display: 'block',
                                   width: '100%',
@@ -1422,22 +1445,20 @@ const Home = ({ onLogout }) => {
                               left: '-80px'
                             }}>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const today = new Date().toISOString().split('T')[0];
-                                  const yesterday = new Date();
-                                  yesterday.setDate(yesterday.getDate() - 1);
-                                  const yesterdayStr = yesterday.toISOString().split('T')[0];
-                                  const taskDate = meeting.date ? new Date(meeting.date).toISOString().split('T')[0] : null;
-                                  const isBeforeYesterday = taskDate && taskDate < yesterdayStr;
-                                  if (isBeforeYesterday && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
-                                    alert(`You can't edit meetings from before yesterday`);
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const today = new Date().toISOString().split('T')[0];
+                                    const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : null;
+                                    const taskDate = meeting.date ? new Date(meeting.date).toISOString().split('T')[0] : null;
+                                    const isBeforeLastWorkingDay = taskDate && lastWorkingDayStr && taskDate < lastWorkingDayStr;
+                                    if (isBeforeLastWorkingDay && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {
+                                      alert(`You can't edit meetings from before the previous working day`);
+                                      setMenuOpen(null);
+                                      return;
+                                    }
+                                    editTask(meeting);
                                     setMenuOpen(null);
-                                    return;
-                                  }
-                                  editTask(meeting);
-                                  setMenuOpen(null);
-                                }}
+                                  }}
                                 style={{
                                   display: 'block',
                                   width: '100%',
@@ -1719,6 +1740,7 @@ const Home = ({ onLogout }) => {
         addTask={addTask}
         editingTask={editingTask}
         updateTask={updateTask}
+        mode={editingTask?.category === 'assigned' ? 'assign' : 'create'}
         isRestrictedEdit={editingTask ? true : false}
         isPreviousDay={editingTask?.isPreviousDay}
       />

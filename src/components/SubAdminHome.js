@@ -25,7 +25,7 @@ const SubAdminHome = ({ onLogout }) => {
   const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [filter, setFilter] = useState('task');
-  const [taskDateFilter, setTaskDateFilter] = useState('all');
+  const [taskDateFilter, setTaskDateFilter] = useState('today');
   const [meetingDateFilter, setMeetingDateFilter] = useState('all');
   const [weeklyDateFilter, setWeeklyDateFilter] = useState('all');
   const [taskTypeFilter, setTaskTypeFilter] = useState('');
@@ -60,7 +60,7 @@ const SubAdminHome = ({ onLogout }) => {
   const [todayMeetings, setTodayMeetings] = useState([]);
   const [monthlyStats, setMonthlyStats] = useState(null);
   const [dashboardViewType, setDashboardViewType] = useState('self'); // 'self' or 'team' for dashboard
-  const [dashboardDateFilter, setDashboardDateFilter] = useState('today');
+  const [dashboardDateFilter, setDashboardDateFilter] = useState('past_week');
   const [dashboardTaskTypeFilter, setDashboardTaskTypeFilter] = useState('');
   const [dashboardStatusFilter, setDashboardStatusFilter] = useState('');
   const [dashboardCategoryFilter, setDashboardCategoryFilter] = useState('');
@@ -119,25 +119,28 @@ const SubAdminHome = ({ onLogout }) => {
         return;
       }
 
-      // For SubAdmin: default shows self tasks, 'all' shows master tasks assigned by SubAdmin
-      let viewTasksOf = 'self'; // Default to self tasks
-      let targetUserId = null;
-      let endpoint = '/tasks/filter';
+      // For SubAdmin: always use sub-admin endpoint
+      let endpoint = '/sub-admin/tasks/filter';
+      let requestBody = {
+        user_id: profile.user_id,
+        date_filter: 'all',
+        task_type: 'all',
+        status: 'all',
+        category
+      };
 
-      if (taskViewType === 'team') {
-        endpoint = '/sub-admin/tasks/filter';
-        if (taskTeamMember === 'all') {
-          viewTasksOf = 'team';
-          targetUserId = 'all'; // Show all master tasks assigned by SubAdmin
-        } else if (taskTeamMember) {
-          viewTasksOf = 'team';
-          targetUserId = taskTeamMember; // Show master tasks assigned to specific user
+      if (taskViewType === 'self') {
+        requestBody.view_tasks_of = 'self';
+      } else if (taskViewType === 'team') {
+        if (taskTeamMember) {
+          // Show specific team member's tasks (both self and assigned to them)
+          requestBody.view_tasks_of = 'team';
+          requestBody.target_user_id = taskTeamMember;
         }
       } else if (taskViewType === 'all') {
-        // When 'all' is selected, show all assigned tasks
-        endpoint = '/sub-admin/tasks/filter';
-        viewTasksOf = 'team';
-        targetUserId = 'all';
+        // Show all team members' tasks (self_tasks and master_tasks regardless of assigned by)
+        requestBody.view_tasks_of = 'all';
+        requestBody.target_user_id = null;
       }
 
       const tasksResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -146,15 +149,7 @@ const SubAdminHome = ({ onLogout }) => {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          user_id: profile.user_id,
-          view_tasks_of: viewTasksOf,
-          target_user_id: targetUserId,
-          date_filter: 'all',
-          task_type: 'all',
-          status: 'all',
-          category
-        })
+        body: JSON.stringify(requestBody)
       });
 
       // Fetch meetings with SubAdmin-specific filter
@@ -245,11 +240,22 @@ const SubAdminHome = ({ onLogout }) => {
       }
 
       // Fetch tasks with SubAdmin-specific filter
-      let viewTasksOf = taskViewType;
-      let targetUserId = taskViewType === 'team' && taskTeamMember && taskTeamMember !== 'all' ? taskTeamMember : null;
-      if (taskTeamMember === 'all') {
-        viewTasksOf = 'all';
-        targetUserId = null;
+      let requestBody = {
+        user_id: profile.user_id,
+        date_filter: dateFilter,
+        task_type: 'all',
+        status: 'all',
+        category
+      };
+
+      if (taskViewType === 'team') {
+        if (taskTeamMember === 'all') {
+          requestBody.view_tasks_of = 'team';
+          requestBody.target_user_id = 'all';
+        } else if (taskTeamMember) {
+          requestBody.view_tasks_of = 'team';
+          requestBody.target_user_id = taskTeamMember;
+        }
       }
 
       const tasksResponse = await fetch(`${API_BASE_URL}/sub-admin/tasks/filter`, {
@@ -258,15 +264,7 @@ const SubAdminHome = ({ onLogout }) => {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          user_id: profile.user_id,
-          view_tasks_of: viewTasksOf,
-          target_user_id: targetUserId,
-          date_filter: dateFilter,
-          task_type: 'all',
-          status: 'all',
-          category
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (tasksResponse.ok) {
@@ -333,7 +331,7 @@ const SubAdminHome = ({ onLogout }) => {
   };
 
   // Fetch SubAdmin dashboard data
-  const fetchSubAdminDashboardData = async (viewType = 'self', targetUserId = null) => {
+  const fetchSubAdminDashboardData = async (viewType = 'self', targetUserId = null, fromDate = null, toDate = null) => {
     try {
       const token = localStorage.getItem("token");
       const profile = JSON.parse(localStorage.getItem("profile"));
@@ -343,18 +341,26 @@ const SubAdminHome = ({ onLogout }) => {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/dashboard/data`, {
+      const requestBody = {
+        user_id: profile.user_id,
+        view_type: viewType,
+        target_user_id: targetUserId,
+        date_filter: dashboardDateFilter
+      };
+
+      // Add custom date range if provided
+      if (fromDate && toDate) {
+        requestBody.from_date = fromDate;
+        requestBody.to_date = toDate;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/sub-admin/dashboard/data`, {
         method: 'POST',
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          user_id: profile.user_id,
-          view_type: viewType,
-          target_user_id: targetUserId,
-          date_filter: dashboardDateFilter
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (response.ok) {
@@ -518,9 +524,33 @@ const SubAdminHome = ({ onLogout }) => {
   useEffect(() => {
     if (userProfile) {
       const cat = categoryFilter === '' ? 'all' : categoryFilter;
-      fetchSubAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, 'all', false);
+      fetchSubAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, taskDateFilter, false);
     }
   }, [categoryFilter, userProfile]);
+
+  // Refetch tasks when date filter changes
+  useEffect(() => {
+    if (userProfile) {
+      const cat = categoryFilter === '' ? 'all' : categoryFilter;
+      fetchSubAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, taskDateFilter, false);
+    }
+  }, [taskDateFilter, userProfile]);
+
+  // Refetch tasks when status filter changes
+  useEffect(() => {
+    if (userProfile) {
+      const cat = categoryFilter === '' ? 'all' : categoryFilter;
+      fetchSubAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, taskDateFilter, false);
+    }
+  }, [taskStatusFilter, userProfile]);
+
+  // Refetch tasks when task type filter changes
+  useEffect(() => {
+    if (userProfile) {
+      const cat = categoryFilter === '' ? 'all' : categoryFilter;
+      fetchSubAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, taskDateFilter, false);
+    }
+  }, [taskTypeFilter, userProfile]);
 
   // Refetch data when any filter changes
   useLayoutEffect(() => {
@@ -529,7 +559,8 @@ const SubAdminHome = ({ onLogout }) => {
       setTasks([]); // Clear current tasks to prevent showing old data
       // Only fetch meetings if team view has a selected member
       if (!(meetingViewTypeFilter === 'team' && !meetingTeamMemberFilter)) {
-        fetchSubAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', 'all', false);
+        const cat = categoryFilter === '' ? 'all' : categoryFilter;
+        fetchSubAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, taskDateFilter, false);
       }
       if (taskViewTypeFilter === 'team' || meetingViewTypeFilter === 'team' || taskViewTypeFilter === 'all' || meetingViewTypeFilter === 'all') {
         fetchTeamMembers();
@@ -540,15 +571,18 @@ const SubAdminHome = ({ onLogout }) => {
   // Refetch dashboard data when dashboard team member filter changes
   useEffect(() => {
     if (userProfile) {
+      const fromDate = analyticsFromDate && analyticsToDate ? analyticsFromDate : null;
+      const toDate = analyticsFromDate && analyticsToDate ? analyticsToDate : null;
+
       if (dashboardTeamMemberFilter === 'self') {
-        fetchSubAdminDashboardData('self', null);
+        fetchSubAdminDashboardData('self', null, fromDate, toDate);
       } else if (dashboardTeamMemberFilter === 'all') {
-        fetchSubAdminDashboardData('all', null);
+        fetchSubAdminDashboardData('all', null, fromDate, toDate);
       } else {
-        fetchSubAdminDashboardData('team', dashboardTeamMemberFilter);
+        fetchSubAdminDashboardData('team', dashboardTeamMemberFilter, fromDate, toDate);
       }
     }
-  }, [dashboardTeamMemberFilter, userProfile]);
+  }, [dashboardTeamMemberFilter, userProfile, analyticsFromDate, analyticsToDate]);
 
   // Refetch dashboard data when date filter changes
   useEffect(() => {
@@ -558,6 +592,19 @@ const SubAdminHome = ({ onLogout }) => {
       fetchSubAdminDashboardData(viewType, targetUserId);
     }
   }, [dashboardDateFilter, userProfile]);
+
+  // Refetch dashboard data when custom date range changes
+  useEffect(() => {
+    if (userProfile && analyticsFromDate && analyticsToDate) {
+      if (dashboardTeamMemberFilter === 'self') {
+        fetchSubAdminDashboardData('self', null, analyticsFromDate, analyticsToDate);
+      } else if (dashboardTeamMemberFilter === 'all') {
+        fetchSubAdminDashboardData('all', null, analyticsFromDate, analyticsToDate);
+      } else {
+        fetchSubAdminDashboardData('team', dashboardTeamMemberFilter, analyticsFromDate, analyticsToDate);
+      }
+    }
+  }, [analyticsFromDate, analyticsToDate, userProfile, dashboardTeamMemberFilter]);
 
   // Refetch tasks and meetings data when dashboard view type or team member changes
   useEffect(() => {
@@ -634,9 +681,13 @@ const SubAdminHome = ({ onLogout }) => {
       setError(''); // Clear any errors when closing popup
     };
 
-    const openAssignPopup = () => { setIsAssignPopupOpen(true); };
+    const openAssignPopup = (task = null) => {
+      setEditingTask(null); // Always null for new assign task creation
+      setIsAssignPopupOpen(true);
+    };
     const closeAssignPopup = () => {
       setIsAssignPopupOpen(false);
+      setEditingTask(null);
       setError(''); // Clear any errors when closing popup
     };
 
@@ -679,7 +730,8 @@ const SubAdminHome = ({ onLogout }) => {
           console.log('Task assigned successfully:', result);
           alert('Task assigned successfully');
           setError(''); // Clear any errors
-          // Optionally refresh tasks or show success message
+          // Refresh tasks
+          fetchSubAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', 'all', false);
         } else {
           const errorData = await response.json();
           setError(`Failed to assign task: ${errorData.error || 'Unknown error'}`);
@@ -790,7 +842,13 @@ const SubAdminHome = ({ onLogout }) => {
 
     const editTask = (task) => {
       setEditingTask(task);
-      setIsPopupOpen(true);
+      if (task.category === 'assigned') {
+        // For master_tasks (assigned), open assign popup for editing
+        setIsAssignPopupOpen(true);
+      } else {
+        // For self tasks, open regular edit popup
+        setIsPopupOpen(true);
+      }
       // Don't force page change - let the current page stay as is
       // setCurrentPage('tasks');
     };
@@ -808,7 +866,6 @@ const SubAdminHome = ({ onLogout }) => {
     const updateTask = async (updatedTask) => {
       try {
         const token = localStorage.getItem("token");
-        const endpoint = updatedTask.itemType === 'meeting' ? 'meetings' : 'tasks';
 
         // Get the correct ID for the API call
         const taskIdForAPI = getTaskIdForAPI(updatedTask);
@@ -818,9 +875,11 @@ const SubAdminHome = ({ onLogout }) => {
           return;
         }
 
-        let apiData;
+        let endpoint, apiData, method = 'PUT', url;
+
         if (updatedTask.itemType === 'meeting') {
-          // Map meeting fields to backend format for update
+          // Meeting update
+          endpoint = 'meetings';
           apiData = {
             meeting_name: updatedTask.meeting_name || updatedTask.name,
             date: updatedTask.date,
@@ -831,8 +890,23 @@ const SubAdminHome = ({ onLogout }) => {
             status: updatedTask.status,
             notes: updatedTask.notes || updatedTask.agenda
           };
+        } else if (updatedTask.category === 'assigned') {
+          // Assigned task update
+          apiData = {
+            date: updatedTask.date,
+            timeline: updatedTask.timeline,
+            task_name: updatedTask.task_name,
+            parameter: updatedTask.parameter,
+            end_goal: updatedTask.end_goal,
+            assignee_remarks: updatedTask.assignee_remarks,
+            status: updatedTask.status,
+            upload_closing: updatedTask.upload_closing || updatedTask.file_link,
+            remarks: updatedTask.remarks
+          };
+          url = `${API_BASE_URL}/assign/${taskIdForAPI}`;
         } else {
-          // Map task fields to backend format for update - Include description
+          // Self task update
+          endpoint = 'tasks';
           apiData = {
             user_id: userProfile.user_id,
             date: updatedTask.date || updatedTask.dueDate,
@@ -846,8 +920,8 @@ const SubAdminHome = ({ onLogout }) => {
           };
         }
 
-        const response = await fetch(`${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
-          method: 'PUT',
+        const response = await fetch(url || `${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
+          method,
           headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
@@ -859,7 +933,7 @@ const SubAdminHome = ({ onLogout }) => {
           const result = await response.json();
 
           // Update the local tasks state immediately for instant UI update
-          const updatedTaskData = result.task || result.meeting || updatedTask;
+          const updatedTaskData = result.task || result.meeting || result;
 
           setTasks(prevTasks => {
             return prevTasks.map(task => {
@@ -887,6 +961,7 @@ const SubAdminHome = ({ onLogout }) => {
 
           setEditingTask(null);
           setIsPopupOpen(false); // Close popup after successful update
+          setIsAssignPopupOpen(false); // Close assign popup after successful update
           setError(''); // Clear any previous errors
         } else {
           const errorData = await response.json();
@@ -1098,80 +1173,81 @@ const SubAdminHome = ({ onLogout }) => {
             <div className="dashboard-stats">
               <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
                 <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>Total Tasks</h3>
-                <p style={{ fontSize: '15px', margin: '0' }}>{(analyticsData.self_tasks || 0) + (analyticsData.assigned_tasks || 0)}</p>
+                <p style={{ fontSize: '15px', margin: '0' }}>{(monthlyStats?.self_tasks || 0) + (monthlyStats?.assigned_tasks || 0)}</p>
               </div>
               <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
                 <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>Self Tasks</h3>
-                <p style={{ fontSize: '15px', margin: '0' }}>{analyticsData.self_tasks || 0}</p>
+                <p style={{ fontSize: '15px', margin: '0' }}>{monthlyStats?.self_tasks || 0}</p>
               </div>
               <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
-                <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>Assigned Tasks</h3>
-                <p style={{ fontSize: '15px', margin: '0' }}>{analyticsData.assigned_tasks || 0}</p>
+                <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>Master Tasks</h3>
+                <p style={{ fontSize: '15px', margin: '0' }}>{monthlyStats?.assigned_tasks || 0}</p>
               </div>
             </div>
 
             {/* User and Status Cards */}
             <div style={{ padding: '20px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                {/* Member Wise Cards */}
-                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', maxWidth: '600px', flex: '1' }}>
-                  <h4 style={{ marginTop: 0, marginBottom: '10px', color: '#333', textAlign: 'center' }}>Member wise distribution</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 40px', listStyle: 'none', padding: '0', justifyContent: 'center' }}>
-                    {teamMembers.filter(member => member.user_id !== 'all').map((member) => (
-                      <div key={member.user_id} style={{ display: 'flex', alignItems: 'center', fontSize: '0.9rem', whiteSpace: 'nowrap', color: '#333' }}>
-                        <span style={{ color: '#666', marginRight: '12px', fontSize: '1rem' }}>•</span>
-                        {member.name} <span style={{ marginLeft: '8px', color: '#666' }}>{analyticsData.member_breakdown?.[member.name] || 0}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                  {/* Task Type Distribution Card - left */}
+                  <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', maxWidth: '600px', flex: '1' }}>
+                    <h4 style={{ marginTop: 0, marginBottom: '10px', color: '#333', textAlign: 'center' }}>Task type distribution</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center', flex: '1' }}>
+                          <div style={{ fontSize: '12px', color: '#666' }}>Fixed</div>
+                          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{monthlyStats?.fixed_tasks || 0}</div>
+                        </div>
+                        <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center', flex: '1' }}>
+                          <div style={{ fontSize: '12px', color: '#666' }}>Variable</div>
+                          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{monthlyStats?.variable_tasks || 0}</div>
+                        </div>
                       </div>
-                    ))}
+                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#666' }}>HOD Assigned</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{monthlyStats?.hod_assigned_tasks || 0}</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Right side: Status and Task Type */}
-                <div style={{ flex: '1', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {/* Status Wise Distribution Card */}
+                  {/* Status Wise Distribution Card - right */}
                   <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flex: '1', minWidth: '300px' }}>
                     <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>Status wise distribution</h4>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '10px' }}>
                       <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', color: '#666' }}>Done</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{analyticsData.done || 0}</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{monthlyStats?.completed || 0}</div>
                       </div>
                       <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', color: '#666' }}>In Progress</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{analyticsData.in_progress || 0}</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{monthlyStats?.in_progress || 0}</div>
                       </div>
                       <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', color: '#666' }}>Not Started</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{analyticsData.not_started || 0}</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{monthlyStats?.not_started || 0}</div>
                       </div>
                       <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', color: '#666' }}>Cancelled</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{analyticsData.cancelled || 0}</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{monthlyStats?.cancelled || 0}</div>
                       </div>
                       <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
                         <div style={{ fontSize: '12px', color: '#666' }}>On Hold</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{analyticsData.on_hold || 0}</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{monthlyStats?.on_hold || 0}</div>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Task Type Distribution Card */}
-                  <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flex: '1', minWidth: '300px' }}>
-                    <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>Task type distribution</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>Fixed</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{analyticsData.fixed || 0}</div>
+                {/* Member Wise Distribution Card - full width */}
+                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                  <h4 style={{ marginTop: 0, marginBottom: '15px', color: '#333', textAlign: 'center' }}>Member wise distribution</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px', padding: '0' }}>
+                    {teamMembers.filter(member => member.user_id !== 'all').map((member) => (
+                      <div key={member.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#f8f9fa', borderRadius: '4px', fontSize: '0.9rem', color: '#333' }}>
+                        <span style={{ fontWeight: '500' }}>{member.name}</span>
+                        <span style={{ color: '#666', fontWeight: 'bold' }}>{monthlyStats?.member_breakdown?.[member.user_id] || 0}</span>
                       </div>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>Variable</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{analyticsData.variable || 0}</div>
-                      </div>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>HOD Assigned</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{analyticsData.hod_assigned || 0}</div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1332,9 +1408,12 @@ const SubAdminHome = ({ onLogout }) => {
         isRestrictedEdit={editingTask?.itemType === 'task'}
       />
       <TaskPopup
+        key={isAssignPopupOpen ? `assign-open-${Date.now()}` : 'assign-closed'}
         open={isAssignPopupOpen}
         onClose={closeAssignPopup}
         addTask={assignTask}
+        editingTask={editingTask}
+        updateTask={updateTask}
         mode="assign"
         teamMembers={teamMembers}
       />

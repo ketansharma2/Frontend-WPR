@@ -757,7 +757,7 @@ const HodHome = ({ onLogout }) => {
   const updateTask = async (updatedTask) => {
     try {
       const token = localStorage.getItem("token");
-      const endpoint = updatedTask.itemType === 'meeting' ? 'meetings' : 'tasks';
+      const endpoint = updatedTask.itemType === 'meeting' ? 'meetings' : (updatedTask.category === 'assigned' ? 'hod/tasks/assigned' : 'hod/tasks');
 
       // Get the correct ID for the API call
       const taskIdForAPI = getTaskIdForAPI(updatedTask);
@@ -780,17 +780,30 @@ const HodHome = ({ onLogout }) => {
           status: updatedTask.status,
           notes: updatedTask.notes || updatedTask.agenda
         };
+      } else if (updatedTask.category === 'assigned') {
+        // Map assigned task fields to backend format for update
+        apiData = {
+          date: updatedTask.date,
+          timeline: updatedTask.timeline,
+          task_name: updatedTask.task_name,
+          parameter: updatedTask.parameter,
+          end_goal: updatedTask.end_goal,
+          assignee_remarks: updatedTask.assignee_remarks,
+          status: updatedTask.status,
+          upload_closing: updatedTask.upload_closing,
+          remarks: updatedTask.remarks
+        };
       } else {
-        // Map task fields to backend format for update - Include description
+        // Map self task fields to backend format for update
         apiData = {
           user_id: userProfile.user_id,
           date: updatedTask.date || updatedTask.dueDate,
           timeline: updatedTask.timeline,
-          task_name: updatedTask.task_name || updatedTask.name,
-          time: updatedTask.time_in_mins || updatedTask.time,
-          task_type: updatedTask.task_type || updatedTask.type,
+          task_name: updatedTask.task_name,
+          time: updatedTask.time_in_mins,
+          task_type: updatedTask.task_type,
           status: updatedTask.status,
-          file_link: updatedTask.file_link || updatedTask.attachments,
+          file_link: updatedTask.file_link,
           remarks: updatedTask.remarks
         };
       }
@@ -836,6 +849,7 @@ const HodHome = ({ onLogout }) => {
 
         setEditingTask(null);
         setIsPopupOpen(false); // Close popup after successful update
+        setIsAssignPopupOpen(false); // Close assign popup after successful update
         setError(''); // Clear any previous errors
       } else {
         const errorData = await response.json();
@@ -1104,7 +1118,7 @@ const HodHome = ({ onLogout }) => {
         </div>
       )}
 
-      <main style={{ backgroundColor: '#e0e0e0' }}>
+      <main style={{ backgroundColor: '#e0e0e0', overflow: 'visible' }}>
         {currentPage === 'tasks' ? (
           <div style={{ marginTop: '20px' }}>
             <TaskList
@@ -1188,7 +1202,7 @@ const HodHome = ({ onLogout }) => {
             <RnR />
           </div>
         ) : (
-           <div className="dashboard-container">
+           <div className="dashboard-container" style={{ overflow: 'visible' }}>
              {/* Dashboard Filter Panel */}
              <div className="professional-filter-bar" style={{ marginTop: '15px', marginBottom: '10px' }}>
                <div className="filter-controls">
@@ -1881,7 +1895,8 @@ const HodHome = ({ onLogout }) => {
                <table style={{
                  width: '100%',
                  borderCollapse: 'collapse',
-                 margin: '0'
+                 margin: '0',
+                 overflow: 'visible'
                }}>
                  <thead>
                    <tr style={{
@@ -2108,8 +2123,8 @@ const HodHome = ({ onLogout }) => {
                                border: '1px solid #e2e8f0',
                                borderRadius: '8px',
                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                               zIndex: 1000,
-                               marginTop: '5px',
+                               zIndex: 9999,
+                               top: '-60px',
                                left: '-80px'
                              }}>
                                <button
@@ -2231,7 +2246,8 @@ const HodHome = ({ onLogout }) => {
              <table style={{
                width: '100%',
                borderCollapse: 'collapse',
-               margin: '0'
+               margin: '0',
+               overflow: 'visible'
              }}>
                <thead>
                  <tr style={{
@@ -2363,8 +2379,8 @@ const HodHome = ({ onLogout }) => {
                              border: '1px solid #e2e8f0',
                              borderRadius: '8px',
                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                             zIndex: 1000,
-                             marginTop: '5px',
+                             zIndex: 9999,
+                             top: '-60px',
                              left: '-80px'
                            }}>
                              <button
@@ -2449,6 +2465,8 @@ const HodHome = ({ onLogout }) => {
         open={isAssignPopupOpen}
         onClose={closeAssignPopup}
         addTask={assignTask}
+        editingTask={editingTask}
+        updateTask={updateTask}
         mode="assign"
         teamMembers={teamMembers}
       />

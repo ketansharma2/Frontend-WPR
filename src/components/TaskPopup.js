@@ -37,15 +37,33 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   const [meetingStatus, setMeetingStatus] = useState('Scheduled');
   const [agenda, setAgenda] = useState('');
 
-  // Assign task state
-  const [assignDate, setAssignDate] = useState('');
-  const [assignTimeline, setAssignTimeline] = useState('');
-  const [assignTaskName, setAssignTaskName] = useState('');
-  const [assignParameter, setAssignParameter] = useState('');
-  const [assignEndGoal, setAssignEndGoal] = useState('');
-  const [assignRemarks, setAssignRemarks] = useState('');
-  const [assignTo, setAssignTo] = useState('');
-  const [assignStatus, setAssignStatus] = useState('Not Started');
+  // Assign task state - unified formData for create and edit
+  const [assignFormData, setAssignFormData] = useState({
+    date: '',
+    timeline: '',
+    taskName: '',
+    parameter: '',
+    endGoal: '',
+    assignerRemarks: '',
+    remarks: '',
+    assignTo: '',
+    status: 'Not Started',
+    uploadClosing: ''
+  });
+
+  // Legacy assign task state variables (keeping for backward compatibility but not used)
+  // const [assignDate, setAssignDate] = useState('');
+  // const [assignTimeline, setAssignTimeline] = useState('');
+  // const [assignTaskName, setAssignTaskName] = useState('');
+  // const [assignParameter, setAssignParameter] = useState('');
+  // const [assignEndGoal, setAssignEndGoal] = useState('');
+  // const [assignRemarks, setAssignRemarks] = useState('');
+  // const [assignTo, setAssignTo] = useState('');
+  // const [assignStatus, setAssignStatus] = useState('Not Started');
+  // const [assignUploadClosing, setAssignUploadClosing] = useState('');
+
+  // Check if editing assigned task
+  const isAssignEdit = mode === "assign" && editingTask;
 
   useEffect(() => {
     // Prevent body scroll when modal is open
@@ -115,33 +133,49 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
     if (!isMounted || !open) return;
 
     if (editingTask) {
-      const isMeetingType = editingTask.itemType === 'meeting';
-      setIsMeeting(isMeetingType);
+       if (mode === "assign") {
+         // Populate assign fields for editing assigned task
+         setAssignFormData({
+           date: editingTask.date || '',
+           timeline: editingTask.timeline || '',
+           taskName: editingTask.task_name || editingTask.name || '',
+           parameter: editingTask.parameter || '',
+           endGoal: editingTask.end_goal || '',
+           assignerRemarks: editingTask.assignee_remarks || '',
+           remarks: editingTask.remarks || '',
+           assignTo: editingTask.assigned_to || '',
+           status: editingTask.status || 'Not Started',
+           uploadClosing: editingTask.upload_closing || editingTask.file_link || ''
+         });
+       } else {
+        const isMeetingType = editingTask.itemType === 'meeting';
+        setIsMeeting(isMeetingType);
 
-      if (isMeetingType) {
-        // Meeting fields mapping
-        setMeetingName(editingTask.meeting_name || editingTask.name || '');
-        setMeetingDate(editingTask.date || '');
-        setDept(editingTask.dept || editingTask.department || 'Marketing');
-        const coPersonValue = editingTask.co_person || editingTask.participants || '';
-        setParticipants(coPersonValue);
-        // Parse comma-separated co-persons into array for checkbox state
-        setSelectedCoPersons(coPersonValue ? coPersonValue.split(',').map(name => name.trim()).filter(name => name) : []);
-        setMeetingTime(editingTask.time || '');
-        setTimeSlot(editingTask.prop_slot || editingTask.timeSlot || '');
-        setMeetingStatus(editingTask.status || 'Scheduled');
-        setAgenda(editingTask.notes || editingTask.agenda || '');
-      } else {
-        // Task fields mapping
-        setTaskName(editingTask.task_name || editingTask.name || '');
-        setDueDate(editingTask.date || editingTask.dueDate || '');
-        setTimeline(editingTask.timeline || '');
-        setTime(editingTask.time_in_mins || editingTask.time || '');
-        setTaskType(editingTask.task_type || editingTask.type || 'Fixed');
-        setStatus(editingTask.status || 'Not Started');
-        setAttachments(editingTask.file_link || editingTask.attachments || '');
-        setRemarks(editingTask.remarks || '');
-        setRemarks(editingTask.remarks || '');
+        if (isMeetingType) {
+          // Meeting fields mapping
+          setMeetingName(editingTask.meeting_name || editingTask.name || '');
+          setMeetingDate(editingTask.date || '');
+          setDept(editingTask.dept || editingTask.department || 'Marketing');
+          const coPersonValue = editingTask.co_person || editingTask.participants || '';
+          setParticipants(coPersonValue);
+          // Parse comma-separated co-persons into array for checkbox state
+          setSelectedCoPersons(coPersonValue ? coPersonValue.split(',').map(name => name.trim()).filter(name => name) : []);
+          setMeetingTime(editingTask.time || '');
+          setTimeSlot(editingTask.prop_slot || editingTask.timeSlot || '');
+          setMeetingStatus(editingTask.status || 'Scheduled');
+          setAgenda(editingTask.notes || editingTask.agenda || '');
+        } else {
+          // Task fields mapping
+          setTaskName(editingTask.task_name || editingTask.name || '');
+          setDueDate(editingTask.date || editingTask.dueDate || '');
+          setTimeline(editingTask.timeline || '');
+          setTime(editingTask.time_in_mins || editingTask.time || '');
+          setTaskType(editingTask.task_type || editingTask.type || 'Fixed');
+          setStatus(editingTask.status || 'Not Started');
+          setAttachments(editingTask.file_link || editingTask.attachments || '');
+          setRemarks(editingTask.remarks || '');
+          setRemarks(editingTask.remarks || '');
+        }
       }
     } else {
       // Reset form for new task/meeting
@@ -149,7 +183,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
       clearForm();
     }
     setError('');
-  }, [editingTask, open, isMounted]);
+  }, [editingTask, open, isMounted, mode]);
 
   const clearForm = () => {
     // Clear task fields
@@ -176,14 +210,18 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
     setAgenda('');
 
     // Clear assign fields
-    setAssignDate('');
-    setAssignTimeline('');
-    setAssignTaskName('');
-    setAssignParameter('');
-    setAssignEndGoal('');
-    setAssignRemarks('');
-    setAssignTo('');
-    setAssignStatus('Not Started');
+    setAssignFormData({
+      date: '',
+      timeline: '',
+      taskName: '',
+      parameter: '',
+      endGoal: '',
+      assignerRemarks: '',
+      remarks: '',
+      assignTo: '',
+      status: 'Not Started',
+      uploadClosing: ''
+    });
   };
 
   const handleToggle = (type) => {
@@ -208,20 +246,42 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
 
 
   const handleCreate = async () => {
-    if (mode === "assign") {
-      // For assigning tasks
-      const assignData = {
-        date: assignDate,
-        timeline: assignTimeline,
-        taskName: assignTaskName,
-        parameter: assignParameter,
-        endGoal: assignEndGoal,
-        remarks: assignRemarks,
-        assignTo: assignTo,
-        status: assignStatus,
-      };
-      addTask(assignData);
-    } else if (editingTask) {
+   console.log('handleCreate called with mode:', mode, 'editingTask:', editingTask);
+   if (mode === "assign") {
+     if (editingTask) {
+       // For updating assigned tasks
+       console.log('Updating assigned task:', editingTask);
+       const updatedTask = {
+         ...editingTask,
+         date: assignFormData.date,
+         timeline: assignFormData.timeline,
+         task_name: assignFormData.taskName,
+         parameter: assignFormData.parameter,
+         end_goal: assignFormData.endGoal,
+         assignee_remarks: assignFormData.assignerRemarks,
+         status: assignFormData.status,
+         upload_closing: assignFormData.uploadClosing,
+         remarks: assignFormData.remarks
+       };
+       console.log('Calling updateTask with:', updatedTask);
+       updateTask(updatedTask);
+     } else {
+       // For assigning tasks
+       const assignData = {
+         date: assignFormData.date,
+         timeline: assignFormData.timeline,
+         taskName: assignFormData.taskName,
+         parameter: assignFormData.parameter,
+         endGoal: assignFormData.endGoal,
+         assignerRemarks: assignFormData.assignerRemarks,
+         remarks: assignFormData.remarks,
+         assignTo: assignFormData.assignTo,
+         status: assignFormData.status,
+         uploadClosing: assignFormData.uploadClosing,
+       };
+       addTask(assignData);
+     }
+   } else if (editingTask) {
       if (isMeeting) {
         // For editing meetings
         const updatedMeeting = {
@@ -308,12 +368,12 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         <div className="popup-header">
           <div className="header-content">
             <div className="title-section">
-              <div>
+              <div style={mode === "assign" ? { textAlign: 'left' } : {}}>
                 <h2 className="modal-title">
-                  {mode === "assign" ? "Assign Task" : editingTask ? (isMeeting ? 'Edit Meeting' : 'Edit Task') : (isMeeting ? 'New Meeting' : 'New Task')}
+                  {mode === "assign" ? (editingTask ? "Update Assigned Task" : "Assign Task") : editingTask ? (isMeeting ? 'Edit Meeting' : 'Edit Task') : (isMeeting ? 'New Meeting' : 'New Task')}
                 </h2>
                 <p className="modal-subtitle">
-                  {mode === "assign" ? "Assign tasks to team members" : editingTask ? (isMeeting ? 'Update meeting details' : 'Modify task details') : (isMeeting ? 'Plan and coordinate team collaboration' : 'Define objectives and assign responsibilities')}
+                  {mode === "assign" ? (editingTask ? "Modify assigned task details" : "Assign tasks to team members") : editingTask ? (isMeeting ? 'Update meeting details' : 'Modify task details') : (isMeeting ? 'Plan and coordinate team collaboration' : 'Define objectives and assign responsibilities')}
                 </p>
               </div>
             </div>
@@ -353,8 +413,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                   <input
                     type="date"
                     className="enhanced-input"
-                    value={assignDate}
-                    onChange={(e) => setAssignDate(e.target.value)}
+                    value={assignFormData.date}
+                    onChange={(e) => setAssignFormData({...assignFormData, date: e.target.value})}
                     required
                   />
                 </div>
@@ -365,8 +425,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                   <input
                     type="date"
                     className="enhanced-input"
-                    value={assignTimeline}
-                    onChange={(e) => setAssignTimeline(e.target.value)}
+                    value={assignFormData.timeline}
+                    onChange={(e) => setAssignFormData({...assignFormData, timeline: e.target.value})}
                   />
                 </div>
 
@@ -377,8 +437,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="text"
                     className="enhanced-input"
                     placeholder="Enter task name"
-                    value={assignTaskName}
-                    onChange={(e) => setAssignTaskName(e.target.value)}
+                    value={assignFormData.taskName}
+                    onChange={(e) => setAssignFormData({...assignFormData, taskName: e.target.value})}
                     required
                   />
                 </div>
@@ -390,8 +450,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="text"
                     className="enhanced-input"
                     placeholder="Enter parameter"
-                    value={assignParameter}
-                    onChange={(e) => setAssignParameter(e.target.value)}
+                    value={assignFormData.parameter}
+                    onChange={(e) => setAssignFormData({...assignFormData, parameter: e.target.value})}
                   />
                 </div>
 
@@ -402,39 +462,51 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     type="text"
                     className="enhanced-input"
                     placeholder="Enter end goal"
-                    value={assignEndGoal}
-                    onChange={(e) => setAssignEndGoal(e.target.value)}
+                    value={assignFormData.endGoal}
+                    onChange={(e) => setAssignFormData({...assignFormData, endGoal: e.target.value})}
                   />
                 </div>
 
-                {/* Assignee Remarks */}
+                {/* Assign To */}
+                {!isAssignEdit && (
+                  <div className="field-box span-6">
+                    <label className="field-label required">Assign To</label>
+                    <select
+                      className="enhanced-select"
+                      value={assignFormData.assignTo}
+                      onChange={(e) => setAssignFormData({...assignFormData, assignTo: e.target.value})}
+                      required
+                    >
+                      <option value="">Select team member</option>
+                      {teamMembers && teamMembers.length > 0 ? teamMembers
+                        .filter(member => member.user_id !== 'all') // Exclude "All Team Members" option
+                        .map(member => (
+                          <option key={member.user_id} value={member.user_id}>
+                            {member.name}
+                          </option>
+                        )) : (
+                        <option disabled>No team members available</option>
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {/* Assigner Remarks */}
                 <div className="field-box span-12">
-                  <label className="field-label">Assignee Remarks</label>
+                  <label className="field-label">Assigner Remarks</label>
                   <textarea
                     className="enhanced-textarea"
-                    placeholder="Enter assignee remarks"
-                    value={assignRemarks}
-                    onChange={(e) => setAssignRemarks(e.target.value)}
+                    placeholder="Enter assigner remarks"
+                    value={assignFormData.assignerRemarks}
+                    onChange={(e) => setAssignFormData({...assignFormData, assignerRemarks: e.target.value})}
                   />
                 </div>
 
-                {/* Assign to */}
-                <div className="field-box span-6">
-                  <label className="field-label">Assign to</label>
-                  <select className="enhanced-select" value={assignTo} onChange={(e) => setAssignTo(e.target.value)}>
-                    <option value="">Select team member</option>
-                    {teamMembers.map(member => (
-                      <option key={member.user_id} value={member.user_id}>
-                        {member.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
 
                 {/* Status */}
                 <div className="field-box span-6">
                   <label className="field-label">Status</label>
-                  <select className="enhanced-select" value={assignStatus} onChange={(e) => setAssignStatus(e.target.value)}>
+                  <select className="enhanced-select" value={assignFormData.status} onChange={(e) => setAssignFormData({...assignFormData, status: e.target.value})}>
                     <option>Not Started</option>
                     <option>In Progress</option>
                     <option>Done</option>
@@ -443,34 +515,44 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                   </select>
                 </div>
 
+                {/* Upload Closing */}
+                {(() => {
+                  // Disable for new assignments
+                  const isDisabled = mode === "assign" && !editingTask;
+                  return (
+                    <div className={`field-box span-6 ${isDisabled ? 'restricted-field' : ''}`}>
+                      <label className="field-label">Upload Closing</label>
+                      <input
+                        type="text"
+                        className="enhanced-input"
+                        placeholder="Enter upload closing link"
+                        value={assignFormData.uploadClosing}
+                        onChange={(e) => setAssignFormData({...assignFormData, uploadClosing: e.target.value})}
+                        disabled={isDisabled}
+                        title={isDisabled ? "This field is disabled for new assignments" : ""}
+                      />
+                    </div>
+                  );
+                })()}
+
                 {/* Remarks */}
-                <div className="field-box span-12">
-                  <label className="field-label">Remarks</label>
-                  <textarea
-                    className="enhanced-textarea"
-                    placeholder="Enter task remarks"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    disabled={(() => {
-                      try {
-                        const profile = JSON.parse(localStorage.getItem("profile"));
-                        return mode === "assign" && (profile?.user_type === 'hod' || profile?.user_type === 'HOD');
-                      } catch {
-                        return false;
-                      }
-                    })()}
-                    style={{
-                      backgroundColor: (() => {
-                        try {
-                          const profile = JSON.parse(localStorage.getItem("profile"));
-                          return mode === "assign" && (profile?.user_type === 'hod' || profile?.user_type === 'HOD') ? '#ffebee' : undefined;
-                        } catch {
-                          return undefined;
-                        }
-                      })()
-                    }}
-                  />
-                </div>
+                {(() => {
+                  // Disable for new assignments
+                  const isDisabled = mode === "assign" && !editingTask;
+                  return (
+                    <div className={`field-box span-12 ${isDisabled ? 'restricted-field' : ''}`}>
+                      <label className="field-label">Remarks</label>
+                      <textarea
+                        className="enhanced-textarea"
+                        placeholder="Enter task remarks"
+                        value={assignFormData.remarks}
+                        onChange={(e) => setAssignFormData({...assignFormData, remarks: e.target.value})}
+                        disabled={isDisabled}
+                        title={isDisabled ? "This field is disabled for new assignments" : ""}
+                      />
+                    </div>
+                  );
+                })()}
               </>
             ) : !isMeeting ? (
               // TASK FORM
@@ -796,7 +878,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
               Cancel
             </button>
             <button className="submit-btn" onClick={handleCreate} disabled={loading}>
-              {loading ? 'Saving...' : (mode === "assign" ? 'Assign Task' : editingTask ? (isMeeting ? 'Update Meeting' : 'Update Task') : (isMeeting ? 'Create Meeting' : 'Create Task'))}
+              {loading ? 'Saving...' : (mode === "assign" ? (editingTask ? 'Update Task' : 'Assign Task') : editingTask ? (isMeeting ? 'Update Meeting' : 'Update Task') : (isMeeting ? 'Create Meeting' : 'Create Task'))}
             </button>
           </div>
         </div>
