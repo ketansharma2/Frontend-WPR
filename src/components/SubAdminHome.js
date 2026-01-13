@@ -17,6 +17,8 @@ import './Home.css';
 import './TaskList.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+console.log('API_BASE_URL:', API_BASE_URL);
+console.log('REACT_APP_API_BASE_URL env var:', process.env.REACT_APP_API_BASE_URL);
 
 const SubAdminHome = ({ onLogout }) => {
   const [currentPage, setCurrentPage] = useState('dashboard');
