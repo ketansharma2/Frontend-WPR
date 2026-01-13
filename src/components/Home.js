@@ -633,19 +633,19 @@ const Home = ({ onLogout }) => {
           // Update todayTasks
           if (updatedTask.itemType === 'task') {
             setTodayTasks(prev => prev.map(task => {
-              const isMatch = task.task_id === updatedTask.task_id || task.id === updatedTask.id;
+              const isMatch = task.date === updatedTask.date && task.task_id === updatedTask.task_id;
               return isMatch ? { ...task, ...updatedTask, ...updatedTaskData } : task;
             }));
           } else {
             setTodayMeetings(prev => prev.map(meeting => {
-              const isMatch = meeting.meeting_id === updatedTask.meeting_id;
+              const isMatch = meeting.date === updatedTask.date && meeting.meeting_id === updatedTask.meeting_id;
               return isMatch ? { ...meeting, ...updatedTask, ...updatedTaskData } : meeting;
             }));
           }
         } else {
           // Update yesterdayTasks
           setYesterdayTasks(prev => prev.map(task => {
-            const isMatch = task.task_id === updatedTask.task_id || task.id === updatedTask.id;
+            const isMatch = task.date === updatedTask.date && task.task_id === updatedTask.task_id;
             return isMatch ? { ...task, ...updatedTask, ...updatedTaskData } : task;
           }));
         }
@@ -653,17 +653,11 @@ const Home = ({ onLogout }) => {
         // Also update the general tasks state for consistency
         setTasks(prevTasks => {
           return prevTasks.map(task => {
-            // More robust task matching logic
-            const isMatch =
-              (task._id && updatedTask._id && task._id === updatedTask._id) ||
+            // Match using task_id and date for uniqueness
+            const isMatch = task.itemType === updatedTask.itemType && task.date === updatedTask.date && (
               (task.task_id && updatedTask.task_id && task.task_id === updatedTask.task_id) ||
-              (task.id && updatedTask.id && task.id === updatedTask.id) ||
-              (task.meeting_id && updatedTask.meeting_id && task.meeting_id === updatedTask.meeting_id) ||
-              // Fallback matching for different ID field names
-              (task._id && updatedTaskData._id && task._id === updatedTaskData._id) ||
-              (task.task_id && updatedTaskData.task_id && task.task_id === updatedTaskData.task_id) ||
-              (task.id && updatedTaskData.id && task.id === updatedTaskData.id) ||
-              (task.meeting_id && updatedTaskData.meeting_id && task.meeting_id === updatedTaskData.meeting_id);
+              (task.meeting_id && updatedTask.meeting_id && task.meeting_id === updatedTask.meeting_id)
+            );
 
             if (isMatch) {
               return {
@@ -1115,7 +1109,7 @@ const Home = ({ onLogout }) => {
                 <tbody>
                   {(selectedDate === 'yesterday' ? yesterdayTasks : todayTasks).length > 0 ? (
                     (selectedDate === 'yesterday' ? yesterdayTasks : todayTasks).map((task, index) => (
-                      <tr key={task.task_id || index} style={{
+                      <tr key={`${task.task_id || 'no-id'}-${task.date}-${index}`} style={{
                         backgroundColor: index % 2 === 0 ? '#f8fafc' : 'white',
                         borderBottom: '1px solid #e2e8f0'
                       }}>
@@ -1399,7 +1393,7 @@ const Home = ({ onLogout }) => {
                 <tbody>
                   {(selectedDate === 'yesterday' ? yesterdayMeetings : todayMeetings).length > 0 ? (
                     (selectedDate === 'yesterday' ? yesterdayMeetings : todayMeetings).map((meeting, index) => (
-                      <tr key={meeting.meeting_id || index} style={{
+                      <tr key={`${meeting.meeting_id || 'no-id'}-${meeting.date}-${index}`} style={{
                         backgroundColor: index % 2 === 0 ? '#f8fafc' : 'white',
                         borderBottom: '1px solid #e2e8f0'
                       }}>
