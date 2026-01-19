@@ -225,11 +225,12 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
       compareDate.setHours(0, 0, 0, 0);
       return compareDate.getTime() === today.getTime();
     } else if (dateFilter === 'yesterday') {
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
+      if (!yesterdayDate) return false;
+      const lastWorkingDay = new Date(yesterdayDate);
+      lastWorkingDay.setHours(0, 0, 0, 0);
       const compareDate = new Date(taskDate);
       compareDate.setHours(0, 0, 0, 0);
-      return compareDate.getTime() === yesterday.getTime();
+      return compareDate.getTime() === lastWorkingDay.getTime();
     } else if (dateFilter === 'past_week') {
       const d = new Date();
       d.setDate(d.getDate() - 7);
