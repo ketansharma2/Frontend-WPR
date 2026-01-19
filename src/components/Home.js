@@ -133,11 +133,11 @@ const Home = ({ onLogout }) => {
     if (userProfile?.user_id && (currentPage === 'dashboard' || currentPage === 'tasks' || currentPage === 'meetings')) {
       if (currentPage === 'dashboard' && isRemarksRequired === null) {
         fetchLastWorkingDayData();
-      } else if ((currentPage === 'tasks' || currentPage === 'meetings') && !yesterdayDate) {
+      } else if (currentPage === 'tasks' || currentPage === 'meetings') {
         fetchLastWorkingDayData();
       }
     }
-  }, [userProfile, currentPage, isRemarksRequired, yesterdayDate]);
+  }, [userProfile, currentPage, isRemarksRequired]);
 
   // Auto-populate fixed tasks when dashboard loads and remarks are checked
   useEffect(() => {
@@ -594,7 +594,7 @@ const Home = ({ onLogout }) => {
         // For assigned tasks, only update allowed fields
         apiData = {
           status: updatedTask.status,
-          upload_closing: updatedTask.upload_closing,
+          upload_closing: updatedTask.upload_closing || null,
           remarks: updatedTask.remarks
         };
       } else {
@@ -607,7 +607,7 @@ const Home = ({ onLogout }) => {
           time: updatedTask.time_in_mins || updatedTask.time,
           task_type: updatedTask.task_type || updatedTask.type,
           status: updatedTask.status,
-          file_link: updatedTask.file_link || updatedTask.attachments,
+          file_link: (updatedTask.file_link || updatedTask.attachments) || null,
           remarks: updatedTask.remarks
         };
       }
@@ -873,6 +873,7 @@ const Home = ({ onLogout }) => {
       <main style={{ padding: '0' }}>
         {currentPage === 'tasks' ? (
           <TaskList
+            key={yesterdayDate}
             tasks={tasks.filter(task => task.itemType === 'task')}
             onEdit={editTask}
             onViewDetails={onViewDetails}
@@ -892,6 +893,7 @@ const Home = ({ onLogout }) => {
             categoryFilter={categoryFilter}
             setCategoryFilter={setCategoryFilter}
             userRole={userProfile.user_type}
+            yesterdayDate={yesterdayDate}
           />
         ) : currentPage === 'calendar' ? (
           <WeeklyTemplate
@@ -911,6 +913,7 @@ const Home = ({ onLogout }) => {
           />
         ) : currentPage === 'meetings' ? (
           <TaskList
+            key={yesterdayDate}
             tasks={tasks.filter(task => task.itemType === 'meeting')}
             onEdit={editTask}
             onViewDetails={onViewDetails}
@@ -930,6 +933,7 @@ const Home = ({ onLogout }) => {
             categoryFilter={categoryFilter}
             setCategoryFilter={setCategoryFilter}
             userRole={userProfile.user_type}
+            yesterdayDate={yesterdayDate}
           />
         ) : currentPage === 'rnr' ? (
           <RnR />
@@ -1165,20 +1169,23 @@ const Home = ({ onLogout }) => {
                               left: '-80px'
                             }}>
                               <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const today = new Date().toISOString().split('T')[0];
-                                      const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : null;
-                                      const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
-                                      const isBeforeLastWorkingDay = taskDate && lastWorkingDayStr && taskDate < lastWorkingDayStr;
-                                      if (isBeforeLastWorkingDay && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD' && task.category !== 'assigned') {
-                                        alert(`You can't edit tasks from before the previous working day`);
-                                        setMenuOpen(null);
-                                        return;
-                                      }
-                                      editTask(task);
-                                      setMenuOpen(null);
-                                    }}
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       const today = new Date().toISOString().split('T')[0];
+                                       const yesterday = new Date();
+                                       yesterday.setDate(yesterday.getDate() - 1);
+                                       const yesterdayStr = yesterday.toISOString().split('T')[0];
+                                       const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
+                                       const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
+                                       const isBeforeLastWorkingDay = taskDate && lastWorkingDayStr && taskDate < lastWorkingDayStr;
+                                       if (isBeforeLastWorkingDay && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD' && task.category !== 'assigned') {
+                                         alert(`You can't edit tasks from before the previous working day`);
+                                         setMenuOpen(null);
+                                         return;
+                                       }
+                                       editTask(task);
+                                       setMenuOpen(null);
+                                     }}
                                 style={{
                                   display: 'block',
                                   width: '100%',
@@ -1442,7 +1449,10 @@ const Home = ({ onLogout }) => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const today = new Date().toISOString().split('T')[0];
-                                    const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : null;
+                                    const yesterday = new Date();
+                                    yesterday.setDate(yesterday.getDate() - 1);
+                                    const yesterdayStr = yesterday.toISOString().split('T')[0];
+                                    const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
                                     const taskDate = meeting.date ? new Date(meeting.date).toISOString().split('T')[0] : null;
                                     const isBeforeLastWorkingDay = taskDate && lastWorkingDayStr && taskDate < lastWorkingDayStr;
                                     if (isBeforeLastWorkingDay && userProfile?.user_type !== 'hod' && userProfile?.user_type !== 'HOD') {

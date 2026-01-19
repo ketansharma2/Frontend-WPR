@@ -302,7 +302,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         if (isRestrictedEdit) {
           const updatedTask = {
             ...editingTask,
-            ...(isPreviousDay ? {} : { time_in_mins: time }),
+            time_in_mins: time,
             status: status,
             file_link: attachments,
             remarks: remarks,
@@ -639,7 +639,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                 </div>
 
                 {/* Time (in mins) */}
-                <div className={`field-box span-6 ${isPreviousDay ? 'restricted-field' : ''}`}>
+                <div className="field-box span-6">
                   <label className="field-label">Time (in mins)</label>
                   <input
                     type="number"
@@ -647,8 +647,6 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                     placeholder="Enter time in minutes"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    disabled={isPreviousDay}
-                    title={isPreviousDay ? "Time cannot be edited for previous day tasks" : ""}
                   />
                 </div>
 

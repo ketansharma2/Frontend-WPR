@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./TaskList.css";
 import ToggleSwitch from "./ToggleSwitch";
 import {
@@ -27,6 +27,11 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
   const [showViewTypeDropdown, setShowViewTypeDropdown] = useState(false);
   const [showTeamMemberDropdown, setShowTeamMemberDropdown] = useState(false);
   const [menuOpen, setMenuOpen] = useState(null);
+
+  const yesterdayDateRef = useRef(yesterdayDate);
+  useEffect(() => {
+    yesterdayDateRef.current = yesterdayDate;
+  }, [yesterdayDate]);
 
   // Sync activeFilters with filter props
   useEffect(() => {
@@ -1042,7 +1047,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                                 const yesterday = new Date();
                                 yesterday.setDate(yesterday.getDate() - 1);
                                 const yesterdayStr = yesterday.toISOString().split('T')[0];
-                                const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
+                                const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : null;
                                 const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
                                 const isBeforeLastWorkingDay = taskDate && taskDate < lastWorkingDayStr;
                                 if (isBeforeLastWorkingDay && userRole !== 'hod' && userRole !== 'HOD') {
@@ -1137,7 +1142,8 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                                 const yesterday = new Date();
                                 yesterday.setDate(yesterday.getDate() - 1);
                                 const yesterdayStr = yesterday.toISOString().split('T')[0];
-                                const lastWorkingDayStr = yesterdayDate ? new Date(yesterdayDate).toISOString().split('T')[0] : yesterdayStr;
+                                const currentYesterdayDate = yesterdayDateRef.current;
+                                const lastWorkingDayStr = currentYesterdayDate ? new Date(currentYesterdayDate).toISOString().split('T')[0] : null;
                                 const taskDate = task.date ? new Date(task.date).toISOString().split('T')[0] : null;
                                 const isBeforeLastWorkingDay = taskDate && taskDate < lastWorkingDayStr;
                                 if (isBeforeLastWorkingDay && userRole !== 'hod' && userRole !== 'HOD' && task.category !== 'assigned') {
