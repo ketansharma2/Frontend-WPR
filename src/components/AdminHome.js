@@ -73,28 +73,29 @@ class AdminUsersErrorBoundary extends React.Component {
 }
 
 const AdminHome = ({ onLogout }) => {
-   // Helper function for SVG donut chart calculations
-   const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-     const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-     return {
-       x: centerX + (radius * Math.cos(angleInRadians)),
-       y: centerY + (radius * Math.sin(angleInRadians))
-     };
-   };
+    // Helper function for SVG donut chart calculations
+    const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+      const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+      return {
+        x: centerX + (radius * Math.cos(angleInRadians)),
+        y: centerY + (radius * Math.sin(angleInRadians))
+      };
+    };
 
-   // Default dates for dept analytics
-   const today = new Date();
-   // Calculate Monday of current week
-   const mondayOfWeek = new Date(today);
-   const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-   const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, subtract 6 days; otherwise subtract (day-1)
-   mondayOfWeek.setDate(today.getDate() - daysToSubtract);
+    // Default dates for dept analytics
+    const today = new Date();
+    // Calculate Monday of current week
+    const mondayOfWeek = new Date(today);
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, subtract 6 days; otherwise subtract (day-1)
+    mondayOfWeek.setDate(today.getDate() - daysToSubtract);
 
-   // Calculate Saturday of current week
-   const saturdayOfWeek = new Date(today);
-   const daysToAdd = 6 - dayOfWeek; // Saturday is day 6, so add (6 - currentDay) days
-   saturdayOfWeek.setDate(today.getDate() + daysToAdd);
-   const formatDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    // Calculate Saturday of current week
+    const saturdayOfWeek = new Date(today);
+    const daysToAdd = 6 - dayOfWeek; // Saturday is day 6, so add (6 - currentDay) days
+    saturdayOfWeek.setDate(today.getDate() + daysToAdd);
+    const formatDate = (d) => d.toISOString().split("T")[0];
+    const now = new Date();
 
    const [currentPage, setCurrentPage] = useState('dashboard');
    const [userProfile, setUserProfile] = useState(null);
@@ -116,8 +117,8 @@ const AdminHome = ({ onLogout }) => {
    const [weeklyTeamMemberFilter, setWeeklyTeamMemberFilter] = useState('');
    const [taskViewTypeFilter, setTaskViewTypeFilter] = useState('all'); // 'self' or 'team' for tasks
    const [taskTeamMemberFilter, setTaskTeamMemberFilter] = useState('all'); // for team view tasks
-   const [meetingViewTypeFilter, setMeetingViewTypeFilter] = useState('self'); // 'self' or 'team' for meetings
-   const [meetingTeamMemberFilter, setMeetingTeamMemberFilter] = useState(''); // for team view meetings
+   const [meetingViewTypeFilter, setMeetingViewTypeFilter] = useState('all'); // 'self' or 'team' for meetings
+   const [meetingTeamMemberFilter, setMeetingTeamMemberFilter] = useState('all'); // for team view meetings
    const [teamMembers, setTeamMembers] = useState([]); // list of team members
    const [selectedTask, setSelectedTask] = useState(null);
    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -171,6 +172,13 @@ const AdminHome = ({ onLogout }) => {
     fetchAvailableDepartments(); // Fetch available departments on mount
   }, []);
 
+  // Set yesterday date for TaskList filtering
+  useEffect(() => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    setYesterdayDate(yesterday.toISOString().split('T')[0]);
+  }, []);
+
   // Refetch tasks when category filter changes
   useEffect(() => {
     if (userProfile && (taskTeamMemberFilter || meetingTeamMemberFilter)) {
@@ -193,6 +201,20 @@ const AdminHome = ({ onLogout }) => {
       }
     }
   }, [taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, userProfile]);
+
+  // Refetch tasks when task date filter changes
+  useEffect(() => {
+    if (userProfile && currentPage === 'tasks') {
+      fetchAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', false);
+    }
+  }, [taskDateFilter, userProfile, currentPage]);
+
+  // Refetch meetings when meeting date filter changes
+  useEffect(() => {
+    if (userProfile && currentPage === 'meetings') {
+      fetchAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', false);
+    }
+  }, [meetingDateFilter, userProfile, currentPage]);
 
   // Calculate user counts from tasks
   useEffect(() => {
@@ -231,6 +253,10 @@ const AdminHome = ({ onLogout }) => {
         return;
       }
 
+      // Both backends handle string dates like 'yesterday'
+      let taskDateFilterValue = taskDateFilter;
+      let meetingDateFilterValue = meetingDateFilter;
+
       // Fetch tasks with Admin-specific filter
       let targetUserId = taskTeamMember || 'all'; // Default to 'all' if no specific member selected
 
@@ -242,7 +268,7 @@ const AdminHome = ({ onLogout }) => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          date_filter: taskDateFilter || 'all',
+          date_filter: taskDateFilterValue,
           task_type: taskTypeFilter || 'all',
           status: taskStatusFilter || 'all',
           category: category,
@@ -264,7 +290,7 @@ const AdminHome = ({ onLogout }) => {
         body: JSON.stringify({
           user_id: profile.user_id,
           target_user_id: targetUserIdMeetings,
-          date_filter: meetingDateFilter || 'all',
+          date_filter: meetingDateFilterValue || 'all',
           status: meetingStatusFilter || 'all',
           custom_date: null
         })
@@ -315,9 +341,11 @@ const AdminHome = ({ onLogout }) => {
   const fetchTeamMembers = async () => {
     try {
       const data = await api.getAssignMembers();
-      setTeamMembers(data.members || []);
+      const members = data.members || [];
+      setTeamMembers([{ user_id: 'all', name: 'All Team Members' }, ...members]);
     } catch (err) {
       console.error("Error fetching team members:", err);
+      setTeamMembers([{ user_id: 'all', name: 'All Team Members' }]);
     }
   };
   
@@ -876,13 +904,14 @@ const AdminHome = ({ onLogout }) => {
               showMyTasksOption={false}
               isAdminView={true}
               userRole={userProfile?.user_type}
+              yesterdayDate={yesterdayDate}
             />
           </div>
         );
       case "meetings":
         return (
           <TaskList
-            tasks={tasks.filter(task => task.itemType === 'meeting')}
+            tasks={tasks.filter(task => task.itemType === 'meeting').sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))}
             onEdit={editTask}
             onViewDetails={onViewDetails}
             onDelete={deleteTask}
@@ -904,6 +933,7 @@ const AdminHome = ({ onLogout }) => {
             isAdminView={true}
             showMyTasksOption={false}
             userRole={userProfile?.user_type}
+            yesterdayDate={yesterdayDate}
           />
         );
       case "calendar":
