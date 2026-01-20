@@ -102,14 +102,14 @@ const HodHome = ({ onLogout }) => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          user_id: profile.user_id,
-          view_tasks_of: viewTasksOf,
-          target_user_id: targetUserId,
-          date_filter: 'all',
-          task_type: 'all',
-          status: 'all',
-          category
-        })
+           user_id: profile.user_id,
+           view_tasks_of: viewTasksOf,
+           target_user_id: targetUserId,
+           date_filter: dateFilter,
+           task_type: 'all',
+           status: 'all',
+           category
+         })
       });
 
       // Fetch meetings with HOD-specific filter
@@ -145,10 +145,11 @@ const HodHome = ({ onLogout }) => {
           const tasksData = await tasksResponse.json();
           console.log('Tasks data:', tasksData);
 
-          // Combine tasks and meetings into a single array - master_tasks first, then self_tasks
+          // Combine tasks and meetings into a single array - master_tasks first, then self_tasks, then history_tasks
           allTasks = [
             ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned', assigned_by_user: task.users })),
-            ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' })),
+            ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: task.itemType || 'task', category: 'self', owner_name: task.users?.name || 'Unknown' })),
+            ...(tasksData.history_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' })),
             ...(meetingsData.meetings || []).map(meeting => ({ ...meeting, itemType: 'meeting', owner_name: meeting.owner_name || 'Unknown' }))
           ];
         } else {
@@ -157,7 +158,15 @@ const HodHome = ({ onLogout }) => {
           allTasks = (meetingsData.meetings || []).map(meeting => ({ ...meeting, itemType: 'meeting' }));
         }
 
-        console.log('Combined tasks with descriptions:', allTasks.map(t => ({ name: t.task_name, description: t.description })));
+        console.log('Combined tasks with descriptions:', allTasks.map(t => ({ name: t.task_name, description: t.description, type: t.itemType, date: t.date })));
+
+        // Sort tasks by date descending only
+        allTasks.sort((a, b) => {
+          if (a.itemType === 'meeting' || b.itemType === 'meeting') return 0; // Don't sort meetings
+          const aDate = a.date || '';
+          const bDate = b.date || '';
+          return bDate.localeCompare(aDate);
+        });
 
         // For HOD, backend already filters based on viewType, so use all returned tasks
         const filteredTasks = allTasks;
@@ -227,10 +236,11 @@ const HodHome = ({ onLogout }) => {
       if (tasksResponse.ok) {
         const tasksData = await tasksResponse.json();
 
-        // Combine tasks and meetings into a single array - master_tasks first, then self_tasks
+        // Combine tasks and meetings into a single array - master_tasks first, then self_tasks, then history_tasks
         const allTasks = [
           ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned', assigned_by_user: task.users })),
-          ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' }))
+          ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' })),
+          ...(tasksData.history_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' }))
         ];
 
         console.log('Combined dashboard tasks with descriptions:', allTasks.map(t => ({ name: t.task_name, description: t.description })));
@@ -238,6 +248,7 @@ const HodHome = ({ onLogout }) => {
         // For HOD, backend already filters based on viewType, so use all returned tasks
         const filteredTasks = allTasks;
 
+        console.log('Dashboard tasks received:', filteredTasks.length, 'items');
         setDashboardTasks(filteredTasks);
       } else {
         console.error('Dashboard tasks API failed');
@@ -457,7 +468,7 @@ const HodHome = ({ onLogout }) => {
     } else {
       setError("No user profile found");
     }
-    fetchHodData('self', '', 'self', '', 'all', 'all', true);
+    fetchHodData('self', '', 'self', '', 'all', taskDateFilter, true);
     fetchHodDashboardData('self'); // Fetch dashboard data on mount
     fetchTeamMembers(); // Fetch team members on mount
   }, []);
@@ -477,13 +488,13 @@ const HodHome = ({ onLogout }) => {
       setTasks([]); // Clear current tasks to prevent showing old data
       // Only fetch meetings if team view has a selected member
       if (!(meetingViewTypeFilter === 'team' && !meetingTeamMemberFilter)) {
-        fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', false);
+        fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', taskDateFilter, false);
       }
       if (taskViewTypeFilter === 'team' || meetingViewTypeFilter === 'team' || taskViewTypeFilter === 'all' || meetingViewTypeFilter === 'all') {
         fetchTeamMembers();
       }
     }
-  }, [taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, userProfile, currentPage]);
+  }, [taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, taskDateFilter, userProfile, currentPage]);
 
   // Refetch dashboard data when dashboard filters change
   useEffect(() => {
@@ -522,9 +533,9 @@ const HodHome = ({ onLogout }) => {
         const taskTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
         const meetingViewType = dashboardViewType === 'all' ? 'all' : dashboardViewType;
         const meetingTeamMember = dashboardViewType === 'team' ? dashboardTeamMemberFilter : (dashboardViewType === 'all' ? 'all' : '');
-        fetchDashboardTasks(taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, 'all', false);
+        fetchDashboardTasks(taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, 'all', dashboardDateFilter, false);
       }
-    }, [dashboardViewType, dashboardTeamMemberFilter, userProfile]);
+    }, [dashboardViewType, dashboardTeamMemberFilter, dashboardDateFilter, userProfile]);
 
    // Check remarks requirement when dashboard loads
    useEffect(() => {
@@ -957,33 +968,6 @@ const HodHome = ({ onLogout }) => {
 
   // Calculate filtered tasks and meetings based on dashboard filters
   const filteredTasks = dashboardTasks.filter(task => {
-    // Date filter
-    const taskDate = new Date(task.date);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // For past_week: last week's Monday to Saturday
-    const dayOfWeek = today.getDay();
-    const daysToLastSaturday = (dayOfWeek + 1) % 7;
-    const lastSaturday = new Date(today);
-    lastSaturday.setDate(today.getDate() - daysToLastSaturday);
-    const lastMonday = new Date(lastSaturday);
-    lastMonday.setDate(lastSaturday.getDate() - 5);
-
-    // For past_month: first to last of last month
-    const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-
-    // For all: current month
-    const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-    if (dashboardDateFilter === 'today' && taskDate.toDateString() !== today.toDateString()) return false;
-    if (dashboardDateFilter === 'yesterday' && taskDate.toDateString() !== yesterday.toDateString()) return false;
-    if (dashboardDateFilter === 'past_week' && (taskDate < lastMonday || taskDate > lastSaturday)) return false;
-    if (dashboardDateFilter === 'past_month' && (taskDate < firstOfLastMonth || taskDate > lastOfLastMonth)) return false;
-    if (dashboardDateFilter === 'all' && (taskDate < startOfCurrentMonth || taskDate > endOfCurrentMonth)) return false;
 
     // Task type filter - only apply if task has task_type field
     if (dashboardTaskTypeFilter && task.task_type && task.task_type !== dashboardTaskTypeFilter) return false;
@@ -1026,6 +1010,8 @@ const HodHome = ({ onLogout }) => {
 
     return true;
   });
+
+  console.log('Filtered dashboard tasks:', filteredTasks.length, 'items for date filter:', dashboardDateFilter);
 
   // Use stats from backend
   const totalTasks = monthlyStats?.total_tasks || 0;
@@ -1122,7 +1108,19 @@ const HodHome = ({ onLogout }) => {
         {currentPage === 'tasks' ? (
           <div style={{ marginTop: '20px' }}>
             <TaskList
-              tasks={tasks.filter(task => task.itemType === 'task')}
+              tasks={tasks.filter(task => task.itemType === 'task').sort((a, b) => {
+                // Sort by date descending (newest first) using string comparison
+                const aDate = a.date || '';
+                const bDate = b.date || '';
+                const dateCompare = bDate.localeCompare(aDate);
+                if (dateCompare !== 0) return dateCompare;
+                // For same date, show current tasks before history tasks
+                if (a.itemType !== b.itemType) {
+                  if (a.itemType === 'task') return -1;
+                  if (b.itemType === 'task') return 1;
+                }
+                return (a.task_type || '').localeCompare(b.task_type || '');
+              })}
               onEdit={editTask}
               onViewDetails={onViewDetails}
               onDelete={deleteTask}
@@ -1146,6 +1144,7 @@ const HodHome = ({ onLogout }) => {
               userRole={userProfile.user_type}
               yesterdayDate={yesterdayDate}
               showFilterBar={true}
+              showSNo={true}
             />
           </div>
         ) : currentPage === 'calendar' ? (
@@ -1621,37 +1620,7 @@ const HodHome = ({ onLogout }) => {
              }}>
                {/* Calculate member counts from tasks filtered only by date */}
                {(() => {
-                 const dateFilteredTasks = dashboardTasks.filter(task => {
-                   // Date filter only
-                   const taskDate = new Date(task.date);
-                   const today = new Date();
-                   const yesterday = new Date(today);
-                   yesterday.setDate(yesterday.getDate() - 1);
-
-                   // For past_week: last week's Monday to Saturday
-                   const dayOfWeek = today.getDay();
-                   const daysToLastSaturday = (dayOfWeek + 1) % 7;
-                   const lastSaturday = new Date(today);
-                   lastSaturday.setDate(today.getDate() - daysToLastSaturday);
-                   const lastMonday = new Date(lastSaturday);
-                   lastMonday.setDate(lastSaturday.getDate() - 5);
-
-                   // For past_month: first to last of last month
-                   const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                   const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-
-                   // For all: current month
-                   const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-                   const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-                   if (dashboardDateFilter === 'today' && taskDate.toDateString() !== today.toDateString()) return false;
-                   if (dashboardDateFilter === 'yesterday' && taskDate.toDateString() !== yesterday.toDateString()) return false;
-                   if (dashboardDateFilter === 'past_week' && (taskDate < lastMonday || taskDate > lastSaturday)) return false;
-                   if (dashboardDateFilter === 'past_month' && (taskDate < firstOfLastMonth || taskDate > lastOfLastMonth)) return false;
-                   if (dashboardDateFilter === 'all' && (taskDate < startOfCurrentMonth || taskDate > endOfCurrentMonth)) return false;
-
-                   return true;
-                 });
+                 const dateFilteredTasks = dashboardTasks;
 
                  const memberCounts = {};
                  dateFilteredTasks.forEach(task => {
@@ -1741,37 +1710,7 @@ const HodHome = ({ onLogout }) => {
              }}>
                {/* Calculate task type counts from tasks filtered only by date */}
                {(() => {
-                 const dateFilteredTasks = dashboardTasks.filter(task => {
-                   // Date filter only
-                   const taskDate = new Date(task.date);
-                   const today = new Date();
-                   const yesterday = new Date(today);
-                   yesterday.setDate(yesterday.getDate() - 1);
-
-                   // For past_week: last week's Monday to Saturday
-                   const dayOfWeek = today.getDay();
-                   const daysToLastSaturday = (dayOfWeek + 1) % 7;
-                   const lastSaturday = new Date(today);
-                   lastSaturday.setDate(today.getDate() - daysToLastSaturday);
-                   const lastMonday = new Date(lastSaturday);
-                   lastMonday.setDate(lastSaturday.getDate() - 5);
-
-                   // For past_month: first to last of last month
-                   const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                   const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-
-                   // For all: current month
-                   const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-                   const endOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-                   if (dashboardDateFilter === 'today' && taskDate.toDateString() !== today.toDateString()) return false;
-                   if (dashboardDateFilter === 'yesterday' && taskDate.toDateString() !== yesterday.toDateString()) return false;
-                   if (dashboardDateFilter === 'past_week' && (taskDate < lastMonday || taskDate > lastSaturday)) return false;
-                   if (dashboardDateFilter === 'past_month' && (taskDate < firstOfLastMonth || taskDate > lastOfLastMonth)) return false;
-                   if (dashboardDateFilter === 'all' && (taskDate < startOfCurrentMonth || taskDate > endOfCurrentMonth)) return false;
-
-                   return true;
-                 });
+                 const dateFilteredTasks = dashboardTasks;
 
                  return (
                    <>
@@ -1979,22 +1918,6 @@ const HodHome = ({ onLogout }) => {
                  <tbody>
                    {(() => {
                      const filteredTasks = dashboardTasks.filter(task => {
-                       // Date filter
-                       if (dashboardDateFilter !== 'all') {
-                         const taskDate = new Date(task.date);
-                         const today = new Date();
-                         const yesterday = new Date(today);
-                         yesterday.setDate(yesterday.getDate() - 1);
-                         const pastWeek = new Date(today);
-                         pastWeek.setDate(pastWeek.getDate() - 7);
-                         const pastMonth = new Date(today);
-                         pastMonth.setMonth(pastMonth.getMonth() - 1);
-
-                         if (dashboardDateFilter === 'today' && taskDate.toDateString() !== today.toDateString()) return false;
-                         if (dashboardDateFilter === 'yesterday' && taskDate.toDateString() !== yesterday.toDateString()) return false;
-                         if (dashboardDateFilter === 'past_week' && taskDate < pastWeek) return false;
-                         if (dashboardDateFilter === 'past_month' && taskDate < pastMonth) return false;
-                       }
 
                        // Task type filter
                        if (dashboardTaskTypeFilter && task.task_type !== dashboardTaskTypeFilter) return false;
@@ -2019,9 +1942,11 @@ const HodHome = ({ onLogout }) => {
                          // For 'self' view, show only self tasks
                          if (task.category !== 'self') return false;
                        }
-
+                   
+                   
+                   
                        return true;
-                     });
+                     }).sort((a, b) => (a.task_type || '').localeCompare(b.task_type || ''));
 
                      if (filteredTasks.length === 0) {
                        return (

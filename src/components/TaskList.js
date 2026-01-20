@@ -9,7 +9,7 @@ import {
   FaExternalLinkAlt
 } from "react-icons/fa";
 
-export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onViewHistory, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, dashboardViewType, showFilterBar = true, showMyTasksOption = true, isAdminView = false, userRole, yesterdayDate }) {
+export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onViewHistory, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, dashboardViewType, showFilterBar = true, showMyTasksOption = true, isAdminView = false, userRole, yesterdayDate, showSNo = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateActive, setDateActive] = useState('');
   const [activeFilters, setActiveFilters] = useState({
@@ -882,6 +882,18 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                 </>
               ) : (
                 <>
+                  {showSNo && (
+                    <th style={{
+                      padding: '8px 12px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: 'white',
+                      borderRight: '1px solid #e5e7eb',
+                      minWidth: '60px',
+                      width: 'auto'
+                    }}>S.No</th>
+                  )}
                   <th style={{
                     padding: '8px 12px',
                     textAlign: 'left',
@@ -891,7 +903,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                     borderRight: '1px solid #e5e7eb',
                     minWidth: '120px',
                     width: 'auto'
-                  }}>Task Name</th>
+                  }}>Task Name ({filteredTasks.length})</th>
                   {teamMemberFilter === 'all' && (
                     <th style={{
                       padding: '8px 12px',
@@ -1077,6 +1089,9 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                     </>
                   ) : (
                     <>
+                      {showSNo && (
+                        <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
+                      )}
                       <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500', textAlign: 'left' }}>{getDisplayName(task)}</td>
                       {teamMemberFilter === 'all' && (
                         <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>{task.users?.name || 'Unknown'}</td>
@@ -1198,7 +1213,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
               ))
             ) : (
               <tr>
-                <td colSpan={filter === 'meeting' ? (viewTypeFilter === 'all' ? 10 : 9) : 9} style={{
+                <td colSpan={filter === 'meeting' ? (viewTypeFilter === 'all' ? 10 : 9) : (9 + (showSNo ? 1 : 0))} style={{
                   padding: '40px 16px',
                   textAlign: 'center',
                   color: '#6b7280'
