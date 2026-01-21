@@ -21,8 +21,10 @@ export default function Login({ onLogin }) {
       
       const data = await api.login({ email, password });
 
-      // Store user data and token
+      // Store user data and tokens
       localStorage.setItem("token", data.token);
+      localStorage.setItem("refreshToken", data.refreshToken);
+      localStorage.setItem("loginTime", Date.now().toString());
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("profile", JSON.stringify(data.profile));
       

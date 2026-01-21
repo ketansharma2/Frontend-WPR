@@ -64,20 +64,76 @@ export const getAuthHeaders = () => {
   };
 };
 
-// Generic API request function
+// Helper function to refresh access token
+const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) throw new Error("No refresh token");
+
+  const response = await fetch(`${API_BASE_URL}/refresh`, {
+    method: 'POST',
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken })
+  });
+
+  if (!response.ok) throw new Error("Refresh failed");
+
+  const data = await response.json();
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("refreshToken", data.refreshToken);
+  return data.token;
+};
+
+// Generic API request function with automatic token refresh
 export const apiRequest = async (endpoint, options = {}) => {
+  // Check session expiry (12 hours from login)
+  const loginTime = localStorage.getItem("loginTime");
+  if (loginTime) {
+    const elapsed = Date.now() - parseInt(loginTime);
+    const twelveHours = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+    if (elapsed > twelveHours) {
+      // Session expired, logout
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("loginTime");
+      localStorage.removeItem("user");
+      localStorage.removeItem("profile");
+      window.location.reload(); // Reload to show login screen
+      throw new Error("Session expired after 12 hours");
+    }
+  }
+
   try {
     const response = await fetch(endpoint, {
       headers: getAuthHeaders(),
       ...options
     });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
+
+    if (response.status === 401) {
+      // Try to refresh token
+      try {
+        await refreshAccessToken();
+        // Retry the request with new token
+        const retryResponse = await fetch(endpoint, {
+          headers: getAuthHeaders(),
+          ...options
+        });
+        const data = await retryResponse.json();
+        if (!retryResponse.ok) throw new Error(data.error || data.message);
+        return data;
+      } catch (refreshError) {
+        // Refresh failed, logout user
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("loginTime");
+        localStorage.removeItem("user");
+        localStorage.removeItem("profile");
+        window.location.reload(); // Reload to show login screen
+        throw new Error("Session expired");
+      }
     }
-    
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || data.message);
     return data;
   } catch (error) {
     console.error('API Request failed:', error);

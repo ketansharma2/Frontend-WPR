@@ -1,0 +1,278 @@
+/* Color Palette
+   Dark Blue: #103C7F
+   Green: #A1DB40
+*/
+
+
+.rnr-container {
+  padding: 25px;
+  /* background-color: #f8f9fa; */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+
+.section-container.first-section {
+  margin-top: 20px;
+}
+
+
+.section-container, .table-card {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(16, 60, 127, 0.08);
+}
+
+
+/* Margin for the always-visible fixed tasks at the bottom */
+.fixed-tasks-bottom-section {
+  margin-top: 10px;
+}
+
+
+.brand-header-green {
+  background-color: #f8f9fa;
+  padding: 12px 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #103C7F;
+}
+
+
+.brand-blue-text {
+  color: #103C7F;
+  margin: 0;
+  font-weight: 700;
+}
+
+
+/* Tabs Section */
+.brand-tab-wrapper {
+  display: flex;
+  background-color: #103C7F;
+  padding: 6px;
+  border-radius: 8px;
+  gap: 5px;
+  overflow-x: auto;
+}
+
+
+.brand-tab-btn {
+  flex: 1;
+  min-width: 130px;
+  border: none;
+  background: transparent;
+  padding: 12px 10px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: 0.3s;
+  white-space: nowrap;
+}
+
+
+.brand-tab-btn.active {
+  background-color: #f1f3f5;
+  color: #103C7F;
+}
+
+
+/* Tables */
+.table-responsive {
+  overflow-x: auto;
+}
+
+
+.brand-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1100px;
+}
+
+
+.brand-table th, .brand-table td {
+  padding: 14px;
+  border: 1px solid #e0e0e0;
+  text-align: left;
+  font-size: 14px;
+}
+
+
+.sub-head-gray th {
+  background-color: #f1f3f5;
+  color: #103C7F;
+  font-weight: 700;
+  border-bottom: 2px solid #A1DB40;
+}
+
+
+/* Buttons */
+.add-btn-dark {
+  background-color: #103C7F;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+
+.add-btn-green {
+  background-color: #f1f3f5;
+  color: #103C7F;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+
+.action-link {
+  color: #103C7F;
+  background: none;
+  border: 1px solid #103C7F;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+
+.card-inner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+}
+
+
+/* --- Modal Styles --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+
+.brand-modal {
+  background: white;
+  width: 500px;
+  max-width: 90%;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+
+.modal-wide {
+  width: 700px;
+}
+
+
+.modal-header-blue {
+  background-color: #103C7F;
+  color: white;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+.close-x {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+
+.modal-form {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+
+.form-group label {
+  font-weight: 600;
+  color: #103C7F;
+  font-size: 0.9rem;
+}
+
+
+.form-group input, .form-group textarea, .form-group select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+
+.form-row {
+  display: flex;
+  gap: 15px;
+}
+
+
+.flex-1 { flex: 1; }
+
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+
+.btn-cancel {
+  background: #f1f3f5;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+
+.btn-submit-green {
+  background-color: #A1DB40;
+  color: #103C7F;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+
+.empty-state {
+  text-align: center;
+  padding: 60px;
+  background: white;
+  border-radius: 10px;
+  border: 2px dashed #A1DB40;
+}
+

@@ -10,6 +10,7 @@ import TaskStatsPanel from './TaskStatsPanel';
 import DateToggleSwitch from './DateToggleSwitch';
 import TaskHistoryPopup from './TaskHistoryPopup';
 import RnR from './RnR';
+import RandR from './RandR'
 import { api } from '../config/api';
 import { FaEllipsisV, FaExternalLinkAlt } from 'react-icons/fa';
 import './Home.css';

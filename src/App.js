@@ -42,6 +42,8 @@ function App() {
   const handleLogout = () => {
     // Clear localStorage
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("loginTime");
     localStorage.removeItem("user");
     localStorage.removeItem("profile");
     setView("login");
