@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AdminUsers from "./AdminUsers";
-import AdminRnR from "./AdminRnR";
+import SubAdminRandR from "./SubAdminRandR";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import TaskList from './TaskList';
@@ -73,14 +74,30 @@ class AdminUsersErrorBoundary extends React.Component {
 }
 
 const AdminHome = ({ onLogout }) => {
-    // Helper function for SVG donut chart calculations
-    const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-      const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-      return {
-        x: centerX + (radius * Math.cos(angleInRadians)),
-        y: centerY + (radius * Math.sin(angleInRadians))
-      };
-    };
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Determine current page from URL path
+  const getCurrentPage = () => {
+    const path = location.pathname;
+    if (path === '/admin/home') return 'home';
+    if (path === '/admin/tasks') return 'tasks';
+    if (path === '/admin/meetings') return 'meetings';
+    if (path === '/admin/calendar') return 'calendar';
+    if (path === '/admin/rnr') return 'rnr';
+    if (path === '/admin/users') return 'users';
+    if (path === '/admin/individual-analytics') return 'individual-analytics';
+    return 'home'; // default
+  };
+
+     // Helper function for SVG donut chart calculations
+     const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+       const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+       return {
+         x: centerX + (radius * Math.cos(angleInRadians)),
+         y: centerY + (radius * Math.sin(angleInRadians))
+       };
+     };
 
     // Default dates for dept analytics
     const today = new Date();
@@ -97,7 +114,7 @@ const AdminHome = ({ onLogout }) => {
     const formatDate = (d) => d.toISOString().split("T")[0];
     const now = new Date();
 
-   const [currentPage, setCurrentPage] = useState('dashboard');
+   const currentPage = getCurrentPage();
    const [userProfile, setUserProfile] = useState(null);
    const [isPopupOpen, setIsPopupOpen] = useState(false);
    const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
@@ -399,7 +416,7 @@ const AdminHome = ({ onLogout }) => {
 
   // Fetch dept analytics when filters change
   useEffect(() => {
-    if (userProfile && (currentPage === 'dept-analytics' || currentPage === 'dashboard')) {
+    if (userProfile && (currentPage === 'dept-analytics' || currentPage === 'home')) {
       fetchDeptAnalytics();
     }
   }, [deptAnalyticsDeptFilter, deptAnalyticsFromDate, deptAnalyticsToDate, userProfile, currentPage]);
@@ -815,29 +832,23 @@ const AdminHome = ({ onLogout }) => {
     setIsDetailsOpen(true);
   };
 
+  const onViewHistory = (task) => {
+    const taskId = getTaskIdForAPI(task);
+    navigate(`/admin/tasks/${taskId}`);
+  };
+
   // Handle filter changes from toggle and sync with view
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);
 
     // Sync page with filter for consistent navigation
     if (newFilter === 'task' && currentPage === 'meetings') {
-      setCurrentPage('tasks');
+      navigate('/admin/tasks');
     } else if (newFilter === 'meeting' && currentPage === 'tasks') {
-      setCurrentPage('meetings');
+      navigate('/admin/meetings');
     }
   };
 
-  // Handle page changes from sidebar and sync filter
-  const handlePageChange = (pageId) => {
-    setCurrentPage(pageId);
-
-    // Sync filter with page for consistent behavior
-    if (pageId === 'tasks') {
-      setFilter('task');
-    } else if (pageId === 'meetings') {
-      setFilter('meeting');
-    }
-  };
 
   const handleDateToggle = async (newDate) => {
     setSelectedDate(newDate);
@@ -884,6 +895,7 @@ const AdminHome = ({ onLogout }) => {
               tasks={tasks.filter(task => task.itemType === 'task')}
               onEdit={editTask}
               onViewDetails={onViewDetails}
+              onViewHistory={onViewHistory}
               onDelete={deleteTask}
               filter='task'
               setFilter={handleFilterChange}
@@ -914,6 +926,7 @@ const AdminHome = ({ onLogout }) => {
             tasks={tasks.filter(task => task.itemType === 'meeting').sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))}
             onEdit={editTask}
             onViewDetails={onViewDetails}
+            onViewHistory={onViewHistory}
             onDelete={deleteTask}
             filter={filter}
             setFilter={handleFilterChange}
@@ -971,7 +984,7 @@ const AdminHome = ({ onLogout }) => {
       case "individual-analytics":
         return (<IndividualAnalytics />);
       case "rnr":
-        return (<AdminRnR />);
+        return (<SubAdminRandR />);
       default:
         return (
           <div style={{
@@ -1248,7 +1261,6 @@ const AdminHome = ({ onLogout }) => {
     <div className="home-container">
       <Sidebar
         currentPage={currentPage}
-        onPageChange={handlePageChange}
         userRole={userProfile?.user_type || 'admin'}
       />
       <Header
@@ -1293,7 +1305,7 @@ const AdminHome = ({ onLogout }) => {
         </div>
       )}
 
-      <main style={(currentPage === 'dept-analytics' || currentPage === 'dashboard') ? { backgroundColor: '#e0e0e0', padding: '20px 50px 50px 50px' } : { backgroundColor: '#e0e0e0' }}>
+      <main style={(currentPage === 'dept-analytics' || currentPage === 'home') ? { backgroundColor: '#e0e0e0', padding: '20px 50px 50px 50px' } : { backgroundColor: '#e0e0e0' }}>
         {renderPage()}
       </main>
 

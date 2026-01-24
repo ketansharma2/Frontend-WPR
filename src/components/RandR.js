@@ -13,17 +13,21 @@ const RnR = () => {
   // Data States
   const [rnrData, setRnrData] = useState([]);
   const [fixedTasks, setFixedTasks] = useState([]);
+  const [roleOverviewData, setRoleOverviewData] = useState(null);
 
 
   // Modal Visibility States
   const [showRnrModal, setShowRnrModal] = useState(false);
   const [showFixedTaskModal, setShowFixedTaskModal] = useState(false);
   const [showRoleOverviewModal, setShowRoleOverviewModal] = useState(false);
+  const [editingRoleOverview, setEditingRoleOverview] = useState(false);
+  const [editingRnr, setEditingRnr] = useState(null);
+  const [editingFixedTask, setEditingFixedTask] = useState(null);
 
 
   // Form States
   const [roleOverviewForm, setRoleOverviewForm] = useState({
-    name: '', description: '', subject: '', object: '', goal: ''
+    name: '', designation: '', subject: '', object: '', goal: '', reportingPerson: ''
   });
 
 
@@ -45,6 +49,7 @@ const RnR = () => {
       setUserProfile(parsed);
       fetchRnrData(parsed.user_id);
       fetchFixedTasks(parsed.user_id);
+      fetchRoleOverview(parsed.user_id);
     }
   }, []);
 
@@ -65,7 +70,7 @@ const RnR = () => {
   const fetchFixedTasks = async (userId) => {
     try {
       const token = localStorage.getItem("token");
-      let url = `${API_BASE_URL}/hod/fixed-tasks${userId ? `?user_id=${userId}` : ''}`;
+      let url = `${API_BASE_URL}/fixed-tasks${userId ? `?user_id=${userId}` : ''}`;
       const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
       if (response.ok) {
         const result = await response.json();
@@ -74,26 +79,197 @@ const RnR = () => {
     } catch (error) { console.error('Error fetching tasks:', error); }
   };
 
+  const fetchRoleOverview = async (userId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE_URL}/role_overview/${userId}`, { headers: { "Authorization": `Bearer ${token}` } });
+      if (response.ok) {
+        const result = await response.json();
+        setRoleOverviewData(result.role_overview || null);
+      } else if (response.status === 404) {
+        setRoleOverviewData(null);
+      }
+    } catch (error) { console.error('Error fetching role overview:', error); }
+  };
+
 
   // --- Handlers ---
-  const handleRoleOverviewSubmit = (e) => {
-    e.preventDefault();
-    console.log("Submitting Role Overview:", roleOverviewForm);
-    setShowRoleOverviewModal(false);
+  const handleRoleOverviewSubmit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const userId = userProfile?.user_id;
+      if (!userId) return;
+
+      const payload = {
+        user_id: userId,
+        name: roleOverviewForm.name,
+        designation: roleOverviewForm.designation,
+        subject: roleOverviewForm.subject,
+        object: roleOverviewForm.object,
+        goal: roleOverviewForm.goal,
+        reporting_person: roleOverviewForm.reportingPerson
+      };
+
+      let response;
+      if (roleOverviewData) {
+        // Update
+        response = await fetch(`${API_BASE_URL}/role_overview/${userId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // Create
+        response = await fetch(`${API_BASE_URL}/role_overview`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (response.ok) {
+        const result = await response.json();
+        setRoleOverviewData(result.role_overview);
+        setRoleOverviewForm({
+          name: '',
+          designation: '',
+          subject: '',
+          object: '',
+          goal: '',
+          reportingPerson: ''
+        });
+        setEditingRoleOverview(false);
+        setShowRoleOverviewModal(false);
+      } else {
+        console.error('Error saving role overview');
+      }
+    } catch (error) {
+      console.error('Error submitting role overview:', error);
+    }
   };
 
 
-  const handleRnrSubmit = (e) => {
-    e.preventDefault();
-    console.log("Submitting R&R:", rnrForm);
-    setShowRnrModal(false);
+  const handleRnrSubmit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const userId = userProfile?.user_id;
+      if (!userId) return;
+
+      const payload = {
+        user_id: userId,
+        rnr: rnrForm.rnr,
+        description: rnrForm.description,
+        end_goal: rnrForm.end_goal,
+        timings: rnrForm.timings,
+        guideline: rnrForm.guideline,
+        process_limitations: rnrForm.process_limitations
+      };
+
+      let response;
+      if (editingRnr) {
+        // Update
+        response = await fetch(`${API_BASE_URL}/rnr/${editingRnr.rnr_id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // Create
+        response = await fetch(`${API_BASE_URL}/rnr`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (response.ok) {
+        const result = await response.json();
+        // Refresh data
+        fetchRnrData(userId);
+        setRnrForm({
+          rnr: '',
+          description: '',
+          end_goal: '',
+          timings: '',
+          guideline: '',
+          process_limitations: ''
+        });
+        setEditingRnr(null);
+        setShowRnrModal(false);
+      } else {
+        console.error('Error saving R&R');
+      }
+    } catch (error) {
+      console.error('Error submitting R&R:', error);
+    }
   };
 
 
-  const handleFixedTaskSubmit = (e) => {
-    e.preventDefault();
-    console.log("Submitting Fixed Task:", fixedTaskForm);
-    setShowFixedTaskModal(false);
+  const handleFixedTaskSubmit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const userId = userProfile?.user_id;
+      if (!userId) return;
+
+      const payload = {
+        user_id: userId,
+        task_name: fixedTaskForm.taskName,
+        frequency: fixedTaskForm.frequency,
+        assigned_by: fixedTaskForm.assignedBy
+      };
+
+      let response;
+      if (editingFixedTask) {
+        // Update
+        response = await fetch(`${API_BASE_URL}/fixed-tasks/${editingFixedTask.fixed_task_id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      } else {
+        // Create
+        response = await fetch(`${API_BASE_URL}/fixed-tasks`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+
+      if (response.ok) {
+        const result = await response.json();
+        // Refresh data
+        fetchFixedTasks(userId);
+        setFixedTaskForm({
+          taskName: '',
+          frequency: 'Daily',
+          assignedBy: ''
+        });
+        setEditingFixedTask(null);
+        setShowFixedTaskModal(false);
+      } else {
+        console.error('Error saving fixed task');
+      }
+    } catch (error) {
+      console.error('Error submitting fixed task:', error);
+    }
   };
 
 
@@ -104,7 +280,13 @@ const RnR = () => {
       <div className="section-container first-section">
         <div className="brand-header-green">
           <h3>Role Overview</h3>
-          <button className="add-btn-dark" onClick={() => setShowRoleOverviewModal(true)}>
+          <button className="add-btn-dark" onClick={() => {
+            if (roleOverviewData) {
+              alert("You already have role filled in");
+            } else {
+              setShowRoleOverviewModal(true);
+            }
+          }}>
             + Add Role Overview
           </button>
         </div>
@@ -118,18 +300,34 @@ const RnR = () => {
                 <th>Object</th>
                 <th>Goal</th>
                 <th>Reporting Person</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>Lovekush</td>
-                <td>Social Media Intern</td>
-                <td>Social Media Management</td>
-                <td>Promote Brand & Improve Engagement</td>
-                <td>Build Strong Online Presence & Learning Experience</td>
-                 <td>Ajay</td>
-               
-              </tr>
+              {roleOverviewData ? (
+                <tr>
+                  <td>{roleOverviewData.name}</td>
+                  <td>{roleOverviewData.designation}</td>
+                  <td>{roleOverviewData.subject}</td>
+                  <td>{roleOverviewData.object}</td>
+                  <td>{roleOverviewData.goal}</td>
+                  <td>{roleOverviewData.reporting_person}</td>
+                  <td><button className="action-link" onClick={() => {
+                    setRoleOverviewForm({
+                      name: roleOverviewData.name,
+                      designation: roleOverviewData.designation,
+                      subject: roleOverviewData.subject,
+                      object: roleOverviewData.object,
+                      goal: roleOverviewData.goal,
+                      reportingPerson: roleOverviewData.reporting_person
+                    });
+                    setEditingRoleOverview(true);
+                    setShowRoleOverviewModal(true);
+                  }}>Edit</button></td>
+                </tr>
+              ) : (
+                <tr><td colSpan="7" className="no-data">No data available</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -182,7 +380,18 @@ const RnR = () => {
                       <td>{item.timings}</td>
                       <td>{item.guideline}</td>
                       <td>{item.process_limitations}</td>
-                      <td><button className="action-link">Edit</button></td>
+                      <td><button className="action-link" onClick={() => {
+                        setRnrForm({
+                          rnr: item.rnr,
+                          description: item.description,
+                          end_goal: item.end_goal,
+                          timings: item.timings,
+                          guideline: item.guideline,
+                          process_limitations: item.process_limitations
+                        });
+                        setEditingRnr(item);
+                        setShowRnrModal(true);
+                      }}>Edit</button></td>
                     </tr>
                   )) : <tr><td colSpan="8" className="no-data">No data available</td></tr>}
                 </tbody>
@@ -200,8 +409,9 @@ const RnR = () => {
       </div>
 
 
-      {/* NEW SECTION 4: Fixed Tasks (Always visible in the bottom free space) */}
-      <div className="table-card fixed-tasks-bottom-section">
+      {/* NEW SECTION 4: Fixed Tasks (Visible only in R&R tab) */}
+      {activeTab === 'R&R' && (
+        <div className="table-card fixed-tasks-bottom-section">
           <div className="card-inner-header">
             <h4 className="brand-blue-text">Fixed Tasks</h4>
             <button className="add-btn-green" onClick={() => setShowFixedTaskModal(true)}>+ Add Fixed Task</button>
@@ -224,13 +434,22 @@ const RnR = () => {
                     <td>{task.task_name}</td>
                     <td>{task.frequency}</td>
                     <td>{task.assigned_by}</td>
-                    <td><button className="action-link">Edit</button></td>
+                    <td><button className="action-link" onClick={() => {
+                      setFixedTaskForm({
+                        taskName: task.task_name,
+                        frequency: task.frequency,
+                        assignedBy: task.assigned_by
+                      });
+                      setEditingFixedTask(task);
+                      setShowFixedTaskModal(true);
+                    }}>Edit</button></td>
                   </tr>
                 )) : <tr><td colSpan="5" className="no-data">No data available</td></tr>}
               </tbody>
             </table>
           </div>
         </div>
+      )}
 
 
       {/* --- MODALS --- */}
@@ -239,34 +458,110 @@ const RnR = () => {
       {/* 1. Modal: Add Role Overview */}
       {showRoleOverviewModal && (
         <div className="modal-overlay">
-          <div className="brand-modal">
-            <div className="modal-header-blue">
-              <h2>Add Role Overview</h2>
-              <button className="close-x" onClick={() => setShowRoleOverviewModal(false)}>&times;</button>
+          <div className="enhanced-task-popup">
+            {/* Header */}
+            <div className="popup-header">
+              <div className="header-content">
+                <div className="title-section">
+                  <h2 className="modal-title">{editingRoleOverview ? 'Edit Role Overview' : 'Add Role Overview'}</h2>
+                  <p className="modal-subtitle">Define role details and responsibilities</p>
+                </div>
+              </div>
             </div>
-            <form onSubmit={handleRoleOverviewSubmit} className="modal-form">
-              <div className="form-group"><label>Name</label>
-                <input type="text" value={roleOverviewForm.name} onChange={(e) => setRoleOverviewForm({...roleOverviewForm, name: e.target.value})} placeholder="Name" required />
-              </div>
-              <div className="form-group"><label>Description</label>
-                <textarea rows="2" value={roleOverviewForm.description} onChange={(e) => setRoleOverviewForm({...roleOverviewForm, description: e.target.value})} placeholder="Description" />
-              </div>
-              <div className="form-row">
-                <div className="form-group flex-1"><label>Subject</label>
-                  <input type="text" value={roleOverviewForm.subject} onChange={(e) => setRoleOverviewForm({...roleOverviewForm, subject: e.target.value})} placeholder="Subject" />
+
+            {/* Form Content - Professional Layout */}
+            <div className="popup-content">
+              <div className="form-grid-container">
+                {/* Name */}
+                <div className="field-box span-6">
+                  <label className="field-label required">Name</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter name"
+                    value={roleOverviewForm.name}
+                    onChange={(e) => setRoleOverviewForm({...roleOverviewForm, name: e.target.value})}
+                    required
+                  />
                 </div>
-                <div className="form-group flex-1"><label>Object</label>
-                  <input type="text" value={roleOverviewForm.object} onChange={(e) => setRoleOverviewForm({...roleOverviewForm, object: e.target.value})} placeholder="Object" />
+
+                {/* Designation */}
+                <div className="field-box span-6">
+                  <label className="field-label">Designation</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter designation"
+                    value={roleOverviewForm.designation}
+                    onChange={(e) => setRoleOverviewForm({...roleOverviewForm, designation: e.target.value})}
+                  />
+                </div>
+
+                {/* Subject */}
+                <div className="field-box span-6">
+                  <label className="field-label">Subject</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter subject"
+                    value={roleOverviewForm.subject}
+                    onChange={(e) => setRoleOverviewForm({...roleOverviewForm, subject: e.target.value})}
+                  />
+                </div>
+
+                {/* Object */}
+                <div className="field-box span-6">
+                  <label className="field-label">Object</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter object"
+                    value={roleOverviewForm.object}
+                    onChange={(e) => setRoleOverviewForm({...roleOverviewForm, object: e.target.value})}
+                  />
+                </div>
+
+                {/* Goal */}
+                <div className="field-box span-6">
+                  <label className="field-label">Goal</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter goal"
+                    value={roleOverviewForm.goal}
+                    onChange={(e) => setRoleOverviewForm({...roleOverviewForm, goal: e.target.value})}
+                  />
+                </div>
+
+                {/* Reporting Person */}
+                <div className="field-box span-6">
+                  <label className="field-label">Reporting Person</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter reporting person"
+                    value={roleOverviewForm.reportingPerson}
+                    onChange={(e) => setRoleOverviewForm({...roleOverviewForm, reportingPerson: e.target.value})}
+                  />
                 </div>
               </div>
-              <div className="form-group"><label>Goal</label>
-                <input type="text" value={roleOverviewForm.goal} onChange={(e) => setRoleOverviewForm({...roleOverviewForm, goal: e.target.value})} placeholder="Goal" />
+            </div>
+
+            {/* Footer */}
+            <div className="popup-footer">
+              <div className="footer-tips">
+                <span>💡</span>
+                <span>Fields marked with * are required</span>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn-cancel" onClick={() => setShowRoleOverviewModal(false)}>Cancel</button>
-                <button type="submit" className="btn-submit-green">Save Overview</button>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="cancel-btn" onClick={() => setShowRoleOverviewModal(false)}>
+                  Cancel
+                </button>
+                <button className="submit-btn" onClick={handleRoleOverviewSubmit}>
+                  {editingRoleOverview ? 'Update Overview' : 'Save Overview'}
+                </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
@@ -275,39 +570,108 @@ const RnR = () => {
       {/* 2. Modal: Add R&R */}
       {showRnrModal && (
         <div className="modal-overlay">
-          <div className="brand-modal modal-wide">
-            <div className="modal-header-blue">
-              <h2>Add Role and Responsibility</h2>
-              <button className="close-x" onClick={() => setShowRnrModal(false)}>&times;</button>
+          <div className="enhanced-task-popup">
+            {/* Header */}
+            <div className="popup-header">
+              <div className="header-content">
+                <div className="title-section">
+                  <h2 className="modal-title">{editingRnr ? 'Edit Role and Responsibility' : 'Add Role and Responsibility'}</h2>
+                  <p className="modal-subtitle">Define roles and responsibilities</p>
+                </div>
+              </div>
             </div>
-            <form onSubmit={handleRnrSubmit} className="modal-form">
-              <div className="form-row">
-                <div className="form-group flex-1"><label>R&R Title</label>
-                  <input type="text" placeholder="Title" onChange={(e) => setRnrForm({...rnrForm, rnr: e.target.value})} required />
+
+            {/* Form Content - Professional Layout */}
+            <div className="popup-content">
+              <div className="form-grid-container">
+                {/* R&R Title */}
+                <div className="field-box span-6">
+                  <label className="field-label required">R&R Title</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter title"
+                    value={rnrForm.rnr}
+                    onChange={(e) => setRnrForm({...rnrForm, rnr: e.target.value})}
+                    required
+                  />
                 </div>
-                <div className="form-group flex-1"><label>End Goal</label>
-                  <input type="text" placeholder="End Goal" onChange={(e) => setRnrForm({...rnrForm, end_goal: e.target.value})} />
+
+                {/* End Goal */}
+                <div className="field-box span-6">
+                  <label className="field-label">End Goal</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter end goal"
+                    value={rnrForm.end_goal}
+                    onChange={(e) => setRnrForm({...rnrForm, end_goal: e.target.value})}
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="field-box span-12">
+                  <label className="field-label">Description</label>
+                  <textarea
+                    className="enhanced-textarea"
+                    placeholder="Enter description"
+                    value={rnrForm.description}
+                    onChange={(e) => setRnrForm({...rnrForm, description: e.target.value})}
+                  />
+                </div>
+
+                {/* Timings */}
+                <div className="field-box span-6">
+                  <label className="field-label">Timings</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="e.g. 9 AM - 6 PM"
+                    value={rnrForm.timings}
+                    onChange={(e) => setRnrForm({...rnrForm, timings: e.target.value})}
+                  />
+                </div>
+
+                {/* Guideline */}
+                <div className="field-box span-6">
+                  <label className="field-label">Guideline</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Enter guideline"
+                    value={rnrForm.guideline}
+                    onChange={(e) => setRnrForm({...rnrForm, guideline: e.target.value})}
+                  />
+                </div>
+
+                {/* Process and Limitations */}
+                <div className="field-box span-12">
+                  <label className="field-label">Process and Limitations</label>
+                  <textarea
+                    className="enhanced-textarea"
+                    placeholder="Enter process and limitations"
+                    value={rnrForm.process_limitations}
+                    onChange={(e) => setRnrForm({...rnrForm, process_limitations: e.target.value})}
+                  />
                 </div>
               </div>
-              <div className="form-group"><label>Description</label>
-                <textarea rows="2" placeholder="Description" onChange={(e) => setRnrForm({...rnrForm, description: e.target.value})} />
+            </div>
+
+            {/* Footer */}
+            <div className="popup-footer">
+              <div className="footer-tips">
+                <span>💡</span>
+                <span>Fields marked with * are required</span>
               </div>
-              <div className="form-row">
-                <div className="form-group flex-1"><label>Timings</label>
-                  <input type="text" placeholder="e.g. 9 AM - 6 PM" onChange={(e) => setRnrForm({...rnrForm, timings: e.target.value})} />
-                </div>
-                <div className="form-group flex-1"><label>Guideline</label>
-                  <input type="text" placeholder="Guideline" onChange={(e) => setRnrForm({...rnrForm, guideline: e.target.value})} />
-                </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="cancel-btn" onClick={() => setShowRnrModal(false)}>
+                  Cancel
+                </button>
+                <button className="submit-btn" onClick={handleRnrSubmit}>
+                  {editingRnr ? 'Update R&R' : 'Add R&R'}
+                </button>
               </div>
-              <div className="form-group"><label>Process and Limitations</label>
-                <textarea rows="2" placeholder="Process and Limitations" onChange={(e) => setRnrForm({...rnrForm, process_limitations: e.target.value})} />
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn-cancel" onClick={() => setShowRnrModal(false)}>Cancel</button>
-                <button type="submit" className="btn-submit-green">Add R&R</button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
@@ -316,30 +680,76 @@ const RnR = () => {
       {/* 3. Modal: Add Fixed Task */}
       {showFixedTaskModal && (
         <div className="modal-overlay">
-          <div className="brand-modal">
-            <div className="modal-header-blue">
-              <h2>Add Fixed Task</h2>
-              <button className="close-x" onClick={() => setShowFixedTaskModal(false)}>&times;</button>
+          <div className="enhanced-task-popup">
+            {/* Header */}
+            <div className="popup-header">
+              <div className="header-content">
+                <div className="title-section">
+                  <h2 className="modal-title">{editingFixedTask ? 'Edit Fixed Task' : 'Add Fixed Task'}</h2>
+                  <p className="modal-subtitle">Define recurring tasks</p>
+                </div>
+              </div>
             </div>
-            <form onSubmit={handleFixedTaskSubmit} className="modal-form">
-              <div className="form-group"><label>Task Name</label>
-                <input type="text" placeholder="e.g. Fill WPR" onChange={(e) => setFixedTaskForm({...fixedTaskForm, taskName: e.target.value})} required />
+
+            {/* Form Content - Professional Layout */}
+            <div className="popup-content">
+              <div className="form-grid-container">
+                {/* Task Name */}
+                <div className="field-box span-12">
+                  <label className="field-label required">Task Name</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="e.g. Fill WPR"
+                    value={fixedTaskForm.taskName}
+                    onChange={(e) => setFixedTaskForm({...fixedTaskForm, taskName: e.target.value})}
+                    required
+                  />
+                </div>
+
+                {/* Frequency */}
+                <div className="field-box span-6">
+                  <label className="field-label">Frequency</label>
+                  <select
+                    className="enhanced-select"
+                    value={fixedTaskForm.frequency}
+                    onChange={(e) => setFixedTaskForm({...fixedTaskForm, frequency: e.target.value})}
+                  >
+                    <option value="Daily">Daily</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                  </select>
+                </div>
+
+                {/* Assigned By */}
+                <div className="field-box span-6">
+                  <label className="field-label">Assigned By</label>
+                  <input
+                    type="text"
+                    className="enhanced-input"
+                    placeholder="Name"
+                    value={fixedTaskForm.assignedBy}
+                    onChange={(e) => setFixedTaskForm({...fixedTaskForm, assignedBy: e.target.value})}
+                  />
+                </div>
               </div>
-              <div className="form-group"><label>Frequency</label>
-                <select onChange={(e) => setFixedTaskForm({...fixedTaskForm, frequency: e.target.value})}>
-                  <option value="Daily">Daily</option>
-                  <option value="Weekly">Weekly</option>
-                  <option value="Monthly">Monthly</option>
-                </select>
+            </div>
+
+            {/* Footer */}
+            <div className="popup-footer">
+              <div className="footer-tips">
+                <span>💡</span>
+                <span>Fields marked with * are required</span>
               </div>
-              <div className="form-group"><label>Assigned By</label>
-                <input type="text" placeholder="Name" onChange={(e) => setFixedTaskForm({...fixedTaskForm, assignedBy: e.target.value})} />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="cancel-btn" onClick={() => setShowFixedTaskModal(false)}>
+                  Cancel
+                </button>
+                <button className="submit-btn" onClick={handleFixedTaskSubmit}>
+                  {editingFixedTask ? 'Update Task' : 'Add Task'}
+                </button>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn-cancel" onClick={() => setShowFixedTaskModal(false)}>Cancel</button>
-                <button type="submit" className="btn-submit-green">Add Task</button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

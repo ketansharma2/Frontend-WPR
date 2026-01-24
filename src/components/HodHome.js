@@ -1,22 +1,37 @@
  import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
-  import Sidebar from './Sidebar';
-  import Header from './Header';
-  import TaskList from './TaskList';
-  import WeeklyTemplate from './WeeklyTemplate';
-  import TaskPopup from './TaskPopup';
-  import TaskDetails from './TaskDetails';
-  import ProfilePanel from './ProfilePanel';
-  import TaskHistoryPopup from './TaskHistoryPopup';
-  import RnR from './RnR';
-  import { FaChevronDown, FaTimes, FaExternalLinkAlt, FaEllipsisV } from 'react-icons/fa';
-  import { api } from '../config/api';
-  import './Home.css';
-  import './TaskList.css';
+ import { useNavigate, useLocation } from 'react-router-dom';
+ import Sidebar from './Sidebar';
+ import Header from './Header';
+ import TaskList from './TaskList';
+ import WeeklyTemplate from './WeeklyTemplate';
+ import TaskPopup from './TaskPopup';
+ import TaskDetails from './TaskDetails';
+ import ProfilePanel from './ProfilePanel';
+ import TaskHistoryPopup from './TaskHistoryPopup';
+ import HodRnR from './HodRandR';
+ import { FaChevronDown, FaTimes, FaExternalLinkAlt, FaEllipsisV } from 'react-icons/fa';
+ import { api } from '../config/api';
+ import './Home.css';
+ import './TaskList.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 const HodHome = ({ onLogout }) => {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine current page from URL path
+  const getCurrentPage = () => {
+    const path = location.pathname;
+    if (path === '/home' || path === '/hod/home') return 'home';
+    if (path === '/tasks' || path === '/hod/tasks') return 'tasks';
+    if (path === '/meetings' || path === '/hod/meetings') return 'meetings';
+    if (path === '/calendar' || path === '/hod/calendar') return 'calendar';
+    if (path === '/rnr' || path === '/hod/rnr') return 'rnr';
+    return 'home'; // default
+  };
+
+  const currentPage = getCurrentPage();
   const [userProfile, setUserProfile] = useState(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
@@ -539,14 +554,14 @@ const HodHome = ({ onLogout }) => {
 
    // Check remarks requirement when dashboard loads
    useEffect(() => {
-     if (userProfile?.user_id && currentPage === 'dashboard' && isRemarksRequired === null) {
+     if (userProfile?.user_id && currentPage === 'home' && isRemarksRequired === null) {
        fetchLastWorkingDayData();
      }
    }, [userProfile, currentPage, isRemarksRequired]);
 
    // Auto-populate fixed tasks when dashboard loads and remarks are checked
    useEffect(() => {
-     if (userProfile?.user_id && currentPage === 'dashboard' && !hasAutoPopulated && isRemarksRequired === false) {
+     if (userProfile?.user_id && currentPage === 'home' && !hasAutoPopulated && isRemarksRequired === false) {
        autoPopulateFixedTasks();
        setHasAutoPopulated(true);
      }
@@ -924,13 +939,7 @@ const HodHome = ({ onLogout }) => {
 
   const onViewHistory = (task) => {
     const taskId = getTaskIdForAPI(task);
-    setSelectedTaskId(taskId);
-    setIsHistoryOpen(true);
-  };
-
-  const closeHistoryPopup = () => {
-    setIsHistoryOpen(false);
-    setSelectedTaskId(null);
+    navigate(`/hod/tasks/${taskId}`, { state: { task } });
   };
 
   // Handle filter changes from toggle and sync with view
@@ -939,15 +948,15 @@ const HodHome = ({ onLogout }) => {
 
     // Sync page with filter for consistent navigation
     if (newFilter === 'task' && currentPage === 'meetings') {
-      setCurrentPage('tasks');
+      navigate('/tasks');
     } else if (newFilter === 'meeting' && currentPage === 'tasks') {
-      setCurrentPage('meetings');
+      navigate('/meetings');
     }
   };
 
   // Handle page changes from sidebar and sync filter
   const handlePageChange = (pageId) => {
-    setCurrentPage(pageId);
+    navigate(`/hod/${pageId}`);
 
     // Sync filter with page for consistent behavior
     if (pageId === 'tasks') {
@@ -1035,8 +1044,6 @@ const HodHome = ({ onLogout }) => {
     return (
       <div>
         <Sidebar
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
           userRole={userProfile?.user_type || 'hod'}
         />
         <div style={{ padding: '50px', textAlign: 'center' }}>
@@ -1057,8 +1064,6 @@ const HodHome = ({ onLogout }) => {
   return (
     <div className="home-container">
       <Sidebar
-        currentPage={currentPage}
-        onPageChange={handlePageChange}
         userRole={userProfile.user_type}
       />
       <Header
@@ -1198,7 +1203,7 @@ const HodHome = ({ onLogout }) => {
           </div>
         ) : currentPage === 'rnr' ? (
           <div style={{ marginTop: '20px' }}>
-            <RnR />
+            <HodRnR />
           </div>
         ) : (
            <div className="dashboard-container" style={{ overflow: 'visible' }}>
@@ -2401,13 +2406,6 @@ const HodHome = ({ onLogout }) => {
         onLogout={handleLogout}
       />
       {isDetailsOpen && <TaskDetails task={selectedTask} onClose={() => setIsDetailsOpen(false)} />}
-      {isHistoryOpen && (
-        <TaskHistoryPopup
-          open={isHistoryOpen}
-          onClose={closeHistoryPopup}
-          taskId={selectedTaskId}
-        />
-      )}
     </div>
   );
 };

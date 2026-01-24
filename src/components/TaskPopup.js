@@ -3,6 +3,8 @@ import ToggleSwitch from "./ToggleSwitch";
 import { api } from "../config/api";
 import "./TaskPopup.css";
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+
 export default function TaskPopup({ open, onClose, addTask, editingTask, updateTask, mode = "create", teamMembers = [], isRestrictedEdit = false, isPreviousDay = false }) {
   const [isMeeting, setIsMeeting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   const [timeSlot, setTimeSlot] = useState('');
   const [meetingStatus, setMeetingStatus] = useState('Scheduled');
   const [agenda, setAgenda] = useState('');
+  const [tagWithTask, setTagWithTask] = useState('');
+  const [availableTasks, setAvailableTasks] = useState([]);
 
   // Assign task state - unified formData for create and edit
   const [assignFormData, setAssignFormData] = useState({
@@ -105,7 +109,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
     fetchSuggestions();
   }, [open, editingTask, isMeeting, mode]);
 
-  // Fetch meeting team members when creating a new meeting
+  // Fetch meeting team members and tasks when creating a new meeting
   useEffect(() => {
     if (open && isMeeting && !editingTask && mode === "create") {
       api.getMeetingsMembers().then(data => {
@@ -114,6 +118,37 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
         console.error("Failed to fetch meeting members:", err);
         setMeetingTeamMembers([]);
       });
+
+      // Fetch available tasks for tagging
+      const profile = JSON.parse(localStorage.getItem("profile"));
+      if (profile?.user_id) {
+        // Use the same filter API as Home.js
+        const token = localStorage.getItem("token");
+        fetch(`${API_BASE_URL}/tasks/filter`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            user_id: profile.user_id,
+            date_filter: 'all',
+            task_type: 'all',
+            status: 'all',
+            category: 'all'
+          })
+        }).then(response => response.json()).then(data => {
+          // Combine master_tasks and self_tasks like in Home.js
+          const allTasks = [
+            ...(data.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned' })),
+            ...(data.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self' }))
+          ];
+          setAvailableTasks(allTasks);
+        }).catch(err => {
+          console.error("Failed to fetch tasks:", err);
+          setAvailableTasks([]);
+        });
+      }
     }
   }, [open, isMeeting, editingTask, mode]);
 
@@ -208,6 +243,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
     setTimeSlot('');
     setMeetingStatus('Scheduled');
     setAgenda('');
+    setTagWithTask('');
+    setAvailableTasks([]);
 
     // Clear assign fields
     setAssignFormData({
@@ -337,6 +374,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
           prop_slot: timeSlot,
           status: meetingStatus,
           notes: agenda,
+          task_id: tagWithTask || null,
           itemType: 'meeting',
         };
         addTask(meeting);
@@ -744,6 +782,19 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                   </select>
                 </div>
 
+                {/* Tag with Task */}
+                <div className="field-box span-6">
+                  <label className="field-label">Tag with Task</label>
+                  <select className="enhanced-select" value={tagWithTask} onChange={(e) => setTagWithTask(e.target.value)}>
+                    <option value="">Select task (optional)</option>
+                    {availableTasks.map(task => (
+                      <option key={task.task_id} value={task.task_id}>
+                        {task.task_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Coperson */}
                 <div className="field-box span-6">
                   <label className="field-label">Coperson</label>
@@ -850,10 +901,11 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                 </div>
 
                 {/* Notes */}
-                <div className="field-box span-12">
+                <div className="field-box span-6">
                   <label className="field-label">Notes</label>
-                  <textarea
-                    className="enhanced-textarea"
+                  <input
+                    type="text"
+                    className="enhanced-input"
                     placeholder="Enter meeting notes"
                     value={agenda}
                     onChange={(e) => setAgenda(e.target.value)}

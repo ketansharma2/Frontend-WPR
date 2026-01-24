@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import TaskList from './TaskList';
@@ -6,8 +7,7 @@ import WeeklyTemplate from './WeeklyTemplate';
 import TaskPopup from './TaskPopup';
 import TaskDetails from './TaskDetails';
 import ProfilePanel from './ProfilePanel';
-import TaskHistoryPopup from './TaskHistoryPopup';
-import RnR from './RnR';
+import SubAdminRnR from './SubAdminRandR';
 import { FaChevronDown, FaTimes, FaExternalLinkAlt, FaEllipsisV } from 'react-icons/fa';
 import { api } from '../config/api';
 import DeptStatusChart from './DeptAnalytics/DeptStatusChart';
@@ -21,7 +21,8 @@ console.log('API_BASE_URL:', API_BASE_URL);
 console.log('REACT_APP_API_BASE_URL env var:', process.env.REACT_APP_API_BASE_URL);
 
 const SubAdminHome = ({ onLogout }) => {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState('home');
   const [userProfile, setUserProfile] = useState(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
@@ -46,8 +47,6 @@ const SubAdminHome = ({ onLogout }) => {
   const [teamMembers, setTeamMembers] = useState([]); // list of team members
   const [selectedTask, setSelectedTask] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [tasksPageTasks, setTasksPageTasks] = useState([]);
   const [weeklyTasks, setWeeklyTasks] = useState([]);
@@ -633,14 +632,14 @@ const SubAdminHome = ({ onLogout }) => {
 
     // Check remarks requirement when dashboard loads
     useEffect(() => {
-      if (userProfile?.user_id && currentPage === 'dashboard' && isRemarksRequired === null) {
+      if (userProfile?.user_id && currentPage === 'home' && isRemarksRequired === null) {
         fetchLastWorkingDayData();
       }
     }, [userProfile, currentPage, isRemarksRequired]);
 
     // Auto-populate fixed tasks when dashboard loads and remarks are checked
     useEffect(() => {
-      if (userProfile?.user_id && currentPage === 'dashboard' && !hasAutoPopulated && isRemarksRequired === false) {
+      if (userProfile?.user_id && currentPage === 'home' && !hasAutoPopulated && isRemarksRequired === false) {
         autoPopulateFixedTasks();
         setHasAutoPopulated(true);
       }
@@ -1027,14 +1026,9 @@ const SubAdminHome = ({ onLogout }) => {
 
     const onViewHistory = (task) => {
       const taskId = getTaskIdForAPI(task);
-      setSelectedTaskId(taskId);
-      setIsHistoryOpen(true);
+      navigate(`/sub-admin/tasks/${taskId}`);
     };
 
-    const closeHistoryPopup = () => {
-      setIsHistoryOpen(false);
-      setSelectedTaskId(null);
-    };
 
     // Handle filter changes from toggle and sync with view
     const handleFilterChange = (newFilter) => {
@@ -1071,7 +1065,7 @@ const SubAdminHome = ({ onLogout }) => {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'dashboard':
+      case 'home':
         return (
           <div style={{ backgroundColor: '#e0e0e0', minHeight: '100vh', padding: '0 50px' }}>
             <div className="professional-filter-bar">
@@ -1342,7 +1336,7 @@ const SubAdminHome = ({ onLogout }) => {
       case 'rnr':
         return (
           <div style={{ marginTop: '20px' }}>
-            <RnR />
+            <SubAdminRnR />
           </div>
         );
       default:
@@ -1390,13 +1384,6 @@ const SubAdminHome = ({ onLogout }) => {
           onLogout={handleLogout}
         />
         {isDetailsOpen && <TaskDetails task={selectedTask} onClose={() => setIsDetailsOpen(false)} />}
-        {isHistoryOpen && (
-          <TaskHistoryPopup
-            open={isHistoryOpen}
-            onClose={closeHistoryPopup}
-            taskId={selectedTaskId}
-          />
-        )}
       </div>
 
       {/* Modals positioned at root level to prevent clipping */}

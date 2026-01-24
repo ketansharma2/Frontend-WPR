@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import TaskList from './TaskList';
@@ -8,9 +9,10 @@ import TaskDetails from './TaskDetails';
 import ProfilePanel from './ProfilePanel';
 import TaskStatsPanel from './TaskStatsPanel';
 import DateToggleSwitch from './DateToggleSwitch';
-import TaskHistoryPopup from './TaskHistoryPopup';
+// import FullTaskPage from './FullTaskPage';
 import RnR from './RnR';
 import RandR from './RandR'
+import FullTaskPage from './FullTaskPage';
 import { api } from '../config/api';
 import { FaEllipsisV, FaExternalLinkAlt } from 'react-icons/fa';
 import './Home.css';
@@ -19,7 +21,9 @@ import './Home.css';
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 const Home = ({ onLogout }) => {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id: taskId } = useParams();
   const [userProfile, setUserProfile] = useState(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -52,102 +56,7 @@ const Home = ({ onLogout }) => {
   const [menuOpen, setMenuOpen] = useState(null);
   const [hasAutoPopulated, setHasAutoPopulated] = useState(false);
   const [isRemarksRequired, setIsRemarksRequired] = useState(null);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
-
-  // Helper function for SVG donut chart calculations
-  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-    const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-    return {
-      x: centerX + (radius * Math.cos(angleInRadians)),
-      y: centerY + (radius * Math.sin(angleInRadians))
-    };
-  };
-
-  // Helper function to format dates as "31 Dec"
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    const day = date.getDate();
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    return `${day} ${month}`;
-  };
-
-  useEffect(() => {
-    // Get user profile from localStorage
-    const profile = localStorage.getItem("profile");
-    if (profile) {
-      try {
-        setUserProfile(JSON.parse(profile));
-      } catch (error) {
-        console.error("Error parsing user profile:", error);
-        setError("Error loading user profile");
-      }
-    } else {
-      setError("No user profile found");
-    }
-    fetchTasks();
-  }, []);
-
-  // Refetch tasks when category filter changes
-  useEffect(() => {
-    if (userProfile) {
-      const cat = categoryFilter === '' ? 'all' : categoryFilter;
-      fetchTasks(cat);
-    }
-  }, [categoryFilter, userProfile]);
-
-  // Fetch weekly data when calendar page is accessed
-  useEffect(() => {
-    if (currentPage === 'calendar' && userProfile) {
-      fetchWeeklyData();
-    }
-  }, [currentPage, userProfile]);
-
-  // Sync filter with current page on page changes
-  useEffect(() => {
-    if (currentPage === 'tasks' && filter !== 'task') {
-      setFilter('task');
-    } else if (currentPage === 'meetings' && filter !== 'meeting') {
-      setFilter('meeting');
-    }
-  }, [currentPage, filter]);
-
-  // Fetch monthly stats when user profile is available
-  useEffect(() => {
-    if (userProfile?.user_id) {
-      fetchMonthlyStats();
-    }
-  }, [userProfile]);
-
-  // Fetch today's data when user profile is available
-  useEffect(() => {
-    if (userProfile?.user_id) {
-      setTodayDataLoading(true);
-      Promise.all([fetchTodayTasks(), fetchTodayMeetings()])
-        .finally(() => setTodayDataLoading(false));
-    }
-  }, [userProfile]);
-
-  // Check remarks requirement when dashboard loads, and fetch yesterday data for tasks page
-  useEffect(() => {
-    if (userProfile?.user_id && (currentPage === 'dashboard' || currentPage === 'tasks' || currentPage === 'meetings')) {
-      if (currentPage === 'dashboard' && isRemarksRequired === null) {
-        fetchLastWorkingDayData();
-      } else if (currentPage === 'tasks' || currentPage === 'meetings') {
-        fetchLastWorkingDayData();
-      }
-    }
-  }, [userProfile, currentPage, isRemarksRequired]);
-
-  // Auto-populate fixed tasks when dashboard loads and remarks are checked
-  useEffect(() => {
-    if (userProfile?.user_id && currentPage === 'dashboard' && !hasAutoPopulated && isRemarksRequired === false) {
-      autoPopulateFixedTasks();
-      setHasAutoPopulated(true);
-    }
-  }, [userProfile, currentPage, hasAutoPopulated, isRemarksRequired]);
-
+  
   // Fetch tasks from backend
   const fetchTasks = async (category = 'all') => {
     try {
@@ -159,7 +68,7 @@ const Home = ({ onLogout }) => {
         setError("Authentication required");
         return;
       }
-
+  
       // Fetch tasks with user filter
       const tasksResponse = await fetch(`${API_BASE_URL}/tasks/filter`, {
         method: 'POST',
@@ -175,7 +84,7 @@ const Home = ({ onLogout }) => {
           category
         })
       });
-
+  
       // Fetch meetings
       const meetingsResponse = await fetch(`${API_BASE_URL}/meetings/filter`, {
         method: 'POST',
@@ -189,7 +98,7 @@ const Home = ({ onLogout }) => {
           status: 'all'
         })
       });
-
+  
       if (tasksResponse.ok && meetingsResponse.ok) {
         const tasksData = await tasksResponse.json();
         const meetingsData = await meetingsResponse.json();
@@ -220,21 +129,21 @@ const Home = ({ onLogout }) => {
       setLoading(false);
     }
   };
-
+  
   // Fetch weekly report data
   const fetchWeeklyData = async (filters = {}, showLoading = true) => {
     try {
       if (showLoading) setWeeklyLoading(true);
       const token = localStorage.getItem("token");
       const profile = JSON.parse(localStorage.getItem("profile"));
-
+  
       if (!token || !profile) {
         setError("Authentication required");
         return;
       }
-
+  
       console.log('Fetching weekly data for user:', profile.user_id, 'with filters:', filters);
-
+  
       const response = await fetch(`${API_BASE_URL}/weekly`, {
         method: 'POST',
         headers: {
@@ -246,7 +155,7 @@ const Home = ({ onLogout }) => {
           ...filters
         })
       });
-
+  
       if (response.ok) {
         const data = await response.json();
         console.log('Weekly data fetched:', data);
@@ -263,22 +172,22 @@ const Home = ({ onLogout }) => {
       if (showLoading) setWeeklyLoading(false);
     }
   };
-
+  
   // Fetch monthly task statistics
   const fetchMonthlyStats = async () => {
     try {
       setStatsLoading(true);
       setStatsError('');
-
+  
       const profile = JSON.parse(localStorage.getItem("profile"));
       if (!profile?.user_id) {
         setStatsError("User profile not found");
         return;
       }
-
+  
       const stats = await api.getMonthlyStats(profile.user_id);
       setMonthlyStats(stats);
-
+  
     } catch (err) {
       console.error("Error fetching monthly stats:", err);
       setStatsError("Failed to load monthly statistics");
@@ -286,13 +195,13 @@ const Home = ({ onLogout }) => {
       setStatsLoading(false);
     }
   };
-
+  
   // Fetch today's tasks
   const fetchTodayTasks = async () => {
     try {
       const profile = JSON.parse(localStorage.getItem("profile"));
       if (!profile?.user_id) return;
-
+  
       const tasksData = await api.getTodayTasks(profile.user_id);
       setTodayTasks(tasksData.tasks || []);
     } catch (err) {
@@ -300,13 +209,13 @@ const Home = ({ onLogout }) => {
       setTodayTasks([]);
     }
   };
-
+  
   // Fetch today's meetings
   const fetchTodayMeetings = async () => {
     try {
       const profile = JSON.parse(localStorage.getItem("profile"));
       if (!profile?.user_id) return;
-
+  
       const meetingsData = await api.getTodayMeetings(profile.user_id);
       setTodayMeetings(meetingsData.meetings || []);
     } catch (err) {
@@ -314,78 +223,31 @@ const Home = ({ onLogout }) => {
       setTodayMeetings([]);
     }
   };
-
-
-  // Click outside handler for menu
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest('.task-menu') && !event.target.closest('.menu-icon')) {
-        setMenuOpen(null);
-      }
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
-
-  // Auto-populate fixed tasks for today
-  const autoPopulateFixedTasks = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Authentication required");
-        return;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/fixed-tasks/auto-populate`, {
-        method: 'POST',
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Auto-populate result:', result);
-        if (result.populated_tasks?.length > 0) {
-          alert(`✅ Success: ${result.populated_tasks.length} fixed tasks populated for today!`);
-        }
-        // Refresh today's tasks
-        fetchTodayTasks();
-      } else {
-        const error = await response.json();
-        alert(`❌ Failed: ${error.error || 'Unknown error occurred'}`);
-      }
-    } catch (error) {
-      console.error('Error auto-populating fixed tasks:', error);
-      alert('❌ Failed: Network error while auto-populating tasks');
-    }
-  };
-
+  
   // Fetch last working day's tasks and meetings
   const fetchLastWorkingDayData = async () => {
     try {
       const profile = JSON.parse(localStorage.getItem("profile"));
       if (!profile?.user_id) return;
-
+  
       const workingDayData = await api.getLastWorkingDayTasks(profile.user_id);
-
+  
       if (workingDayData.found) {
         // Get tasks from the response (only self_tasks now)
         const tasks = workingDayData.tasks;
-
+  
         // Fetch meetings for the same date
         const meetingsData = await api.getMeetingsByDate(profile.user_id, workingDayData.date);
         const meetings = meetingsData.meetings || [];
-
+  
         setYesterdayTasks(tasks);
         setYesterdayMeetings(meetings);
         setYesterdayDate(workingDayData.date);
-
+  
         // Check if any yesterday's tasks have unfilled remarks
         const hasUnfilledRemarks = tasks.some(task => !task.remarks || task.remarks.trim() === '');
         setIsRemarksRequired(hasUnfilledRemarks);
-
+  
         console.log(`Found last working day: ${workingDayData.date} (${workingDayData.days_back} days back)`);
         console.log(`Tasks: ${tasks.length}, Meetings: ${meetings.length}, Remarks required: ${hasUnfilledRemarks}`);
       } else {
@@ -404,6 +266,164 @@ const Home = ({ onLogout }) => {
       setIsRemarksRequired(false); // Allow auto-populate to run even on error
     }
   };
+  
+  // Auto-populate fixed tasks for today
+  const autoPopulateFixedTasks = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Authentication required");
+        return;
+      }
+  
+      const response = await fetch(`${API_BASE_URL}/fixed-tasks/auto-populate`, {
+        method: 'POST',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+  
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Auto-populate result:', result);
+        if (result.populated_tasks?.length > 0) {
+          alert(`✅ Success: ${result.populated_tasks.length} fixed tasks populated for today!`);
+        }
+        // Refresh today's tasks
+        fetchTodayTasks();
+      } else {
+        const error = await response.json();
+        alert(`❌ Failed: ${error.error || 'Unknown error occurred'}`);
+      }
+    } catch (error) {
+      console.error('Error auto-populating fixed tasks:', error);
+      alert('❌ Failed: Network error while auto-populating tasks');
+    }
+  };
+  
+  // Determine current page from URL path
+  const getCurrentPage = () => {
+    const path = location.pathname;
+    if (path === '/home') return 'home';
+    if (path === '/tasks') return 'tasks';
+    if (path === '/meetings') return 'meetings';
+    if (path === '/calendar') return 'calendar';
+    if (path === '/rnr') return 'rnr';
+    return 'home'; // default
+  };
+  
+  const currentPage = getCurrentPage();
+  
+  useEffect(() => {
+    // Get user profile from localStorage
+    const profile = localStorage.getItem("profile");
+    if (profile) {
+      try {
+        setUserProfile(JSON.parse(profile));
+      } catch (error) {
+        console.error("Error parsing user profile:", error);
+        setError("Error loading user profile");
+      }
+    } else {
+      setError("No user profile found");
+    }
+    fetchTasks();
+  }, []);
+  
+  // Refetch tasks when category filter changes
+  useEffect(() => {
+    if (userProfile) {
+      const cat = categoryFilter === '' ? 'all' : categoryFilter;
+      fetchTasks(cat);
+    }
+  }, [categoryFilter, userProfile]);
+  
+  // Fetch weekly data when calendar page is accessed
+  useEffect(() => {
+    if (currentPage === 'calendar' && userProfile) {
+      fetchWeeklyData();
+    }
+  }, [currentPage, userProfile]);
+  
+  // Sync filter with current page on page changes
+  useEffect(() => {
+    if (currentPage === 'tasks' && filter !== 'task') {
+      setFilter('task');
+    } else if (currentPage === 'meetings' && filter !== 'meeting') {
+      setFilter('meeting');
+    }
+  }, [currentPage, filter]);
+  
+  // Fetch monthly stats when user profile is available
+  useEffect(() => {
+    if (userProfile?.user_id) {
+      fetchMonthlyStats();
+    }
+  }, [userProfile]);
+  
+  // Fetch today's data when user profile is available
+  useEffect(() => {
+    if (userProfile?.user_id) {
+      setTodayDataLoading(true);
+      Promise.all([fetchTodayTasks(), fetchTodayMeetings()])
+        .finally(() => setTodayDataLoading(false));
+    }
+  }, [userProfile]);
+  
+  // Check remarks requirement when dashboard loads, and fetch yesterday data for tasks page
+  useEffect(() => {
+    if (userProfile?.user_id && (currentPage === 'home' || currentPage === 'tasks' || currentPage === 'meetings')) {
+      if (currentPage === 'home' && isRemarksRequired === null) {
+        fetchLastWorkingDayData();
+      } else if (currentPage === 'tasks' || currentPage === 'meetings') {
+        fetchLastWorkingDayData();
+      }
+    }
+  }, [userProfile, currentPage, isRemarksRequired]);
+  
+  // Auto-populate fixed tasks when dashboard loads and remarks are checked
+  useEffect(() => {
+    if (userProfile?.user_id && currentPage === 'home' && !hasAutoPopulated && isRemarksRequired === false) {
+      autoPopulateFixedTasks();
+      setHasAutoPopulated(true);
+    }
+  }, [userProfile, currentPage, hasAutoPopulated, isRemarksRequired]);
+  
+  // Click outside handler for menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.task-menu') && !event.target.closest('.menu-icon')) {
+        setMenuOpen(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+  
+  // If we have a task ID in the URL, render FullTaskPage
+  if (taskId) {
+    return <FullTaskPage onLogout={onLogout} />;
+  }
+  // Helper function for SVG donut chart calculations
+  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+    const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+    return {
+      x: centerX + (radius * Math.cos(angleInRadians)),
+      y: centerY + (radius * Math.sin(angleInRadians))
+    };
+  };
+
+  // Helper function to format dates as "31 Dec"
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    return `${day} ${month}`;
+  };
+  
+
 
   const openPopup = () => { setIsPopupOpen(true); };
   const closePopup = () => {
@@ -429,6 +449,7 @@ const Home = ({ onLogout }) => {
         // Map meeting fields to backend format
         apiData = {
           user_id: profile.user_id,
+          task_id: task.task_id,
           meeting_name: task.name,
           date: task.date,
           dept: task.dept,
@@ -547,14 +568,14 @@ const Home = ({ onLogout }) => {
   const getTaskIdForAPI = (task) => {
     // For tasks, prefer task_id, for meetings prefer meeting_id
     if (task.itemType === 'meeting') {
-      return task.meeting_id || task._id;
+      return task.meeting_id || task.id || task._id;
     }
     // For assigned tasks, use task_id (same as self tasks)
     if (task.category === 'assigned') {
       return task.task_id || task.id || task._id;
     }
     // For self tasks, prefer task_id over _id for consistency
-    return task.task_id || task._id;
+    return task.task_id || task.id || task._id;
   };
 
   const updateTask = async (updatedTask) => {
@@ -738,19 +759,19 @@ const Home = ({ onLogout }) => {
   // Handle filter changes from toggle and sync with view
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);
-    
+
     // Sync page with filter for consistent navigation
     if (newFilter === 'task' && currentPage === 'meetings') {
-      setCurrentPage('tasks');
+      navigate('/tasks');
     } else if (newFilter === 'meeting' && currentPage === 'tasks') {
-      setCurrentPage('meetings');
+      navigate('/meetings');
     }
   };
 
   // Handle page changes from sidebar and sync filter
   const handlePageChange = (pageId) => {
-    setCurrentPage(pageId);
-    
+    navigate(`/${pageId}`);
+
     // Sync filter with page for consistent behavior
     if (pageId === 'tasks') {
       setFilter('task');
@@ -803,8 +824,6 @@ const Home = ({ onLogout }) => {
     return (
       <div>
         <Sidebar
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
           userRole={userProfile?.user_type || 'team member'}
         />
         <div style={{ padding: '50px', textAlign: 'center' }}>
@@ -822,11 +841,10 @@ const Home = ({ onLogout }) => {
     );
   }
 
+
   return (
     <div className="home-container">
       <Sidebar
-        currentPage={currentPage}
-        onPageChange={handlePageChange}
         userRole={userProfile.user_type}
       />
       <Header
@@ -880,8 +898,8 @@ const Home = ({ onLogout }) => {
             onViewDetails={onViewDetails}
             onDelete={deleteTask}
             onViewHistory={(task) => {
-              setSelectedTaskId(task.task_id);
-              setIsHistoryOpen(true);
+              const taskId = getTaskIdForAPI(task);
+              navigate(`/tasks/${taskId}`, { state: { task } });
             }}
             filter={filter}
             setFilter={handleFilterChange}
@@ -920,8 +938,8 @@ const Home = ({ onLogout }) => {
             onViewDetails={onViewDetails}
             onDelete={deleteTask}
             onViewHistory={(task) => {
-              setSelectedTaskId(task.task_id);
-              setIsHistoryOpen(true);
+              const taskId = getTaskIdForAPI(task);
+              navigate(`/tasks/${taskId}`, { state: { task } });
             }}
             filter={filter}
             setFilter={handleFilterChange}
@@ -937,7 +955,7 @@ const Home = ({ onLogout }) => {
             yesterdayDate={yesterdayDate}
           />
         ) : currentPage === 'rnr' ? (
-          <RnR />
+          <RandR/>
         ) : (
            <div className="dashboard-container">
              {/* Monthly Task Statistics Panel */}
@@ -1202,8 +1220,8 @@ const Home = ({ onLogout }) => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedTaskId(task.task_id);
-                                  setIsHistoryOpen(true);
+                                  const taskId = getTaskIdForAPI(task);
+                                  navigate(`/tasks/${taskId}`);
                                   setMenuOpen(null);
                                 }}
                                 style={{
@@ -1755,11 +1773,6 @@ const Home = ({ onLogout }) => {
         onLogout={handleLogout}
       />
       {isDetailsOpen && <TaskDetails task={selectedTask} onClose={() => setIsDetailsOpen(false)} />}
-      <TaskHistoryPopup
-        open={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        taskId={selectedTaskId}
-      />
     </div>
   );
 };
