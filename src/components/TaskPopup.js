@@ -112,7 +112,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   // Fetch meeting team members and tasks when creating a new meeting
   useEffect(() => {
     if (open && isMeeting && !editingTask && mode === "create") {
-      api.getMeetingsMembers().then(data => {
+      api.getMembers().then(data => {
         setMeetingTeamMembers(data.members || []);
       }).catch(err => {
         console.error("Failed to fetch meeting members:", err);

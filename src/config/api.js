@@ -207,9 +207,6 @@ export const api = {
       method: 'DELETE'
     }),
 
-  getMeetingsMembers: () =>
-    apiRequest(API_ENDPOINTS.MEETINGS + '/members'),
-
   // Admin - Users
   getUsers: () =>
     apiRequest(API_ENDPOINTS.ADMIN_USERS),
