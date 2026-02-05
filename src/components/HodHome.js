@@ -43,7 +43,17 @@ const HodHome = ({ onLogout }) => {
   const [taskTypeFilter, setTaskTypeFilter] = useState('');
   const [taskStatusFilter, setTaskStatusFilter] = useState('');
   const [meetingStatusFilter, setMeetingStatusFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState(() => {
+    // Load category filter from localStorage or default to empty string ('all')
+    const saved = localStorage.getItem('hodCategoryFilter');
+    return saved !== null ? saved : '';
+  });
+
+  // Custom setter for categoryFilter that saves to localStorage
+  const handleSetCategoryFilter = (value) => {
+    setCategoryFilter(value);
+    localStorage.setItem('hodCategoryFilter', value);
+  };
   const [weeklyTaskTypeFilter, setWeeklyTaskTypeFilter] = useState('');
   const [weeklyStatusFilter, setWeeklyStatusFilter] = useState('');
   const [weeklyCategoryFilter, setWeeklyCategoryFilter] = useState('');
@@ -160,11 +170,11 @@ const HodHome = ({ onLogout }) => {
           const tasksData = await tasksResponse.json();
           console.log('Tasks data:', tasksData);
 
-          // Combine tasks and meetings into a single array - master_tasks first, then self_tasks, then history_tasks
+          // Combine tasks and meetings into a single array - master_tasks first, then self_tasks
+          // Note: history_tasks is NOT included here as it's only shown on the history page
           allTasks = [
             ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned', assigned_by_user: task.users })),
             ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: task.itemType || 'task', category: 'self', owner_name: task.users?.name || 'Unknown' })),
-            ...(tasksData.history_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' })),
             ...(meetingsData.meetings || []).map(meeting => ({ ...meeting, itemType: 'meeting', owner_name: meeting.owner_name || 'Unknown' }))
           ];
         } else {
@@ -251,11 +261,11 @@ const HodHome = ({ onLogout }) => {
       if (tasksResponse.ok) {
         const tasksData = await tasksResponse.json();
 
-        // Combine tasks and meetings into a single array - master_tasks first, then self_tasks, then history_tasks
+        // Combine tasks - master_tasks first, then self_tasks
+        // Note: history_tasks is NOT included here as it's only shown on the history page
         const allTasks = [
           ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned', assigned_by_user: task.users })),
-          ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' })),
-          ...(tasksData.history_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' }))
+          ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' }))
         ];
 
         console.log('Combined dashboard tasks with descriptions:', allTasks.map(t => ({ name: t.task_name, description: t.description })));
@@ -483,7 +493,7 @@ const HodHome = ({ onLogout }) => {
     } else {
       setError("No user profile found");
     }
-    fetchHodData('self', '', 'self', '', 'all', taskDateFilter, true);
+    fetchHodData('self', '', 'self', '', categoryFilter || 'self', taskDateFilter, true);
     fetchHodDashboardData('self'); // Fetch dashboard data on mount
     fetchTeamMembers(); // Fetch team members on mount
   }, []);
@@ -503,7 +513,7 @@ const HodHome = ({ onLogout }) => {
       setTasks([]); // Clear current tasks to prevent showing old data
       // Only fetch meetings if team view has a selected member
       if (!(meetingViewTypeFilter === 'team' && !meetingTeamMemberFilter)) {
-        fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', taskDateFilter, false);
+        fetchHodData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, categoryFilter || 'self', taskDateFilter, false);
       }
       if (taskViewTypeFilter === 'team' || meetingViewTypeFilter === 'team' || taskViewTypeFilter === 'all' || meetingViewTypeFilter === 'all') {
         fetchTeamMembers();
@@ -1022,15 +1032,15 @@ const HodHome = ({ onLogout }) => {
 
   console.log('Filtered dashboard tasks:', filteredTasks.length, 'items for date filter:', dashboardDateFilter);
 
-  // Use stats from backend
-  const totalTasks = monthlyStats?.total_tasks || 0;
-  const selfTasks = monthlyStats?.self_tasks || 0;
-  const masterTasks = monthlyStats?.assigned_tasks || 0;
-  const completed = monthlyStats?.completed || 0;
-  const inProgress = monthlyStats?.in_progress || 0;
-  const notStarted = monthlyStats?.not_started || 0;
-  const onHold = monthlyStats?.on_hold || 0;
-  const cancelled = monthlyStats?.cancelled || 0;
+  // Calculate global stats from filtered dashboard tasks
+  const totalTasks = dashboardTasks.length;
+  const selfTasks = dashboardTasks.filter(t => t.category === 'self').length;
+  const masterTasks = dashboardTasks.filter(t => t.category === 'assigned').length;
+  const completed = dashboardTasks.filter(t => t.status === 'Done' || t.status === 'Completed').length;
+  const inProgress = dashboardTasks.filter(t => t.status === 'In Progress' || t.status === 'Inprogress' || t.status === 'In-Progress').length;
+  const notStarted = dashboardTasks.filter(t => t.status === 'Not Started' || t.status === 'Pending').length;
+  const onHold = dashboardTasks.filter(t => t.status === 'On Hold').length;
+  const cancelled = dashboardTasks.filter(t => t.status === 'Cancelled').length;
 
   const formatDate = (dateString) => {
     if (!dateString) return "--";
@@ -1139,7 +1149,7 @@ const HodHome = ({ onLogout }) => {
               statusFilter={taskStatusFilter}
               setStatusFilter={setTaskStatusFilter}
               categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
+              setCategoryFilter={handleSetCategoryFilter}
               viewTypeFilter={taskViewTypeFilter}
               setViewTypeFilter={setTaskViewTypeFilter}
               teamMemberFilter={taskTeamMemberFilter}
@@ -1191,7 +1201,7 @@ const HodHome = ({ onLogout }) => {
               statusFilter={meetingStatusFilter}
               setStatusFilter={setMeetingStatusFilter}
               categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
+              setCategoryFilter={handleSetCategoryFilter}
               viewTypeFilter={meetingViewTypeFilter}
               setViewTypeFilter={setMeetingViewTypeFilter}
               teamMemberFilter={meetingTeamMemberFilter}

@@ -631,7 +631,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                             onClick={() => {
                               setTaskName(suggestion.task_name);
                               setTaskType(suggestion.task_type);
-                              // Keep date as today, status as default "Not Started"
+                              setStatus(suggestion.status || 'Not Started');
                               setShowSuggestions(false);
                             }}
                           >

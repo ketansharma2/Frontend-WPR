@@ -179,14 +179,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/hod/task/:id/history"
-            element={
-              <ProtectedRoute allowedRoles={['HOD']}>
-                <FullTaskPage onLogout={handleLogout} />
-              </ProtectedRoute>
-            }
-          />
+
           <Route
             path="/sub-admin/tasks/:id"
             element={
