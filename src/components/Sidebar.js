@@ -26,7 +26,7 @@ export default function Sidebar({ userRole, onPageChange, currentPage: propCurre
     if (path === '/rnr' || path === '/hod/rnr' || path === '/sub-admin/rnr' || path === '/admin/rnr') return 'rnr';
     if (path === '/users' || path === '/admin/users') return 'users';
     if (path === '/individual-analytics' || path === '/admin/individual-analytics') return 'individual-analytics';
-    return 'home'; // default
+    if (path === '/projection' || path === '/hod/projection' || path === '/sub-admin/projection' || path === '/admin/projection') return 'projection';
   };
 
   const currentPage = propCurrentPage || getCurrentPage();
@@ -60,6 +60,12 @@ export default function Sidebar({ userRole, onPageChange, currentPage: propCurre
       id: 'rnr',
       label: 'R&R',
       icon: FaClipboardList,
+      roles: ['team member', 'hod', 'admin', 'sub admin']
+    },
+    {
+      id: 'projection',
+      label: 'Monthly Projection',
+      icon: FaChartBar,
       roles: ['team member', 'hod', 'admin', 'sub admin']
     },
     {

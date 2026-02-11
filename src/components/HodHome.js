@@ -9,6 +9,7 @@
  import ProfilePanel from './ProfilePanel';
  import TaskHistoryPopup from './TaskHistoryPopup';
  import HodRnR from './HodRandR';
+import HodProjection from './HodProjection';
  import { FaChevronDown, FaTimes, FaExternalLinkAlt, FaEllipsisV } from 'react-icons/fa';
  import { api } from '../config/api';
  import './Home.css';
@@ -28,6 +29,7 @@ const HodHome = ({ onLogout }) => {
     if (path === '/meetings' || path === '/hod/meetings') return 'meetings';
     if (path === '/calendar' || path === '/hod/calendar') return 'calendar';
     if (path === '/rnr' || path === '/hod/rnr') return 'rnr';
+    if (path === '/projection' || path === '/hod/projection') return 'projection';
     return 'home'; // default
   };
 
@@ -1214,6 +1216,10 @@ const HodHome = ({ onLogout }) => {
         ) : currentPage === 'rnr' ? (
           <div style={{ marginTop: '20px' }}>
             <HodRnR />
+          </div>
+        ) : currentPage === 'projection' ? (
+          <div style={{ marginTop: '20px' }}>
+            <HodProjection />
           </div>
         ) : (
            <div className="dashboard-container" style={{ overflow: 'visible' }}>

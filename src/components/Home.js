@@ -13,6 +13,7 @@ import DateToggleSwitch from './DateToggleSwitch';
 import RnR from './RnR';
 import RandR from './RandR'
 import FullTaskPage from './FullTaskPage';
+import MonthlyProjection from './MonthlyProjection';
 import { api } from '../config/api';
 import { FaEllipsisV, FaExternalLinkAlt } from 'react-icons/fa';
 import './Home.css';
@@ -310,6 +311,7 @@ const Home = ({ onLogout }) => {
     if (path === '/meetings') return 'meetings';
     if (path === '/calendar') return 'calendar';
     if (path === '/rnr') return 'rnr';
+    if (path === '/projection') return 'projection';
     return 'home'; // default
   };
   
@@ -956,6 +958,8 @@ const Home = ({ onLogout }) => {
           />
         ) : currentPage === 'rnr' ? (
           <RandR/>
+        ) : currentPage === 'projection' ? (
+          <MonthlyProjection />
         ) : (
            <div className="dashboard-container">
              {/* Monthly Task Statistics Panel */}

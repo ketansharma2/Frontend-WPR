@@ -172,6 +172,22 @@ function App() {
             }
           />
           <Route
+            path="/projection"
+            element={
+              <ProtectedRoute>
+                {userProfile?.user_type === "Admin" ? (
+                  <AdminHome onLogout={handleLogout} />
+                ) : userProfile?.user_type === "Sub Admin" ? (
+                  <Navigate to="/sub-admin/projection" replace />
+                ) : userProfile?.user_type === "HOD" ? (
+                  <Navigate to="/hod/projection" replace />
+                ) : (
+                  <Home onLogout={handleLogout} />
+                )}
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/task/:id/history"
             element={
               <ProtectedRoute>
@@ -245,6 +261,14 @@ function App() {
             }
           />
           <Route
+            path="/admin/projection"
+            element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <AdminHome onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/tasks/:id"
             element={
               <ProtectedRoute allowedRoles={['Admin']}>
@@ -293,6 +317,14 @@ function App() {
             }
           />
           <Route
+            path="/hod/projection"
+            element={
+              <ProtectedRoute allowedRoles={['HOD']}>
+                <HodHome onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/hod/rnr"
             element={
               <ProtectedRoute allowedRoles={['HOD']}>
@@ -326,6 +358,14 @@ function App() {
           />
           <Route
             path="/sub-admin/calendar"
+            element={
+              <ProtectedRoute allowedRoles={['Sub Admin']}>
+                <SubAdminHome onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sub-admin/projection"
             element={
               <ProtectedRoute allowedRoles={['Sub Admin']}>
                 <SubAdminHome onLogout={handleLogout} />
