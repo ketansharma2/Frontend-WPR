@@ -1,20 +1,32 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  LabelList
+} from 'recharts';
 
 const MemberBreakdownChart = ({ data, title }) => {
-  // Transform data for the chart
-  const chartData = Object.entries(data).map(([member, count]) => ({
-    member: member,
-    tasks: count
-  }));
 
-  if (chartData.length === 0) {
+  // Safe transformation (prevents crash if data undefined)
+  const chartData = data
+    ? Object.entries(data).map(([member, count]) => ({
+        member: member,
+        tasks: count
+      }))
+    : [];
+
+  if (!chartData || chartData.length === 0) {
     return (
       <div style={{
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '300px',
+        height: '400px',
         color: '#666',
         fontSize: '16px'
       }}>
@@ -28,7 +40,7 @@ const MemberBreakdownChart = ({ data, title }) => {
       return (
         <div style={{
           backgroundColor: 'white',
-          padding: '10px',
+          padding: '8px',
           border: '1px solid #ccc',
           borderRadius: '4px',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
@@ -46,45 +58,48 @@ const MemberBreakdownChart = ({ data, title }) => {
   };
 
   return (
-    <ResponsiveContainer width={500} height={500} aspect={1}>
+    <div
+      style={{
+        width: "100%",
+        height: 400,
+        minHeight: 400,
+      }}
+    >
       <BarChart
+        width={450}
+        height={400}
         data={chartData}
-        margin={{
-          top: 20,
-          right: 30,
-          left: 20,
-          bottom: 80
-        }}
+        margin={{ top: 40, right: 30, left: 20, bottom: 60 }}
       >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="member"
-            angle={-45}
-            textAnchor="end"
-            height={100}
-            fontSize={11}
-          />
-          <YAxis />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            verticalAlign="bottom"
-            align="center"
-            wrapperStyle={{ textAlign: 'center', width: '100%' }}
-          />
-          <Bar
+        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+
+        <XAxis
+          dataKey="member"
+          angle={-45}
+          textAnchor="end"
+          interval={0}
+        />
+
+        <YAxis />
+
+        {/* <Tooltip content={<CustomTooltip />} /> */}
+
+        {/* <Legend /> */}
+
+        <Bar
+          dataKey="tasks"
+          fill="#4e53ed"
+          name="Total Tasks"
+          radius={[4, 4, 0, 0]}
+        >
+          <LabelList
             dataKey="tasks"
-            fill="#007bff"
-            name="Total Tasks"
-            radius={[4, 4, 0, 0]}
-            label={{
-              position: 'insideTop',
-              fill: 'white',
-              fontSize: 12,
-              fontWeight: 'bold'
-            }}
+            position="insideTop"
+            style={{ fill: "#fff", fontWeight: "bold" }}
           />
-        </BarChart>
-    </ResponsiveContainer>
+        </Bar>
+      </BarChart>
+    </div>
   );
 };
 

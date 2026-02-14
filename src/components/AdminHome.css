@@ -33,35 +33,80 @@
 
 .dashboard-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
-  margin-top: 30px;
+  margin-top: 20px;
+  padding: 0 20px;
 }
 
 .stat-card {
-  background: white;
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border: 1px solid;
+  min-height: 80px;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .stat-card h3 {
-  color: #333;
-  margin-bottom: 10px;
-  font-size: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
 }
 
 .stat-card p {
-  color: #666;
-  margin-bottom: 20px;
-  line-height: 1.5;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* Stat card color variants */
+.stat-card.total-tasks {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.stat-card.total-tasks h3 {
+  color: #1e40af;
+}
+
+.stat-card.total-tasks p {
+  color: #1d4ed8;
+}
+
+.stat-card.self-tasks {
+  background: #f5f3ff;
+  border-color: #8b5cf6;
+}
+
+.stat-card.self-tasks h3 {
+  color: #5b21b6;
+}
+
+.stat-card.self-tasks p {
+  color: #7c3aed;
+}
+
+.stat-card.master-tasks {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.stat-card.master-tasks h3 {
+  color: #991b1b;
+}
+
+.stat-card.master-tasks p {
+  color: #dc2626;
 }
 
 .stat-card button {
@@ -94,6 +139,318 @@
   color: #666;
 }
 
+/* Dashboard Content Cards */
+.dashboard-content-section {
+  padding: 20px;
+  /* margin-bottom: 20px; */
+}
+
+.dashboard-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  min-height: auto;
+}
+
+/* Member Distribution Card */
+.member-distribution-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  flex: 1;
+  overflow: hidden;
+}
+
+.member-distribution-card h4 {
+  margin: 0 0 16px 0;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.member-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.member-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+  gap: 10px;
+}
+
+.member-item:hover {
+  background: #f1f5f9;
+}
+
+.member-avatar-circle {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.member-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.member-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  text-align: left;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-dept {
+  font-size: 10px;
+  font-weight: 400;
+  color: #9ca3af;
+  margin-left: 2px;
+}
+
+.member-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  text-align: left;
+}
+
+/* Status Distribution Card */
+.status-distribution-card {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  flex: 1;
+  min-width: 300px;
+  border: 1px solid #e5e7eb;
+}
+
+.status-distribution-card h4 {
+  margin: 0 0 16px 0;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.status-item {
+  padding: 12px 8px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.status-item.done {
+  background: #dcfce7;
+}
+
+.status-item.done .status-label { color: #166534; }
+.status-item.done .status-value { color: #15803d; }
+
+.status-item.in-progress {
+  background: #dbeafe;
+}
+
+.status-item.in-progress .status-label { color: #1e40af; }
+.status-item.in-progress .status-value { color: #1d4ed8; }
+
+.status-item.not-started {
+  background: #f3f4f6;
+}
+
+.status-item.not-started .status-label { color: #4b5563; }
+.status-item.not-started .status-value { color: #374151; }
+
+.status-item.cancelled {
+  background: #fee2e2;
+}
+
+.status-item.cancelled .status-label { color: #991b1b; }
+.status-item.cancelled .status-value { color: #dc2626; }
+
+.status-item.on-hold {
+  background: #fef3c7;
+}
+
+.status-item.on-hold .status-label { color: #92400e; }
+.status-item.on-hold .status-value { color: #d97706; }
+
+.status-label {
+  font-size: 11px;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.status-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Task Type Distribution Card */
+.task-type-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 420px;
+}
+
+.task-type-card h4 {
+  margin: 0 0 5px 0;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.task-type-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 0.3;
+  justify-content: center;
+}
+
+.task-type-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.task-type-item.fixed {
+  background: #ede9fe;
+}
+
+.task-type-item.fixed .task-type-label { color: #5b21b6; font-size: 11px; }
+.task-type-item.fixed .task-type-value { color: #7c3aed; font-size: 16px; font-weight: 600; }
+
+.task-type-item.variable {
+  background: #cffafe;
+}
+
+.task-type-item.variable .task-type-label { color: #0e7490; font-size: 11px; }
+.task-type-item.variable .task-type-value { color: #0891b2; font-size: 16px; font-weight: 600; }
+
+.task-type-item.hod-assigned {
+  background: #fce7f3;
+}
+
+.task-type-item.hod-assigned .task-type-label { color: #9d174d; font-size: 11px; }
+.task-type-item.hod-assigned .task-type-value { color: #db2777; font-size: 16px; font-weight: 600; }
+
+.task-type-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.task-type-value {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Department Cards Row */
+.dept-cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  padding: 0 20px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.dept-card {
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  border-top: 3px solid #8b5cf6;
+}
+
+.dept-card h3 {
+  color: #6b7280;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.dept-card p {
+  color: #111827;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Right side container */
+.right-side-container {
+  flex: 1;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Chart Card */
+.chart-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 10px;
+  /* box-shadow: 0 2px 8px rgba(0,0,0,0.06); */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chart-card h4 {
+  margin: 0 0 12px 0;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  flex-shrink: 0;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .admin-content {
@@ -101,7 +458,7 @@
   }
   
   .admin-main {
-    margin: 20px 10px 10px 20px; /* top right bottom left - increased top and left for mobile */
+    margin: 20px 10px 10px 20px;
   }
   
   .admin-home-container .cu-sidebar.expanded ~ .admin-content .admin-main {
@@ -111,10 +468,28 @@
   
   .dashboard-stats {
     grid-template-columns: 1fr;
-    gap: 15px;
+    gap: 12px;
+    padding: 0 12px;
   }
   
   .stat-card {
-    padding: 20px;
+    padding: 16px;
+  }
+  
+  .dashboard-row {
+    flex-direction: column;
+  }
+  
+  .member-distribution-card {
+    max-width: 100%;
+  }
+  
+  .dept-cards-row {
+    flex-wrap: wrap;
+    padding: 0 12px;
+  }
+  
+  .dept-card {
+    min-width: calc(50% - 8px);
   }
 }

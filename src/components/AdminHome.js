@@ -1,27 +1,33 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+} from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import AdminUsers from "./AdminUsers";
 import SubAdminRandR from "./SubAdminRandR";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
-import TaskList from './TaskList';
-import WeeklyTemplate from './WeeklyTemplate';
-import IndividualAnalytics from './IndividualAnalytics';
-import TaskPopup from './TaskPopup';
-import TaskDetails from './TaskDetails';
-import ProfilePanel from './ProfilePanel';
-import TaskStatsPanel from './TaskStatsPanel';
-import DateToggleSwitch from './DateToggleSwitch';
-import { FaChevronDown } from 'react-icons/fa';
-import { api } from '../config/api';
-import DeptTaskDistributionBar from './DeptTaskDistributionBar';
-import DeptBreakdownChart from './DeptAnalytics/DeptBreakdownChart';
-import MemberBreakdownChart from './DeptAnalytics/MemberBreakdownChart';
-import DeptStatusChart from './DeptAnalytics/DeptStatusChart';
-import SelfVsAssignedPieChart from './DeptAnalytics/SelfVsAssignedPieChart';
+import TaskList from "./TaskList";
+import WeeklyTemplate from "./WeeklyTemplate";
+import IndividualAnalytics from "./IndividualAnalytics";
+import TaskPopup from "./TaskPopup";
+import TaskDetails from "./TaskDetails";
+import ProfilePanel from "./ProfilePanel";
+import TaskStatsPanel from "./TaskStatsPanel";
+import DateToggleSwitch from "./DateToggleSwitch";
+import { FaChevronDown } from "react-icons/fa";
+import { api } from "../config/api";
+import DeptTaskDistributionBar from "./DeptTaskDistributionBar";
+import DeptBreakdownChart from "./DeptAnalytics/DeptBreakdownChart";
+import MemberBreakdownChart from "./DeptAnalytics/MemberBreakdownChart";
+import DeptStatusChart from "./DeptAnalytics/DeptStatusChart";
+import SelfVsAssignedPieChart from "./DeptAnalytics/SelfVsAssignedPieChart";
 import "./AdminHome.css";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
 // Error Boundary Component
 class AdminUsersErrorBoundary extends React.Component {
@@ -35,32 +41,35 @@ class AdminUsersErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('AdminUsers component error:', error, errorInfo);
+    console.error("AdminUsers component error:", error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="error-boundary" style={{
-          padding: '20px',
-          backgroundColor: '#f8d7da',
-          color: '#721c24',
-          borderRadius: '4px',
-          border: '1px solid #f5c6cb',
-          margin: '20px'
-        }}>
+        <div
+          className="error-boundary"
+          style={{
+            padding: "20px",
+            backgroundColor: "#f8d7da",
+            color: "#721c24",
+            borderRadius: "4px",
+            border: "1px solid #f5c6cb",
+            margin: "20px",
+          }}
+        >
           <h3>Error Loading User Management</h3>
           <p>There was an error loading the user management page.</p>
-          <p>Error: {this.state.error?.message || 'Unknown error'}</p>
+          <p>Error: {this.state.error?.message || "Unknown error"}</p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
             style={{
-              padding: '8px 16px',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
+              padding: "8px 16px",
+              backgroundColor: "#dc3545",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
             }}
           >
             Retry
@@ -80,96 +89,115 @@ const AdminHome = ({ onLogout }) => {
   // Determine current page from URL path
   const getCurrentPage = () => {
     const path = location.pathname;
-    if (path === '/admin/home') return 'home';
-    if (path === '/admin/tasks') return 'tasks';
-    if (path === '/admin/meetings') return 'meetings';
-    if (path === '/admin/calendar') return 'calendar';
-    if (path === '/admin/rnr') return 'rnr';
-    if (path === '/admin/users') return 'users';
-    if (path === '/admin/individual-analytics') return 'individual-analytics';
-    return 'home'; // default
+    if (path === "/admin/home") return "home";
+    if (path === "/admin/tasks") return "tasks";
+    if (path === "/admin/meetings") return "meetings";
+    if (path === "/admin/calendar") return "calendar";
+    if (path === "/admin/rnr") return "rnr";
+    if (path === "/admin/users") return "users";
+    if (path === "/admin/individual-analytics") return "individual-analytics";
+    return "home"; // default
   };
 
-     // Helper function for SVG donut chart calculations
-     const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-       const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-       return {
-         x: centerX + (radius * Math.cos(angleInRadians)),
-         y: centerY + (radius * Math.sin(angleInRadians))
-       };
-     };
+  // Helper function to get initials from name
+  const getInitials = (name) => {
+    if (!name) return "?";
+    const parts = name.trim().split(" ").filter(part => part.length > 0);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  };
 
-    // Default dates for dept analytics
-    const today = new Date();
-    // Calculate Monday of current week
-    const mondayOfWeek = new Date(today);
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, subtract 6 days; otherwise subtract (day-1)
-    mondayOfWeek.setDate(today.getDate() - daysToSubtract);
+  // Generate consistent color from name
+  const getColorFromName = (name) => {
+    const colors = [
+      "#3b82f6", "#8b5cf6", "#ec4899", "#f97316", "#14b8a6",
+      "#6366f1", "#ef4444", "#22c55e", "#f59e0b", "#06b6d4"
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
 
-    // Calculate Saturday of current week
-    const saturdayOfWeek = new Date(today);
-    const daysToAdd = 6 - dayOfWeek; // Saturday is day 6, so add (6 - currentDay) days
-    saturdayOfWeek.setDate(today.getDate() + daysToAdd);
-    const formatDate = (d) => d.toISOString().split("T")[0];
-    const now = new Date();
+  // Default dates for dept analytics
+  const today = new Date();
+  // Calculate Monday of current week
+  const mondayOfWeek = new Date(today);
+  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, subtract 6 days; otherwise subtract (day-1)
+  mondayOfWeek.setDate(today.getDate() - daysToSubtract);
 
-   const currentPage = getCurrentPage();
-   const [userProfile, setUserProfile] = useState(null);
-   const [isPopupOpen, setIsPopupOpen] = useState(false);
-   const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
-   const [editingTask, setEditingTask] = useState(null);
-   const [filter, setFilter] = useState('task');
-   const [taskDateFilter, setTaskDateFilter] = useState('today');
-   const [meetingDateFilter, setMeetingDateFilter] = useState('all');
-   const [weeklyDateFilter, setWeeklyDateFilter] = useState('all');
-   const [taskTypeFilter, setTaskTypeFilter] = useState('');
-   const [taskStatusFilter, setTaskStatusFilter] = useState('');
-   const [meetingStatusFilter, setMeetingStatusFilter] = useState('');
-   const [categoryFilter, setCategoryFilter] = useState('');
-   const [weeklyTaskTypeFilter, setWeeklyTaskTypeFilter] = useState('');
-   const [weeklyStatusFilter, setWeeklyStatusFilter] = useState('');
-   const [weeklyCategoryFilter, setWeeklyCategoryFilter] = useState('');
-   const [weeklyViewTypeFilter, setWeeklyViewTypeFilter] = useState('all');
-   const [weeklyTeamMemberFilter, setWeeklyTeamMemberFilter] = useState('');
-   const [taskViewTypeFilter, setTaskViewTypeFilter] = useState('all'); // 'self' or 'team' for tasks
-   const [taskTeamMemberFilter, setTaskTeamMemberFilter] = useState('all'); // for team view tasks
-   const [meetingViewTypeFilter, setMeetingViewTypeFilter] = useState('all'); // 'self' or 'team' for meetings
-   const [meetingTeamMemberFilter, setMeetingTeamMemberFilter] = useState('all'); // for team view meetings
-   const [teamMembers, setTeamMembers] = useState([]); // list of team members
-   const [selectedTask, setSelectedTask] = useState(null);
-   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-   const [tasks, setTasks] = useState([]);
-   const [weeklyTasks, setWeeklyTasks] = useState([]);
-   const [loading, setLoading] = useState(true);
-   const [initialLoading, setInitialLoading] = useState(true);
-   const [weeklyLoading, setWeeklyLoading] = useState(false);
-   const [error, setError] = useState('');
-   const [isProfileOpen, setIsProfileOpen] = useState(false);
-   const [pendingTasks, setPendingTasks] = useState([]);
-   const [monthlyStats, setMonthlyStats] = useState(null);
-   const [statsLoading, setStatsLoading] = useState(true);
-   const [statsError, setStatsError] = useState('');
-   const [todayTasks, setTodayTasks] = useState([]);
-   const [todayMeetings, setTodayMeetings] = useState([]);
-   const [todayDataLoading, setTodayDataLoading] = useState(true);
-   const [selectedDate, setSelectedDate] = useState('today'); // 'today' or 'yesterday'
-   const [yesterdayDate, setYesterdayDate] = useState(null); // Actual date found for yesterday
-   const [yesterdayTasks, setYesterdayTasks] = useState([]);
-   const [yesterdayMeetings, setYesterdayMeetings] = useState([]);
-   const [dashboardViewType, setDashboardViewType] = useState('self'); // 'self' or 'team' for dashboard
-   const [dashboardTeamMember, setDashboardTeamMember] = useState(''); // selected team member for dashboard
-   const [showTeamMemberDropdown, setShowTeamMemberDropdown] = useState(false);
-   const [showAllTasks, setShowAllTasks] = useState(false);
-   const [showAllMeetings, setShowAllMeetings] = useState(false);
-   // Dept Analytics filters
-   const [deptAnalyticsData, setDeptAnalyticsData] = useState({});
-   const [deptAnalyticsFromDate, setDeptAnalyticsFromDate] = useState(formatDate(mondayOfWeek));
-   const [deptAnalyticsToDate, setDeptAnalyticsToDate] = useState(formatDate(saturdayOfWeek));
-   const [deptAnalyticsDeptFilter, setDeptAnalyticsDeptFilter] = useState('all');
-   const [showDeptAnalyticsDeptDropdown, setShowDeptAnalyticsDeptDropdown] = useState(false);
-   const [availableDepartments, setAvailableDepartments] = useState([]);
-   const [userCountsFromTasks, setUserCountsFromTasks] = useState({});
+  // Calculate Saturday of current week
+  const saturdayOfWeek = new Date(today);
+  const daysToAdd = 6 - dayOfWeek; // Saturday is day 6, so add (6 - currentDay) days
+  saturdayOfWeek.setDate(today.getDate() + daysToAdd);
+  const formatDate = (d) => d.toISOString().split("T")[0];
+  const now = new Date();
+
+  const currentPage = getCurrentPage();
+  const [userProfile, setUserProfile] = useState(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [isAssignPopupOpen, setIsAssignPopupOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [filter, setFilter] = useState("task");
+  const [taskDateFilter, setTaskDateFilter] = useState("today");
+  const [meetingDateFilter, setMeetingDateFilter] = useState("all");
+  const [weeklyDateFilter, setWeeklyDateFilter] = useState("all");
+  const [taskTypeFilter, setTaskTypeFilter] = useState("");
+  const [taskStatusFilter, setTaskStatusFilter] = useState("");
+  const [meetingStatusFilter, setMeetingStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [weeklyTaskTypeFilter, setWeeklyTaskTypeFilter] = useState("");
+  const [weeklyStatusFilter, setWeeklyStatusFilter] = useState("");
+  const [weeklyCategoryFilter, setWeeklyCategoryFilter] = useState("");
+  const [weeklyViewTypeFilter, setWeeklyViewTypeFilter] = useState("all");
+  const [weeklyTeamMemberFilter, setWeeklyTeamMemberFilter] = useState("");
+  const [taskViewTypeFilter, setTaskViewTypeFilter] = useState("all"); // 'self' or 'team' for tasks
+  const [taskTeamMemberFilter, setTaskTeamMemberFilter] = useState("all"); // for team view tasks
+  const [meetingViewTypeFilter, setMeetingViewTypeFilter] = useState("all"); // 'self' or 'team' for meetings
+  const [meetingTeamMemberFilter, setMeetingTeamMemberFilter] = useState("all"); // for team view meetings
+  const [teamMembers, setTeamMembers] = useState([]); // list of team members
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [tasks, setTasks] = useState([]);
+  const [weeklyTasks, setWeeklyTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [weeklyLoading, setWeeklyLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [pendingTasks, setPendingTasks] = useState([]);
+  const [monthlyStats, setMonthlyStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState("");
+  const [todayTasks, setTodayTasks] = useState([]);
+  const [todayMeetings, setTodayMeetings] = useState([]);
+  const [todayDataLoading, setTodayDataLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState("today"); // 'today' or 'yesterday'
+  const [yesterdayDate, setYesterdayDate] = useState(null); // Actual date found for yesterday
+  const [yesterdayTasks, setYesterdayTasks] = useState([]);
+  const [yesterdayMeetings, setYesterdayMeetings] = useState([]);
+  const [dashboardViewType, setDashboardViewType] = useState("self"); // 'self' or 'team' for dashboard
+  const [dashboardTeamMember, setDashboardTeamMember] = useState(""); // selected team member for dashboard
+  const [showTeamMemberDropdown, setShowTeamMemberDropdown] = useState(false);
+  const [showAllTasks, setShowAllTasks] = useState(false);
+  const [showAllMeetings, setShowAllMeetings] = useState(false);
+  // Dept Analytics filters
+  const [deptAnalyticsData, setDeptAnalyticsData] = useState({});
+  const [deptAnalyticsFromDate, setDeptAnalyticsFromDate] = useState(
+    formatDate(mondayOfWeek),
+  );
+  const [deptAnalyticsToDate, setDeptAnalyticsToDate] = useState(
+    formatDate(saturdayOfWeek),
+  );
+  const [deptAnalyticsDeptFilter, setDeptAnalyticsDeptFilter] = useState("all");
+  const [showDeptAnalyticsDeptDropdown, setShowDeptAnalyticsDeptDropdown] =
+    useState(false);
+  const [availableDepartments, setAvailableDepartments] = useState([]);
+  const [userCountsFromTasks, setUserCountsFromTasks] = useState({});
 
   useEffect(() => {
     // Get user profile from localStorage
@@ -193,14 +221,21 @@ const AdminHome = ({ onLogout }) => {
   useEffect(() => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    setYesterdayDate(yesterday.toISOString().split('T')[0]);
+    setYesterdayDate(yesterday.toISOString().split("T")[0]);
   }, []);
 
   // Refetch tasks when category filter changes
   useEffect(() => {
     if (userProfile && (taskTeamMemberFilter || meetingTeamMemberFilter)) {
-      const cat = categoryFilter === '' ? 'all' : categoryFilter;
-      fetchAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, cat, false);
+      const cat = categoryFilter === "" ? "all" : categoryFilter;
+      fetchAdminData(
+        taskViewTypeFilter,
+        taskTeamMemberFilter,
+        meetingViewTypeFilter,
+        meetingTeamMemberFilter,
+        cat,
+        false,
+      );
     }
   }, [categoryFilter, userProfile]);
 
@@ -211,32 +246,59 @@ const AdminHome = ({ onLogout }) => {
       setTasks([]); // Clear current tasks to prevent showing old data
       // Fetch data for any team member selection (including 'all')
       if (taskTeamMemberFilter || meetingTeamMemberFilter) {
-        fetchAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', false);
+        fetchAdminData(
+          taskViewTypeFilter,
+          taskTeamMemberFilter,
+          meetingViewTypeFilter,
+          meetingTeamMemberFilter,
+          "all",
+          false,
+        );
       }
-      if (taskViewTypeFilter === 'team' || meetingViewTypeFilter === 'team') {
+      if (taskViewTypeFilter === "team" || meetingViewTypeFilter === "team") {
         fetchTeamMembers();
       }
     }
-  }, [taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, userProfile]);
+  }, [
+    taskViewTypeFilter,
+    taskTeamMemberFilter,
+    meetingViewTypeFilter,
+    meetingTeamMemberFilter,
+    userProfile,
+  ]);
 
   // Refetch tasks when task date filter changes
   useEffect(() => {
-    if (userProfile && currentPage === 'tasks') {
-      fetchAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', false);
+    if (userProfile && currentPage === "tasks") {
+      fetchAdminData(
+        taskViewTypeFilter,
+        taskTeamMemberFilter,
+        meetingViewTypeFilter,
+        meetingTeamMemberFilter,
+        "all",
+        false,
+      );
     }
   }, [taskDateFilter, userProfile, currentPage]);
 
   // Refetch meetings when meeting date filter changes
   useEffect(() => {
-    if (userProfile && currentPage === 'meetings') {
-      fetchAdminData(taskViewTypeFilter, taskTeamMemberFilter, meetingViewTypeFilter, meetingTeamMemberFilter, 'all', false);
+    if (userProfile && currentPage === "meetings") {
+      fetchAdminData(
+        taskViewTypeFilter,
+        taskTeamMemberFilter,
+        meetingViewTypeFilter,
+        meetingTeamMemberFilter,
+        "all",
+        false,
+      );
     }
   }, [meetingDateFilter, userProfile, currentPage]);
 
   // Calculate user counts from tasks
   useEffect(() => {
     const counts = {};
-    tasks.forEach(task => {
+    tasks.forEach((task) => {
       const user = task.owner_name || task.assigned_by_user?.name;
       if (user) {
         counts[user] = (counts[user] || 0) + 1;
@@ -259,7 +321,14 @@ const AdminHome = ({ onLogout }) => {
   // }, [userProfile, dashboardViewType, dashboardTeamMember, selectedDate]);
 
   // Fetch Admin data from backend
-  const fetchAdminData = async (taskViewType, taskTeamMember, meetingViewType, meetingTeamMember, category = 'all', showLoading = true) => {
+  const fetchAdminData = async (
+    taskViewType,
+    taskTeamMember,
+    meetingViewType,
+    meetingTeamMember,
+    category = "all",
+    showLoading = true,
+  ) => {
     try {
       if (showLoading) setLoading(true);
       const token = localStorage.getItem("token");
@@ -275,42 +344,42 @@ const AdminHome = ({ onLogout }) => {
       let meetingDateFilterValue = meetingDateFilter;
 
       // Fetch tasks with Admin-specific filter
-      let targetUserId = taskTeamMember || 'all'; // Default to 'all' if no specific member selected
+      let targetUserId = taskTeamMember || "all"; // Default to 'all' if no specific member selected
 
       let tasksResponse = null;
       tasksResponse = await fetch(`${API_BASE_URL}/admin/tasks/filter`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           date_filter: taskDateFilterValue,
-          task_type: taskTypeFilter || 'all',
-          status: taskStatusFilter || 'all',
+          task_type: taskTypeFilter || "all",
+          status: taskStatusFilter || "all",
           category: category,
           target_user_id: targetUserId,
-          custom_date: null
-        })
+          custom_date: null,
+        }),
       });
 
       // Fetch meetings with Admin-specific filter
-      let targetUserIdMeetings = meetingTeamMember || 'all'; // Default to 'all' if no specific member selected
+      let targetUserIdMeetings = meetingTeamMember || "all"; // Default to 'all' if no specific member selected
 
       let meetingsResponse = null;
       meetingsResponse = await fetch(`${API_BASE_URL}/admin/meetings/filter`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           user_id: profile.user_id,
           target_user_id: targetUserIdMeetings,
-          date_filter: meetingDateFilterValue || 'all',
-          status: meetingStatusFilter || 'all',
-          custom_date: null
-        })
+          date_filter: meetingDateFilterValue || "all",
+          status: meetingStatusFilter || "all",
+          custom_date: null,
+        }),
       });
 
       let allTasks = [];
@@ -318,31 +387,57 @@ const AdminHome = ({ onLogout }) => {
       // Handle tasks response
       if (tasksResponse && tasksResponse.ok) {
         const tasksData = await tasksResponse.json();
-        console.log('Tasks data:', tasksData);
+        console.log("Tasks data:", tasksData);
 
         // Combine tasks from both tables
         allTasks = [
-          ...(tasksData.self_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'self', owner_name: task.users?.name || 'Unknown' })),
-          ...(tasksData.master_tasks || []).map(task => ({ ...task, itemType: 'task', category: 'assigned', assigned_by_user: task.users }))
+          ...(tasksData.self_tasks || []).map((task) => ({
+            ...task,
+            itemType: "task",
+            category: "self",
+            owner_name: task.users?.name || "Unknown",
+          })),
+          ...(tasksData.master_tasks || []).map((task) => ({
+            ...task,
+            itemType: "task",
+            category: "assigned",
+            assigned_by_user: task.users,
+          })),
         ];
       }
 
       // Handle meetings response
       if (meetingsResponse && meetingsResponse.ok) {
         const meetingsData = await meetingsResponse.json();
-        console.log('Meetings data:', meetingsData);
+        console.log("Meetings data:", meetingsData);
 
         allTasks = [
           ...allTasks,
-          ...(meetingsData.meetings || []).map(meeting => ({ ...meeting, itemType: 'meeting', owner_name: meeting.owner_name || 'Unknown' }))
+          ...(meetingsData.meetings || []).map((meeting) => ({
+            ...meeting,
+            itemType: "meeting",
+            owner_name: meeting.owner_name || "Unknown",
+          })),
         ];
       }
 
-      console.log('Combined tasks with descriptions:', allTasks.map(t => ({ name: t.task_name, description: t.description })));
+      console.log(
+        "Combined tasks with descriptions:",
+        allTasks.map((t) => ({
+          name: t.task_name,
+          description: t.description,
+        })),
+      );
 
       setTasks(allTasks);
-      setPendingTasks(allTasks.filter(t => t.category === 'assigned' && t.status !== 'Not Started' && t.status !== 'In Progress'));
-
+      setPendingTasks(
+        allTasks.filter(
+          (t) =>
+            t.category === "assigned" &&
+            t.status !== "Not Started" &&
+            t.status !== "In Progress",
+        ),
+      );
     } catch (err) {
       setError("Network error. Please check your connection.");
       console.error("Error fetching tasks:", err);
@@ -359,106 +454,129 @@ const AdminHome = ({ onLogout }) => {
     try {
       const data = await api.getAssignMembers();
       const members = data.members || [];
-      setTeamMembers([{ user_id: 'all', name: 'All Team Members' }, ...members]);
+      setTeamMembers([
+        { user_id: "all", name: "All Team Members" },
+        ...members,
+      ]);
     } catch (err) {
       console.error("Error fetching team members:", err);
-      setTeamMembers([{ user_id: 'all', name: 'All Team Members' }]);
+      setTeamMembers([{ user_id: "all", name: "All Team Members" }]);
     }
   };
-  
+
   // Fetch available departments
   const fetchAvailableDepartments = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/admin/dept-analytics/departments`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/admin/dept-analytics/departments`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
       if (response.ok) {
         const data = await response.json();
         setAvailableDepartments(data.departments || []);
       } else {
-        console.error('Failed to fetch departments');
+        console.error("Failed to fetch departments");
       }
     } catch (error) {
-      console.error('Error fetching departments:', error);
+      console.error("Error fetching departments:", error);
     }
   };
-
 
   // Fetch department analytics data
   const fetchDeptAnalytics = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/admin/dept-analytics/filter`, {
-        method: 'POST',
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+      const response = await fetch(
+        `${API_BASE_URL}/admin/dept-analytics/filter`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dept: deptAnalyticsDeptFilter,
+            date_from: deptAnalyticsFromDate,
+            date_to: deptAnalyticsToDate,
+          }),
         },
-        body: JSON.stringify({
-          dept: deptAnalyticsDeptFilter,
-          date_from: deptAnalyticsFromDate,
-          date_to: deptAnalyticsToDate
-        })
-      });
+      );
       if (response.ok) {
         const data = await response.json();
         setDeptAnalyticsData(data); // Store the full response including status counts
       } else {
-        console.error('Failed to fetch dept analytics');
+        console.error("Failed to fetch dept analytics");
       }
     } catch (error) {
-      console.error('Error fetching dept analytics:', error);
+      console.error("Error fetching dept analytics:", error);
     }
   };
 
   // Fetch dept analytics when filters change
   useEffect(() => {
-    if (userProfile && (currentPage === 'dept-analytics' || currentPage === 'home')) {
+    if (
+      userProfile &&
+      (currentPage === "dept-analytics" || currentPage === "home")
+    ) {
       fetchDeptAnalytics();
     }
-  }, [deptAnalyticsDeptFilter, deptAnalyticsFromDate, deptAnalyticsToDate, userProfile, currentPage]);
+  }, [
+    deptAnalyticsDeptFilter,
+    deptAnalyticsFromDate,
+    deptAnalyticsToDate,
+    userProfile,
+    currentPage,
+  ]);
 
   // Fetch weekly report data
-  const fetchWeeklyData = useCallback(async (filters = {}, showLoading = true) => {
-    try {
-      if (showLoading) setWeeklyLoading(true);
-      const token = localStorage.getItem("token");
-      const profile = JSON.parse(localStorage.getItem("profile"));
+  const fetchWeeklyData = useCallback(
+    async (filters = {}, showLoading = true) => {
+      try {
+        if (showLoading) setWeeklyLoading(true);
+        const token = localStorage.getItem("token");
+        const profile = JSON.parse(localStorage.getItem("profile"));
 
-      if (!token || !profile) {
-        setError("Authentication required");
-        return;
+        if (!token || !profile) {
+          setError("Authentication required");
+          return;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/admin/weekly/filter`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...filters,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setWeeklyTasks([
+            ...(data.self_tasks || []),
+            ...(data.master_tasks || []),
+          ]);
+        } else {
+          const errorData = await response.json();
+          console.error("Weekly data error:", errorData);
+          setError("Failed to fetch weekly report data");
+        }
+      } catch (err) {
+        setError("Network error while fetching weekly data.");
+        console.error("Error fetching weekly data:", err);
+      } finally {
+        if (showLoading) setWeeklyLoading(false);
       }
-
-      const response = await fetch(`${API_BASE_URL}/admin/weekly/filter`, {
-        method: 'POST',
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          ...filters
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setWeeklyTasks([...(data.self_tasks || []), ...(data.master_tasks || [])]);
-      } else {
-        const errorData = await response.json();
-        console.error('Weekly data error:', errorData);
-        setError("Failed to fetch weekly report data");
-      }
-    } catch (err) {
-      setError("Network error while fetching weekly data.");
-      console.error("Error fetching weekly data:", err);
-    } finally {
-      if (showLoading) setWeeklyLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Fetch monthly task statistics
   // const fetchMonthlyStats = async () => {
@@ -526,17 +644,21 @@ const AdminHome = ({ onLogout }) => {
   //   }
   // };
 
-  const openPopup = () => { setIsPopupOpen(true); };
+  const openPopup = () => {
+    setIsPopupOpen(true);
+  };
   const closePopup = () => {
     setIsPopupOpen(false);
     setEditingTask(null);
-    setError(''); // Clear any errors when closing popup
+    setError(""); // Clear any errors when closing popup
   };
 
-  const openAssignPopup = () => { setIsAssignPopupOpen(true); };
+  const openAssignPopup = () => {
+    setIsAssignPopupOpen(true);
+  };
   const closeAssignPopup = () => {
     setIsAssignPopupOpen(false);
-    setError(''); // Clear any errors when closing popup
+    setError(""); // Clear any errors when closing popup
   };
 
   const assignTask = async (task) => {
@@ -558,30 +680,32 @@ const AdminHome = ({ onLogout }) => {
         task_name: task.taskName,
         status: task.status,
         assignee_remarks: task.remarks,
-        upload_closing: '',
-        remarks: '',
+        upload_closing: "",
+        remarks: "",
         parameter: task.parameter,
-        end_goal: task.endGoal
+        end_goal: task.endGoal,
       };
 
       const response = await fetch(`${API_BASE_URL}/admin/assign/create`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(apiData)
+        body: JSON.stringify(apiData),
       });
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Task assigned successfully:', result);
-        alert('Task assigned successfully');
-        setError(''); // Clear any errors
+        console.log("Task assigned successfully:", result);
+        alert("Task assigned successfully");
+        setError(""); // Clear any errors
         closeAssignPopup();
       } else {
         const errorData = await response.json();
-        setError(`Failed to assign task: ${errorData.error || 'Unknown error'}`);
+        setError(
+          `Failed to assign task: ${errorData.error || "Unknown error"}`,
+        );
       }
     } catch (err) {
       setError(`Network error while assigning task: ${err.message}`);
@@ -599,9 +723,9 @@ const AdminHome = ({ onLogout }) => {
       }
 
       let apiData;
-      let endpoint = task.itemType === 'meeting' ? 'meetings' : 'tasks';
+      let endpoint = task.itemType === "meeting" ? "meetings" : "tasks";
 
-      if (task.itemType === 'meeting') {
+      if (task.itemType === "meeting") {
         // Map meeting fields to backend format
         apiData = {
           user_id: profile.user_id,
@@ -611,13 +735,13 @@ const AdminHome = ({ onLogout }) => {
           co_person: task.co_person,
           time: task.time_in_mins,
           prop_slot: task.prop_slot,
-          status: task.status || 'Scheduled',
-          notes: task.notes
+          status: task.status || "Scheduled",
+          notes: task.notes,
         };
       } else {
         // Map task fields to backend format - Include description
-        console.log('Task object received:', task); // Debug log
-        console.log('Description from task:', task.description); // Debug log
+        console.log("Task object received:", task); // Debug log
+        console.log("Description from task:", task.description); // Debug log
 
         apiData = {
           user_id: profile.user_id,
@@ -625,49 +749,51 @@ const AdminHome = ({ onLogout }) => {
           timeline: task.timeline,
           task_name: task.name,
           time: task.time,
-          task_type: task.type || 'work',
-          status: task.status || 'pending',
+          task_type: task.type || "work",
+          status: task.status || "pending",
           file_link: task.attachments,
-          description: task.description || '', // Add description field
-          remarks: task.remarks
+          description: task.description || "", // Add description field
+          remarks: task.remarks,
         };
 
-        console.log('API data being sent:', apiData); // Debug log
+        console.log("API data being sent:", apiData); // Debug log
       }
 
-      console.log('Creating task/meeting with data:', apiData);
+      console.log("Creating task/meeting with data:", apiData);
 
       const response = await fetch(`${API_BASE_URL}/${endpoint}/create`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(apiData)
+        body: JSON.stringify(apiData),
       });
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Task/meeting created successfully:', result);
+        console.log("Task/meeting created successfully:", result);
 
         // Add the new task to local state immediately for instant UI update
         const newTask = {
-          ...result.task || result.meeting,
-          itemType: task.itemType
+          ...(result.task || result.meeting),
+          itemType: task.itemType,
         };
 
-        setTasks(prevTasks => [...prevTasks, newTask]);
+        setTasks((prevTasks) => [...prevTasks, newTask]);
 
-        if (task.itemType === 'task') setFilter('task');
-        else if (task.itemType === 'meeting') setFilter('meeting');
-        setError(''); // Clear any previous errors
+        if (task.itemType === "task") setFilter("task");
+        else if (task.itemType === "meeting") setFilter("meeting");
+        setError(""); // Clear any previous errors
       } else {
         const errorData = await response.json();
-        console.error('API Error:', errorData);
-        setError(`Failed to create ${task.itemType}: ${errorData.error || 'Unknown error'}`);
+        console.error("API Error:", errorData);
+        setError(
+          `Failed to create ${task.itemType}: ${errorData.error || "Unknown error"}`,
+        );
       }
     } catch (err) {
-      console.error('Network error:', err);
+      console.error("Network error:", err);
       setError(`Network error while creating ${task.itemType}: ${err.message}`);
     }
   };
@@ -682,7 +808,7 @@ const AdminHome = ({ onLogout }) => {
   // Helper function to get the correct ID for API calls
   const getTaskIdForAPI = (task) => {
     // For tasks, prefer task_id, for meetings prefer meeting_id
-    if (task.itemType === 'meeting') {
+    if (task.itemType === "meeting") {
       return task.meeting_id || task._id;
     }
     // For tasks, prefer task_id over _id for consistency
@@ -692,7 +818,8 @@ const AdminHome = ({ onLogout }) => {
   const updateTask = async (updatedTask) => {
     try {
       const token = localStorage.getItem("token");
-      const endpoint = updatedTask.itemType === 'meeting' ? 'meetings' : 'tasks';
+      const endpoint =
+        updatedTask.itemType === "meeting" ? "meetings" : "tasks";
 
       // Get the correct ID for the API call
       const taskIdForAPI = getTaskIdForAPI(updatedTask);
@@ -703,7 +830,7 @@ const AdminHome = ({ onLogout }) => {
       }
 
       let apiData;
-      if (updatedTask.itemType === 'meeting') {
+      if (updatedTask.itemType === "meeting") {
         // Map meeting fields to backend format for update
         apiData = {
           meeting_name: updatedTask.meeting_name || updatedTask.name,
@@ -713,7 +840,7 @@ const AdminHome = ({ onLogout }) => {
           time: updatedTask.time,
           prop_slot: updatedTask.prop_slot || updatedTask.timeSlot,
           status: updatedTask.status,
-          notes: updatedTask.notes || updatedTask.agenda
+          notes: updatedTask.notes || updatedTask.agenda,
         };
       } else {
         // Map task fields to backend format for update - Include description
@@ -726,18 +853,21 @@ const AdminHome = ({ onLogout }) => {
           task_type: updatedTask.task_type || updatedTask.type,
           status: updatedTask.status,
           file_link: updatedTask.file_link || updatedTask.attachments,
-          remarks: updatedTask.remarks
+          remarks: updatedTask.remarks,
         };
       }
 
-      const response = await fetch(`${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
-        method: 'PUT',
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+      const response = await fetch(
+        `${API_BASE_URL}/${endpoint}/${taskIdForAPI}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(apiData),
         },
-        body: JSON.stringify(apiData)
-      });
+      );
 
       if (response.ok) {
         const result = await response.json();
@@ -745,24 +875,34 @@ const AdminHome = ({ onLogout }) => {
         // Update the local tasks state immediately for instant UI update
         const updatedTaskData = result.task || result.meeting || updatedTask;
 
-        setTasks(prevTasks => {
-          return prevTasks.map(task => {
+        setTasks((prevTasks) => {
+          return prevTasks.map((task) => {
             // More robust task matching logic
             const isMatch =
               (task._id && updatedTask._id && task._id === updatedTask._id) ||
-              (task.task_id && updatedTask.task_id && task.task_id === updatedTask.task_id) ||
-              (task.meeting_id && updatedTask.meeting_id && task.meeting_id === updatedTask.meeting_id) ||
+              (task.task_id &&
+                updatedTask.task_id &&
+                task.task_id === updatedTask.task_id) ||
+              (task.meeting_id &&
+                updatedTask.meeting_id &&
+                task.meeting_id === updatedTask.meeting_id) ||
               // Fallback matching for different ID field names
-              (task._id && updatedTaskData._id && task._id === updatedTaskData._id) ||
-              (task.task_id && updatedTaskData.task_id && task.task_id === updatedTaskData.task_id) ||
-              (task.meeting_id && updatedTaskData.meeting_id && task.meeting_id === updatedTaskData.meeting_id);
+              (task._id &&
+                updatedTaskData._id &&
+                task._id === updatedTaskData._id) ||
+              (task.task_id &&
+                updatedTaskData.task_id &&
+                task.task_id === updatedTaskData.task_id) ||
+              (task.meeting_id &&
+                updatedTaskData.meeting_id &&
+                task.meeting_id === updatedTaskData.meeting_id);
 
             if (isMatch) {
               return {
                 ...task,
                 ...updatedTask,
                 ...updatedTaskData,
-                updated_at: new Date()
+                updated_at: new Date(),
               };
             }
             return task;
@@ -771,59 +911,75 @@ const AdminHome = ({ onLogout }) => {
 
         setEditingTask(null);
         setIsPopupOpen(false); // Close popup after successful update
-        setError(''); // Clear any previous errors
+        setError(""); // Clear any previous errors
       } else {
         const errorData = await response.json();
-        setError(`Failed to update ${updatedTask.itemType}: ${errorData.error || 'Unknown error'}`);
+        setError(
+          `Failed to update ${updatedTask.itemType}: ${errorData.error || "Unknown error"}`,
+        );
       }
     } catch (err) {
-      setError(`Network error while updating ${updatedTask.itemType}: ${err.message}`);
+      setError(
+        `Network error while updating ${updatedTask.itemType}: ${err.message}`,
+      );
     }
   };
 
   const deleteTask = async (taskToDelete) => {
     try {
       const token = localStorage.getItem("token");
-      const endpoint = taskToDelete.itemType === 'meeting' ? 'meetings' : 'tasks';
+      const endpoint =
+        taskToDelete.itemType === "meeting" ? "meetings" : "tasks";
 
       // Get the correct ID for the API call
       const taskIdForAPI = getTaskIdForAPI(taskToDelete);
-      console.log('Deleting task/meeting with ID:', taskIdForAPI);
+      console.log("Deleting task/meeting with ID:", taskIdForAPI);
 
-      const response = await fetch(`${API_BASE_URL}/${endpoint}/${taskIdForAPI}`, {
-        method: 'DELETE',
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/${endpoint}/${taskIdForAPI}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Task/meeting deleted successfully:', result);
+        console.log("Task/meeting deleted successfully:", result);
 
         // Update the local tasks state immediately for instant UI update
-        setTasks(prevTasks =>
-          prevTasks.filter(task => {
+        setTasks((prevTasks) =>
+          prevTasks.filter((task) => {
             // Don't delete tasks that don't match - using robust matching logic
             const isMatch =
               (task._id && taskToDelete._id && task._id === taskToDelete._id) ||
-              (task.task_id && taskToDelete.task_id && task.task_id === taskToDelete.task_id) ||
-              (task.meeting_id && taskToDelete.meeting_id && task.meeting_id === taskToDelete.meeting_id);
+              (task.task_id &&
+                taskToDelete.task_id &&
+                task.task_id === taskToDelete.task_id) ||
+              (task.meeting_id &&
+                taskToDelete.meeting_id &&
+                task.meeting_id === taskToDelete.meeting_id);
 
             return !isMatch;
-          })
+          }),
         );
 
-        setError(''); // Clear any previous errors
+        setError(""); // Clear any previous errors
       } else {
         const errorData = await response.json();
-        console.error('Delete API Error:', errorData);
-        setError(`Failed to delete ${taskToDelete.itemType}: ${errorData.error || 'Unknown error'}`);
+        console.error("Delete API Error:", errorData);
+        setError(
+          `Failed to delete ${taskToDelete.itemType}: ${errorData.error || "Unknown error"}`,
+        );
       }
     } catch (err) {
-      console.error('Network error during deletion:', err);
-      setError(`Network error while deleting ${taskToDelete.itemType}: ${err.message}`);
+      console.error("Network error during deletion:", err);
+      setError(
+        `Network error while deleting ${taskToDelete.itemType}: ${err.message}`,
+      );
     }
   };
 
@@ -842,36 +998,35 @@ const AdminHome = ({ onLogout }) => {
     setFilter(newFilter);
 
     // Sync page with filter for consistent navigation
-    if (newFilter === 'task' && currentPage === 'meetings') {
-      navigate('/admin/tasks');
-    } else if (newFilter === 'meeting' && currentPage === 'tasks') {
-      navigate('/admin/meetings');
+    if (newFilter === "task" && currentPage === "meetings") {
+      navigate("/admin/tasks");
+    } else if (newFilter === "meeting" && currentPage === "tasks") {
+      navigate("/admin/meetings");
     }
   };
-
 
   const handleDateToggle = async (newDate) => {
     setSelectedDate(newDate);
 
     // Data fetching is now handled by the useEffect based on selectedDate
-    console.log('Date toggled to:', newDate);
+    console.log("Date toggled to:", newDate);
   };
 
   // Dynamic colors based on selected date
   const getHeaderColors = () => {
-    if (selectedDate === 'yesterday') {
+    if (selectedDate === "yesterday") {
       return {
-        planningHeader: '#2986cc',    // Yesterday's Task Header
-        planningSubheader: '#9fc5e8', // Yesterday's Task Subheader
-        meetingsHeader: '#e06666',    // Yesterday's Meetings Header
-        meetingsSubheader: '#f4cccc'  // Yesterday's Meetings Subheader
+        planningHeader: "#2986cc", // Yesterday's Task Header
+        planningSubheader: "#9fc5e8", // Yesterday's Task Subheader
+        meetingsHeader: "#e06666", // Yesterday's Meetings Header
+        meetingsSubheader: "#f4cccc", // Yesterday's Meetings Subheader
       };
     } else {
       return {
-        planningHeader: '#166534',    // Today's Task Header
-        planningSubheader: '#9dcfb0', // Today's Task Subheader
-        meetingsHeader: '#e27326',    // Today's Meetings Header
-        meetingsSubheader: '#fed7aa'  // Today's Meetings Subheader
+        planningHeader: "#166534", // Today's Task Header
+        planningSubheader: "#9dcfb0", // Today's Task Subheader
+        meetingsHeader: "#e27326", // Today's Meetings Header
+        meetingsSubheader: "#fed7aa", // Today's Meetings Subheader
       };
     }
   };
@@ -890,14 +1045,14 @@ const AdminHome = ({ onLogout }) => {
     switch (currentPage) {
       case "tasks":
         return (
-          <div style={{ marginTop: '20px' }}>
+          <div style={{ marginTop: "20px" }}>
             <TaskList
-              tasks={tasks.filter(task => task.itemType === 'task')}
+              tasks={tasks.filter((task) => task.itemType === "task")}
               onEdit={editTask}
               onViewDetails={onViewDetails}
               onViewHistory={onViewHistory}
               onDelete={deleteTask}
-              filter='task'
+              filter="task"
               setFilter={handleFilterChange}
               dateFilter={taskDateFilter}
               setDateFilter={setTaskDateFilter}
@@ -923,7 +1078,9 @@ const AdminHome = ({ onLogout }) => {
       case "meetings":
         return (
           <TaskList
-            tasks={tasks.filter(task => task.itemType === 'meeting').sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))}
+            tasks={tasks
+              .filter((task) => task.itemType === "meeting")
+              .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))}
             onEdit={editTask}
             onViewDetails={onViewDetails}
             onViewHistory={onViewHistory}
@@ -951,7 +1108,7 @@ const AdminHome = ({ onLogout }) => {
         );
       case "calendar":
         return (
-          <div style={{ padding: '0 50px' }}>
+          <div style={{ padding: "0 50px" }}>
             <WeeklyTemplate
               tasks={weeklyTasks}
               loading={weeklyLoading}
@@ -982,59 +1139,77 @@ const AdminHome = ({ onLogout }) => {
           </AdminUsersErrorBoundary>
         );
       case "individual-analytics":
-        return (<IndividualAnalytics />);
+        return <IndividualAnalytics />;
       case "rnr":
-        return (<SubAdminRandR />);
+        return <SubAdminRandR />;
       default:
         return (
-          <div style={{
-            backgroundColor: '#e0e0e0',
-            minHeight: '100vh'
-          }}>
+          <div
+            style={{
+              backgroundColor: "#e0e0e0",
+              minHeight: "100vh",
+            }}
+          >
             <div className="professional-filter-bar">
-              <div className="filter-controls" style={{ gap: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '280px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#495057', whiteSpace: 'nowrap' }}>Date Range:</span>
+              <div className="filter-controls" style={{ gap: "20px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    minWidth: "280px",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      color: "#495057",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Date Range:
+                  </span>
                   <input
                     type="date"
                     value={deptAnalyticsFromDate}
                     onChange={(e) => setDeptAnalyticsFromDate(e.target.value)}
                     style={{
-                      padding: '4px 6px',
-                      border: '1px solid #ced4da',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      width: '100px'
+                      padding: "4px 6px",
+                      border: "1px solid #ced4da",
+                      borderRadius: "4px",
+                      fontSize: "11px",
+                      width: "100px",
                     }}
                   />
-                  <span style={{ fontSize: '11px', color: '#6c757d' }}>to</span>
+                  <span style={{ fontSize: "11px", color: "#6c757d" }}>to</span>
                   <input
                     type="date"
                     value={deptAnalyticsToDate}
                     onChange={(e) => setDeptAnalyticsToDate(e.target.value)}
                     style={{
-                      padding: '4px 6px',
-                      border: '1px solid #ced4da',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      width: '100px'
+                      padding: "4px 6px",
+                      border: "1px solid #ced4da",
+                      borderRadius: "4px",
+                      fontSize: "11px",
+                      width: "100px",
                     }}
                   />
                   {(deptAnalyticsFromDate || deptAnalyticsToDate) && (
                     <button
                       onClick={() => {
-                        setDeptAnalyticsFromDate('');
-                        setDeptAnalyticsToDate('');
+                        setDeptAnalyticsFromDate("");
+                        setDeptAnalyticsToDate("");
                       }}
                       style={{
-                        padding: '4px 6px',
-                        background: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        cursor: 'pointer',
-                        marginLeft: '4px'
+                        padding: "4px 6px",
+                        background: "#dc3545",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        fontSize: "10px",
+                        cursor: "pointer",
+                        marginLeft: "4px",
                       }}
                       title="Clear dates"
                     >
@@ -1044,23 +1219,39 @@ const AdminHome = ({ onLogout }) => {
                 </div>
                 <div className="filter-dropdown">
                   <button
-                    className={`filter-btn ${deptAnalyticsDeptFilter !== 'all' ? 'active' : ''}`}
+                    className={`filter-btn ${deptAnalyticsDeptFilter !== "all" ? "active" : ""}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setShowDeptAnalyticsDeptDropdown(!showDeptAnalyticsDeptDropdown);
+                      setShowDeptAnalyticsDeptDropdown(
+                        !showDeptAnalyticsDeptDropdown,
+                      );
                     }}
                   >
-                    Department: {deptAnalyticsDeptFilter === 'all' ? 'All' : deptAnalyticsDeptFilter}
+                    Department:{" "}
+                    {deptAnalyticsDeptFilter === "all"
+                      ? "All"
+                      : deptAnalyticsDeptFilter}
                     <FaChevronDown className="dropdown-arrow" />
                   </button>
                   {showDeptAnalyticsDeptDropdown && (
                     <div className="dropdown-menu">
-                      <div className="dropdown-item" onClick={() => { setDeptAnalyticsDeptFilter('all'); setShowDeptAnalyticsDeptDropdown(false); }}>All</div>
-                      {availableDepartments.map(dept => (
+                      <div
+                        className="dropdown-item"
+                        onClick={() => {
+                          setDeptAnalyticsDeptFilter("all");
+                          setShowDeptAnalyticsDeptDropdown(false);
+                        }}
+                      >
+                        All
+                      </div>
+                      {availableDepartments.map((dept) => (
                         <div
                           key={dept}
                           className="dropdown-item"
-                          onClick={() => { setDeptAnalyticsDeptFilter(dept); setShowDeptAnalyticsDeptDropdown(false); }}
+                          onClick={() => {
+                            setDeptAnalyticsDeptFilter(dept);
+                            setShowDeptAnalyticsDeptDropdown(false);
+                          }}
                         >
                           {dept}
                         </div>
@@ -1073,175 +1264,176 @@ const AdminHome = ({ onLogout }) => {
 
             {/* Stats Cards */}
             <div className="dashboard-stats">
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
-                <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>Total Tasks</h3>
-                <p style={{ fontSize: '15px', margin: '0' }}>{(deptAnalyticsData.self_tasks || 0) + (deptAnalyticsData.assigned_tasks || 0)}</p>
+              <div className="stat-card total-tasks">
+                <h3>Total Tasks</h3>
+                <p>
+                  {(deptAnalyticsData.self_tasks || 0) +
+                    (deptAnalyticsData.assigned_tasks || 0)}
+                </p>
               </div>
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
-                <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>Self Tasks</h3>
-                <p style={{ fontSize: '15px', margin: '0' }}>{deptAnalyticsData.self_tasks || 0}</p>
+              <div className="stat-card self-tasks">
+                <h3>Self Tasks</h3>
+                <p>{deptAnalyticsData.self_tasks || 0}</p>
               </div>
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px' }}>
-                <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>HOD Assigned Tasks</h3>
-                <p style={{ fontSize: '15px', margin: '0' }}>{deptAnalyticsData.assigned_tasks || 0}</p>
+              <div className="stat-card master-tasks">
+                <h3>Master Tasks</h3>
+                <p>{deptAnalyticsData.assigned_tasks || 0}</p>
               </div>
             </div>
 
             {/* Dept Wise Cards */}
-            <div className="dashboard-stats" style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+            <div className="dept-cards-row">
               {availableDepartments.map((dept) => {
                 const getDeptCount = () => {
-                  if (deptAnalyticsDeptFilter === 'all') {
+                  if (deptAnalyticsDeptFilter === "all") {
                     return deptAnalyticsData.dept_breakdown?.[dept] || 0;
                   } else if (deptAnalyticsDeptFilter === dept) {
-                    // For the selected dept, sum the member breakdown counts
-                    return Object.values(deptAnalyticsData.member_breakdown || {}).reduce((sum, count) => sum + count, 0);
+                    return Object.values(
+                      deptAnalyticsData.member_breakdown || {},
+                    ).reduce((sum, count) => sum + count, 0);
                   } else {
                     return 0;
                   }
                 };
                 return (
-                  <div key={dept} className="stat-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px', flex: '1' }}>
-                    <h3 style={{ fontSize: '15px', margin: '0 0 10px 0' }}>{dept}</h3>
-                    <p style={{ fontSize: '15px', margin: '0' }}>{getDeptCount()}</p>
+                  <div key={dept} className="dept-card">
+                    <h3>{dept}</h3>
+                    <p>{getDeptCount()}</p>
                   </div>
                 );
               })}
             </div>
 
-            {/* User and Status Cards */}
-            <div style={{ padding: '20px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                {/* User Wise Cards */}
-                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', maxWidth: '600px', flex: '1' }}>
-                  <h4 style={{ marginTop: 0, marginBottom: '10px', color: '#333', textAlign: 'center' }}>Member wise distribution</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 40px', listStyle: 'none', padding: '0', justifyContent: 'center' }}>
-                    {teamMembers.map((member) => (
-                      <div key={member.user_id} style={{ display: 'flex', alignItems: 'center', fontSize: '0.9rem', whiteSpace: 'nowrap', color: '#333' }}>
-                        <span style={{ color: '#666', marginRight: '12px', fontSize: '1rem' }}>•</span>
-                        {member.name} <span style={{ marginLeft: '8px', color: '#666' }}>{deptAnalyticsData.member_breakdown?.[member.name] || 0}</span>
-                      </div>
-                    ))}
+            {/* Charts Section - Row 1 */}
+            <div className="dashboard-content-section">
+              <div className="dashboard-row">
+                {/* Left: Dept Distribution + Status Distribution Charts (horizontal) */}
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    
+                    minHeight: "400px",
+                    alignItems: "stretch",
+                    backgroundColor: "#ffffff",
+                    borderRadius: "12px"
+                  }}
+                >
+                  
+                  {/* Department Task Distribution Chart */}
+                  <div className="chart-card" style={{ flex: 1 }}>
+                    <div style={{ width: "100%", height: "100%" }}>
+                      {deptAnalyticsDeptFilter === "all" ? (
+                        <DeptBreakdownChart
+                          data={deptAnalyticsData.dept_breakdown || {}}
+                        />
+                      ) : (
+                        <MemberBreakdownChart
+                          data={deptAnalyticsData.member_breakdown || {}}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Task Status Distribution Chart */}
+                  <div className="chart-card" style={{ flex: 1 }}>
+                    <div style={{ width: "100%", height: "350px" }}>
+                      <DeptStatusChart
+                        key={deptAnalyticsDeptFilter}
+                        data={deptAnalyticsData}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Right side: Status and Task Type */}
-                <div style={{ flex: '1', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {/* Status Wise Distribution Card */}
-                  <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flex: '1', minWidth: '300px' }}>
-                    <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>Status wise distribution</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '10px' }}>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>Done</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.done || 0}</div>
-                      </div>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>In Progress</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.in_progress || 0}</div>
-                      </div>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>Not Started</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.not_started || 0}</div>
-                      </div>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>Cancelled</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.cancelled || 0}</div>
-                      </div>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>On Hold</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.on_hold || 0}</div>
-                      </div>
+                {/* Right: Task Type Distribution */}
+                <div
+                  className="task-type-card"
+                  style={{ maxWidth:  "280px" }}
+                >
+                  <h4>Task type distribution</h4>
+                  <div className="task-type-list">
+                    <div className="task-type-item fixed">
+                      <span className="task-type-label">Fixed</span>
+                      <span className="task-type-value">
+                        {deptAnalyticsData.fixed || 0}
+                      </span>
+                    </div>
+                    <div className="task-type-item variable">
+                      <span className="task-type-label">Variable</span>
+                      <span className="task-type-value">
+                        {deptAnalyticsData.variable || 0}
+                      </span>
+                    </div>
+                    <div className="task-type-item hod-assigned">
+                      <span className="task-type-label">HOD Assigned</span>
+                      <span className="task-type-value">
+                        {deptAnalyticsData.hod_assigned || 0}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Task Type Distribution Card */}
-                  <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', flex: '1', minWidth: '300px' }}>
-                    <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>Task type distribution</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>Fixed</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.fixed || 0}</div>
-                      </div>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>Variable</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.variable || 0}</div>
-                      </div>
-                      <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#666' }}>HOD Assigned</div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#333' }}>{deptAnalyticsData.hod_assigned || 0}</div>
-                      </div>
-                    </div>
+                  {/* Self vs Assigned Pie Chart */}
+                  <div style={{ flex: 1, minHeight: '200px', maxHeight: '200px' }}>
+                    <SelfVsAssignedPieChart
+                      data={{
+                        self: deptAnalyticsData.self_tasks || 0,
+                        assigned: deptAnalyticsData.assigned_tasks || 0
+                      }}
+                    />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Chart Display */}
-            <div style={{ padding: '20px 50px' }}>
-              <div style={{
-                display: 'flex',
-                gap: '20px',
-                marginTop: '20px',
-                marginBottom: '20px',
-                justifyContent: 'center',
-                flexWrap: 'wrap'
-              }}>
-                {/* Main Distribution Chart */}
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  flex: '1',
-                  minWidth: '300px'
-                }}>
-                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
-                    {deptAnalyticsDeptFilter === 'all' ? 'Department Task Distribution' : `Task Distribution - ${deptAnalyticsDeptFilter}`}
-                  </h4>
-                  {deptAnalyticsDeptFilter === 'all' ? (
-                    <DeptBreakdownChart data={deptAnalyticsData.dept_breakdown || {}} />
-                  ) : (
-                    <MemberBreakdownChart data={deptAnalyticsData.member_breakdown || {}} />
-                  )}
-                </div>
-
-                {/* Status Distribution Chart */}
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  flex: '1',
-                  minWidth: '300px'
-                }}>
-                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
-                    Task Status Distribution - {deptAnalyticsDeptFilter === 'all' ? 'All Departments' : deptAnalyticsDeptFilter}
-                  </h4>
-                  <DeptStatusChart key={deptAnalyticsDeptFilter} data={deptAnalyticsData} />
-                </div>
-              </div>
-
-              <div style={{
-                display: 'flex',
-                gap: '20px',
-                marginTop: '20px',
-                marginBottom: '20px',
-                justifyContent: 'center',
-                flexWrap: 'wrap'
-              }}>
-                {/* Self vs Assigned Tasks Chart */}
-                <div style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  flex: '1',
-                  minWidth: '300px'
-                }}>
-                  <h4 style={{ marginTop: 0, color: '#333', textAlign: 'center' }}>
-                    Self vs Assigned Tasks - {deptAnalyticsDeptFilter === 'all' ? 'All Departments' : deptAnalyticsDeptFilter}
-                  </h4>
-                  <SelfVsAssignedPieChart data={{ self: deptAnalyticsData.self_tasks || 0, assigned: deptAnalyticsData.assigned_tasks || 0 }} />
+            {/* Charts Section - Row 2 */}
+            <div className="dashboard-content-section">
+              <div className="dashboard-row">
+                {/* Left: Member wise distribution */}
+                <div
+                  className="member-distribution-card"
+                  style={{ maxWidth: "none", flex: 1 }}
+                >
+                  <h4>Member wise distribution</h4>
+                  <div className="member-grid">
+                    {teamMembers
+                      .filter((m) => {
+                        // Get member names that have data in member_breakdown
+                        const breakdownMembers = Object.keys(deptAnalyticsData.member_breakdown || {});
+                        
+                        if (deptAnalyticsDeptFilter === "all") {
+                          // Show all team members who have breakdown data
+                          return m.user_id !== "all" && breakdownMembers.includes(m.name);
+                        } else {
+                          // Show only members with breakdown data (backend already filters)
+                          return m.user_id !== "all" && breakdownMembers.includes(m.name);
+                        }
+                      })
+                      .map((member) => {
+                        const count = deptAnalyticsData.member_breakdown?.[member.name] || 0;
+                        const avatarColor = getColorFromName(member.name);
+                        
+                        return (
+                          <div key={member.user_id} className="member-item">
+                            <div className="member-avatar-circle">
+                              <div className="member-avatar" style={{ backgroundColor: avatarColor }}>
+                                {getInitials(member.name)}
+                              </div>
+                            </div>
+                            <div className="member-info">
+                              <span className="member-name" title={member.name}>
+                                {member.name}
+                                {member.dept && (
+                                  <span className="member-dept"> ({member.dept})</span>
+                                )}
+                              </span>
+                              <span className="member-count">
+                                {count}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1256,12 +1448,12 @@ const AdminHome = ({ onLogout }) => {
         <p>Loading...</p>
       </div>
     );
-    }
+  }
   return (
     <div className="home-container">
       <Sidebar
         currentPage={currentPage}
-        userRole={userProfile?.user_type || 'admin'}
+        userRole={userProfile?.user_type || "admin"}
       />
       <Header
         addTask={addTask}
@@ -1274,30 +1466,32 @@ const AdminHome = ({ onLogout }) => {
 
       {/* Error display - positioned to not affect layout */}
       {error && (
-        <div style={{
-          position: 'fixed',
-          top: '70px',
-          right: '20px',
-          backgroundColor: '#ffebee',
-          color: '#c62828',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          border: '1px solid #ffcdd2',
-          zIndex: 1500,
-          maxWidth: '300px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-        }}>
+        <div
+          style={{
+            position: "fixed",
+            top: "70px",
+            right: "20px",
+            backgroundColor: "#ffebee",
+            color: "#c62828",
+            padding: "12px 16px",
+            borderRadius: "8px",
+            border: "1px solid #ffcdd2",
+            zIndex: 1500,
+            maxWidth: "300px",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          }}
+        >
           {error}
           <button
-            onClick={() => setError('')}
+            onClick={() => setError("")}
             style={{
-              background: 'none',
-              border: 'none',
-              color: '#c62828',
-              float: 'right',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold'
+              background: "none",
+              border: "none",
+              color: "#c62828",
+              float: "right",
+              cursor: "pointer",
+              fontSize: "16px",
+              fontWeight: "bold",
             }}
           >
             ×
@@ -1305,7 +1499,13 @@ const AdminHome = ({ onLogout }) => {
         </div>
       )}
 
-      <main style={(currentPage === 'dept-analytics' || currentPage === 'home') ? { backgroundColor: '#e0e0e0', padding: '20px 50px 50px 50px' } : { backgroundColor: '#e0e0e0' }}>
+      <main
+        style={
+          currentPage === "dept-analytics" || currentPage === "home"
+            ? { backgroundColor: "#e0e0e0", padding: "20px 20px 20px 20px" }
+            : { backgroundColor: "#e0e0e0" }
+        }
+      >
         {renderPage()}
       </main>
 
@@ -1330,9 +1530,14 @@ const AdminHome = ({ onLogout }) => {
         onClose={() => setIsProfileOpen(false)}
         onLogout={handleLogout}
       />
-      {isDetailsOpen && <TaskDetails task={selectedTask} onClose={() => setIsDetailsOpen(false)} />}
+      {isDetailsOpen && (
+        <TaskDetails
+          task={selectedTask}
+          onClose={() => setIsDetailsOpen(false)}
+        />
+      )}
     </div>
   );
-}
+};
 
 export default AdminHome;
