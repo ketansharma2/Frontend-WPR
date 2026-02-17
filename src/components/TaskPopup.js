@@ -22,7 +22,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
   const [dueDate, setDueDate] = useState(getTodayDate());
   const [timeline, setTimeline] = useState(getTodayDate());
   const [time, setTime] = useState('');
-  const [taskType, setTaskType] = useState('Fixed');
+  const [taskType, setTaskType] = useState('Variable');
   const [status, setStatus] = useState('Not Started');
   const [attachments, setAttachments] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -205,7 +205,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
           setDueDate(editingTask.date || editingTask.dueDate || '');
           setTimeline(editingTask.timeline || '');
           setTime(editingTask.time_in_mins || editingTask.time || '');
-          setTaskType(editingTask.task_type || editingTask.type || 'Fixed');
+          setTaskType(editingTask.task_type || editingTask.type || 'Variable');
           setStatus(editingTask.status || 'Not Started');
           setAttachments(editingTask.file_link || editingTask.attachments || '');
           setRemarks(editingTask.remarks || '');
@@ -226,7 +226,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
     setDueDate(getTodayDate());
     setTimeline(getTodayDate());
     setTime('');
-    setTaskType('Fixed');
+    setTaskType('Variable');
     setStatus('Not Started');
     setAttachments('');
     setRemarks('');
@@ -630,8 +630,8 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
                             className="suggestion-item"
                             onClick={() => {
                               setTaskName(suggestion.task_name);
-                              setTaskType(suggestion.task_type);
-                              setStatus(suggestion.status || 'Not Started');
+                              setTaskType(suggestion.task_type || 'Variable');
+                              setStatus(suggestion.status);
                               setShowSuggestions(false);
                             }}
                           >
