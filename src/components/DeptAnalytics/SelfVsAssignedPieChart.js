@@ -4,11 +4,11 @@ import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 const SelfVsAssignedPieChart = ({ data }) => {
   console.log('SelfVsAssignedPieChart data:', data);
 
-  // Transform data for the chart
+  // Always include both categories for legend
   const chartData = [
     { name: 'Self Tasks', value: data.self || 0, color: '#007bff' },
     { name: 'Master Tasks', value: data.assigned || 0, color: '#6f42c1' }
-  ].filter(item => item.value > 0); // Only show categories with tasks
+  ];
 
   console.log('SelfVsAssignedPieChart chartData:', chartData);
 
@@ -54,17 +54,18 @@ const SelfVsAssignedPieChart = ({ data }) => {
   }
 
   return (
-    <div style={{ width: "100%", height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <h4 style={{ margin: '0 0 5px 0', color: '#374151', fontSize: '12px', fontWeight: '600', textAlign: 'center', flexShrink: 0 }}>Self vs Master Task</h4>
-      <div style={{ width: "100%", flex: 1 }}>
-        <PieChart width={120} height={120}>
+    <div style={{ width: "100%", height: '100%', display: 'flex', flexDirection: 'column', padding: '5px', boxSizing: 'border-box' }}>
+      <h4 style={{ margin: '0 0 2px 0', color: '#374151', fontSize: '11px', fontWeight: '600', textAlign: 'center', flexShrink: 0 }}>Self vs Master Task</h4>
+      <div style={{ width: "100%", flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+        <PieChart width={140} height={140} margin={{ top: 10, right: 5, bottom: 5, left: 5 }}>
           <Pie
             data={chartData}
             cx="50%"
             cy="50%"
-            innerRadius={20}
-            outerRadius={35}
+            innerRadius={18}
+            outerRadius={32}
             dataKey="value"
+            label={false}
           >
             {chartData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
@@ -73,6 +74,17 @@ const SelfVsAssignedPieChart = ({ data }) => {
 
           <Tooltip />
         </PieChart>
+      </div>
+      {/* Custom Legend */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '2px' }}>
+        {chartData.filter(item => item.value > 0).map((entry, index) => (
+          <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: entry.color }} />
+            <span style={{ fontSize: '10px', color: '#374151' }}>
+              {entry.name}: {entry.value}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

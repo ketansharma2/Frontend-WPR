@@ -66,10 +66,10 @@ const MemberBreakdownChart = ({ data, title }) => {
       }}
     >
       <BarChart
-        width={450}
-        height={400}
+        width={400}
+        height={380}
         data={chartData}
-        margin={{ top: 40, right: 30, left: 20, bottom: 60 }}
+        margin={{ top: 35, right: 25, left: 15, bottom: 50 }}
       >
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
 

@@ -65,24 +65,25 @@ const DeptStatusChart = ({ data }) => {
   }
 
  return (
-  <div style={{ width: "100%", height: 400 ,marginTop: 20}}>
-    <PieChart width={250} height={330}>
-      <Pie
-        data={chartData}
-        cx="50%"
-        cy="50%"
-        outerRadius={130}
-        dataKey="value"
-        label={({ name, value }) => `${name} (${value})`}
-      >
-        {chartData.map((entry, index) => (
-          <Cell key={`cell-${index}`} fill={entry.color} />
-        ))}
-      </Pie>
-      {/* <Tooltip content={<CustomTooltip />} /> */}
-    </PieChart>
-  </div>
-);
+   <div style={{ width: "100%", height: 350, marginTop: 10, padding: '10px', boxSizing: 'border-box' }}>
+     <PieChart width={200} height={280} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+       <Pie
+         data={chartData}
+         cx="50%"
+         cy="50%"
+         outerRadius={90}
+         dataKey="value"
+         label={({ name, value }) => `${name} (${value})`}
+       >
+         {chartData.map((entry, index) => (
+           <Cell key={`cell-${index}`} fill={entry.color} />
+         ))}
+       </Pie>
+       {/* <Tooltip content={<CustomTooltip />} /> */}
+     </PieChart>
+   </div>
+ );
+
 
 
 

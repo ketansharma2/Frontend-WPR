@@ -5,6 +5,8 @@ import React, {
   useCallback,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import AdminUsers from "./AdminUsers";
 import SubAdminRandR from "./SubAdminRandR";
 import Header from "./Header";
@@ -192,6 +194,13 @@ const AdminHome = ({ onLogout }) => {
   );
   const [deptAnalyticsToDate, setDeptAnalyticsToDate] = useState(
     formatDate(saturdayOfWeek),
+  );
+  // Date picker state (Date objects for react-datepicker)
+  const [deptAnalyticsFromDateObj, setDeptAnalyticsFromDateObj] = useState(
+    mondayOfWeek,
+  );
+  const [deptAnalyticsToDateObj, setDeptAnalyticsToDateObj] = useState(
+    saturdayOfWeek,
   );
   const [deptAnalyticsDeptFilter, setDeptAnalyticsDeptFilter] = useState("all");
   const [showDeptAnalyticsDeptDropdown, setShowDeptAnalyticsDeptDropdown] =
@@ -1170,36 +1179,65 @@ const AdminHome = ({ onLogout }) => {
                   >
                     Date Range:
                   </span>
-                  <input
-                    type="date"
-                    value={deptAnalyticsFromDate}
-                    onChange={(e) => setDeptAnalyticsFromDate(e.target.value)}
-                    style={{
-                      padding: "4px 6px",
-                      border: "1px solid #ced4da",
-                      borderRadius: "4px",
-                      fontSize: "11px",
-                      width: "100px",
+                  <DatePicker
+                    selected={deptAnalyticsFromDateObj}
+                    onChange={(date) => {
+                      setDeptAnalyticsFromDateObj(date);
+                      setDeptAnalyticsFromDate(formatDate(date));
                     }}
+                    selectsStart
+                    startDate={deptAnalyticsFromDateObj}
+                    endDate={deptAnalyticsToDateObj}
+                    dateFormat="yyyy-MM-dd"
+                    placeholderText="From Date"
+                    style={{
+                      padding: "8px 14px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "50px",
+                      fontSize: "12px",
+                      width: "130px",
+                      outline: "none",
+                      transition: "all 0.2s ease",
+                      backgroundColor: "#f9fafb",
+                      color: "#374151",
+                      fontWeight: "500",
+                    }}
+                    className="date-picker-input"
                   />
                   <span style={{ fontSize: "11px", color: "#6c757d" }}>to</span>
-                  <input
-                    type="date"
-                    value={deptAnalyticsToDate}
-                    onChange={(e) => setDeptAnalyticsToDate(e.target.value)}
-                    style={{
-                      padding: "4px 6px",
-                      border: "1px solid #ced4da",
-                      borderRadius: "4px",
-                      fontSize: "11px",
-                      width: "100px",
+                  <DatePicker
+                    selected={deptAnalyticsToDateObj}
+                    onChange={(date) => {
+                      setDeptAnalyticsToDateObj(date);
+                      setDeptAnalyticsToDate(formatDate(date));
                     }}
+                    selectsEnd
+                    startDate={deptAnalyticsFromDateObj}
+                    endDate={deptAnalyticsToDateObj}
+                    minDate={deptAnalyticsFromDateObj}
+                    dateFormat="yyyy-MM-dd"
+                    placeholderText="To Date"
+                    style={{
+                      padding: "8px 14px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "50px",
+                      fontSize: "12px",
+                      width: "130px",
+                      outline: "none",
+                      transition: "all 0.2s ease",
+                      backgroundColor: "#f9fafb",
+                      color: "#374151",
+                      fontWeight: "500",
+                    }}
+                    className="date-picker-input"
                   />
                   {(deptAnalyticsFromDate || deptAnalyticsToDate) && (
                     <button
                       onClick={() => {
                         setDeptAnalyticsFromDate("");
                         setDeptAnalyticsToDate("");
+                        setDeptAnalyticsFromDateObj(null);
+                        setDeptAnalyticsToDateObj(null);
                       }}
                       style={{
                         padding: "4px 6px",
@@ -1312,15 +1350,34 @@ const AdminHome = ({ onLogout }) => {
                   style={{
                     flex: 1,
                     display: "flex",
-                    
+                    flexDirection: "column",
                     minHeight: "400px",
                     alignItems: "stretch",
                     backgroundColor: "#ffffff",
                     borderRadius: "12px"
                   }}
                 >
+                  {/* Title for the chart container */}
+                  <div style={{
+                    padding: "12px 16px 0",
+                    textAlign: "center"
+                  }}>
+                    <h3 style={{
+                      margin: 0,
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      color: "#374151"
+                    }}>
+                      Performance Overview
+                    </h3>
+                  </div>
                   
-                  {/* Department Task Distribution Chart */}
+                  {/* Charts row */}
+                  <div style={{
+                    display: "flex",
+                    flex: 1,
+                    alignItems: "stretch"
+                  }}>
                   <div className="chart-card" style={{ flex: 1 }}>
                     <div style={{ width: "100%", height: "100%" }}>
                       {deptAnalyticsDeptFilter === "all" ? (
@@ -1344,12 +1401,13 @@ const AdminHome = ({ onLogout }) => {
                       />
                     </div>
                   </div>
+                  </div>
                 </div>
 
                 {/* Right: Task Type Distribution */}
                 <div
                   className="task-type-card"
-                  style={{ maxWidth:  "280px" }}
+                  style={{ maxWidth:  "320px" }}
                 >
                   <h4>Task type distribution</h4>
                   <div className="task-type-list">
@@ -1373,7 +1431,7 @@ const AdminHome = ({ onLogout }) => {
                     </div>
                   </div>
                   {/* Self vs Assigned Pie Chart */}
-                  <div style={{ flex: 1, minHeight: '200px', maxHeight: '200px' }}>
+                  <div style={{ flex: 1, minHeight: '200px', padding: '5px 8px' }}>
                     <SelfVsAssignedPieChart
                       data={{
                         self: deptAnalyticsData.self_tasks || 0,

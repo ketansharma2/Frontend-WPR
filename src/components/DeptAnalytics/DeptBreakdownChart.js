@@ -69,10 +69,10 @@ const DeptBreakdownChart = ({ data, title }) => {
       }}
     >
       <BarChart
-        width={450}
-        height={400}
+        width={400}
+        height={380}
         data={chartData}
-        margin={{ top: 30, right: 30, left: 20, bottom: 80 }}
+        margin={{ top: 25, right: 25, left: 15, bottom: 70 }}
       >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
