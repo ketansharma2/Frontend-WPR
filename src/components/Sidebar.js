@@ -66,7 +66,8 @@ export default function Sidebar({ userRole, onPageChange, currentPage: propCurre
       id: 'projection',
       label: 'Monthly Projection',
       icon: FaChartBar,
-      roles: ['team member', 'hod', 'admin', 'sub admin']
+      roles: ['team member', 'hod', 'admin', 'sub admin'],
+      externalUrl: 'https://tech-projection.vercel.app/'
     },
     {
       id: 'users',
@@ -85,7 +86,15 @@ export default function Sidebar({ userRole, onPageChange, currentPage: propCurre
   // If userRole is undefined, show all menu items (fallback)
   const userRoleLower = userRole ? userRole.toLowerCase() : '';
 
-  const handleMenuClick = (pageId) => {
+  const handleMenuClick = (item) => {
+    // If externalUrl is defined, open in new tab
+    if (item.externalUrl) {
+      // Use 'projection-tab' as the window name to reuse the same tab if already open
+      window.open(item.externalUrl, 'projection-tab');
+      return;
+    }
+    
+    const pageId = item.id;
     if (userRoleLower === 'sub admin' && onPageChange) {
       // For sub-admin, use internal page change instead of navigation
       onPageChange(pageId);
@@ -113,7 +122,7 @@ export default function Sidebar({ userRole, onPageChange, currentPage: propCurre
               <div
                 key={item.id}
                 className={`icon-container ${currentPage === item.id ? 'active' : ''}`}
-                onClick={() => handleMenuClick(item.id)}
+                onClick={() => handleMenuClick(item)}
               >
                 <IconComponent className="cu-icon" title={item.label} />
                 {expanded && <span className="icon-text">{item.label}</span>}

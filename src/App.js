@@ -175,15 +175,7 @@ function App() {
             path="/projection"
             element={
               <ProtectedRoute>
-                {userProfile?.user_type === "Admin" ? (
-                  <AdminHome onLogout={handleLogout} />
-                ) : userProfile?.user_type === "Sub Admin" ? (
-                  <Navigate to="/sub-admin/projection" replace />
-                ) : userProfile?.user_type === "HOD" ? (
-                  <Navigate to="/hod/projection" replace />
-                ) : (
-                  <Home onLogout={handleLogout} />
-                )}
+                <Navigate to="/home" replace />
               </ProtectedRoute>
             }
           />
@@ -264,7 +256,7 @@ function App() {
             path="/admin/projection"
             element={
               <ProtectedRoute allowedRoles={['Admin']}>
-                <AdminHome onLogout={handleLogout} />
+                <Navigate to="/admin/home" replace />
               </ProtectedRoute>
             }
           />
@@ -320,7 +312,7 @@ function App() {
             path="/hod/projection"
             element={
               <ProtectedRoute allowedRoles={['HOD']}>
-                <HodHome onLogout={handleLogout} />
+                <Navigate to="/hod/home" replace />
               </ProtectedRoute>
             }
           />
@@ -368,7 +360,7 @@ function App() {
             path="/sub-admin/projection"
             element={
               <ProtectedRoute allowedRoles={['Sub Admin']}>
-                <SubAdminHome onLogout={handleLogout} />
+                <Navigate to="/sub-admin/home" replace />
               </ProtectedRoute>
             }
           />
