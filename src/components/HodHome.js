@@ -353,7 +353,7 @@ const HodHome = ({ onLogout }) => {
         setError("Authentication required");
         return;
       }
-
+     console.log('run populate');
       const response = await fetch(`${API_BASE_URL}/hod/fixed-tasks/auto-populate`, {
         method: 'POST',
         headers: {
@@ -366,7 +366,7 @@ const HodHome = ({ onLogout }) => {
         const result = await response.json();
         console.log('HOD Auto-populate result:', result);
         if (result.populated_tasks?.length > 0) {
-          alert(`✅ Success: ${result.populated_tasks.length} fixed tasks populated for team members today!`);
+          alert(`✅ Success: ${result.populated_tasks.length} fixed tasks populated for today!`);
         }
         fetchHodDashboardData();
       } else {
@@ -397,6 +397,7 @@ const HodHome = ({ onLogout }) => {
         setYesterdayDate(workingDayData.date);
 
         const hasUnfilledRemarks = tasks.some(task => !task.remarks || task.remarks.trim() === '');
+        console.log('check:',tasks);
         setIsRemarksRequired(hasUnfilledRemarks);
 
         console.log(`Found last working day: ${workingDayData.date} (${workingDayData.days_back} days back)`);
@@ -442,6 +443,8 @@ const HodHome = ({ onLogout }) => {
 
       if (response.ok) {
         const data = await response.json();
+              console.log('check',data);
+
         setWeeklyTasks(data.tasks || []);
       } else {
         const errorData = await response.json();
@@ -539,7 +542,9 @@ const HodHome = ({ onLogout }) => {
   }, [userProfile, currentPage, isRemarksRequired]);
 
   useEffect(() => {
+    console.log('chekc1');
     if (userProfile?.user_id && currentPage === 'home' && !hasAutoPopulated && isRemarksRequired === false) {
+      console.log('chekc2');
       autoPopulateFixedTasks();
       setHasAutoPopulated(true);
     }
@@ -1639,6 +1644,7 @@ const HodHome = ({ onLogout }) => {
                         borderRight: '1px solid #e5e7eb',
                         width: '60px'
                       }}>Sno</th>
+                      
                       <th style={{
                         padding: '8px 12px',
                         textAlign: 'left',
@@ -1646,8 +1652,17 @@ const HodHome = ({ onLogout }) => {
                         fontSize: '14px',
                         color: 'black',
                         borderRight: '1px solid #e5e7eb',
-                        width: '30%'
+                        width: '25%'
                       }}>Task name</th>
+                      <th style={{
+                        padding: '8px 12px',
+                        textAlign: 'left',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        color: 'black',
+                        borderRight: '1px solid #e5e7eb',
+                        width: '13%'
+                      }}>Owner</th>
                       <th style={{
                         padding: '8px 12px',
                         textAlign: 'center',
@@ -1691,7 +1706,16 @@ const HodHome = ({ onLogout }) => {
                         fontSize: '14px',
                         color: 'black',
                         borderRight: '1px solid #e5e7eb',
-                        width: '100px'
+                        width: '10%'
+                      }}>Remark</th>
+                      <th style={{
+                        padding: '8px 12px',
+                        textAlign: 'center',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        color: 'black',
+                        borderRight: '1px solid #e5e7eb',
+                        width: '150px'
                       }}>Status</th>
                       <th style={{
                         padding: '8px 12px',
@@ -1748,12 +1772,19 @@ const HodHome = ({ onLogout }) => {
                             textAlign: 'center',
                             fontWeight: '500'
                           }}>{index + 1}</td>
+
                           <td style={{
                             padding: '8px 12px',
                             color: '#374151',
                             fontWeight: '500',
                             textAlign: 'left'
                           }}>{task.task_name}</td>
+                                                     <td style={{
+                            padding: '8px 12px',
+                            color: '#374151',
+                            fontWeight: '500',
+                            textAlign: 'left'
+                          }}>{task.owner_name}</td>
                           <td style={{
                             padding: '8px 12px',
                             color: '#374151',
@@ -1774,6 +1805,17 @@ const HodHome = ({ onLogout }) => {
                             color: '#374151',
                             textAlign: 'center'
                           }}>{task.time} mins</td>
+                          <td style={{
+  padding: '8px 12px',
+  color: '#374151',
+  textAlign: 'center',
+  maxWidth: '120px',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis'
+}}>
+  {task.remarks}
+</td>
                           <td style={{
                             padding: '8px 12px',
                             textAlign: 'center'
@@ -1797,25 +1839,28 @@ const HodHome = ({ onLogout }) => {
                             textAlign: 'center',
                             position: 'relative'
                           }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <FaExternalLinkAlt
-                                style={{
-                                  color: '#3b82f6',
-                                  cursor: 'pointer',
-                                  fontSize: '14px'
-                                }}
-                                onClick={() => onViewDetails(task)}
-                                title="View details"
-                              />
-                              <FaEllipsisV
-                                className="menu-icon"
-                                style={{ cursor: 'pointer' }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setMenuOpen(menuOpen === `task-${index}` ? null : `task-${index}`);
-                                }}
-                              />
-                            </div>
+                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+  {task.file_link && (
+    <FaExternalLinkAlt
+      style={{
+        color: '#3b82f6',
+        cursor: 'pointer',
+        fontSize: '14px'
+      }}
+      onClick={() => window.open(task.file_link, "_blank", "noopener,noreferrer")}
+      title="Open file"
+    />
+  )}
+
+  <FaEllipsisV
+    className="menu-icon"
+    style={{ cursor: 'pointer' }}
+    onClick={(e) => {
+      e.stopPropagation();
+      setMenuOpen(menuOpen === `task-${index}` ? null : `task-${index}`);
+    }}
+  />
+</div>
                             {menuOpen === `task-${index}` && (
                               <div className="task-menu" style={{
                                 position: 'absolute',
@@ -1974,6 +2019,15 @@ const HodHome = ({ onLogout }) => {
                         fontSize: '14px',
                         color: 'black',
                         borderRight: '1px solid #e5e7eb',
+                        width: '10%'
+                      }}>Owner</th>
+                      <th style={{
+                        padding: '8px 12px',
+                        textAlign: 'center',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        color: 'black',
+                        borderRight: '1px solid #e5e7eb',
                         width: '15%'
                       }}>Dept</th>
                       <th style={{
@@ -2039,6 +2093,7 @@ const HodHome = ({ onLogout }) => {
                         }}>
                           <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
                           <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{meeting.meeting_name || meeting.name}</td>
+                          <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500' }}>{meeting.owner_name || 'N/A'}</td>
                           <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.dept || 'N/A'}</td>
                           <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.co_person || 'N/A'}</td>
                           <td style={{ padding: '8px 12px', color: '#374151' }}>{meeting.time || 'N/A'}</td>

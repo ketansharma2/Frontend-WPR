@@ -402,7 +402,7 @@ const SubAdminHome = ({ onLogout }) => {
         const result = await response.json();
         console.log('SubAdmin Auto-populate result:', result);
         if (result.populated_tasks?.length > 0) {
-          alert(`✅ Success: ${result.populated_tasks.length} fixed tasks populated for team members today!`);
+          alert(`✅ Success: ${result.populated_tasks.length} fixed tasks populated for today!`);
         }
         // Refresh dashboard data
         fetchSubAdminDashboardData();

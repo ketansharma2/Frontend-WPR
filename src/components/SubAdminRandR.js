@@ -100,13 +100,28 @@ const SubAdminRnR = () => {
   const fetchRnrData = async (userId) => {
     try {
       const token = localStorage.getItem("token");
-      let url;
-      if (userProfile?.user_type === 'Admin') {
-        url = `${API_BASE_URL}/admin/rnr${userId ? `?user_id=${userId}` : ''}`;
-      } else {
-        url = `${API_BASE_URL}/rnr${userId ? `?user_id=${userId}` : ''}`;
+    
+      // if (userProfile?.user_type === 'Admin') {
+      //   url = `${API_BASE_URL}/admin/rnr${userId ? `?user_id=${userId}` : ''}`;
+      // } else {
+      //   url = `${API_BASE_URL}/rnr${userId ? `?user_id=${userId}` : ''}`;
+      // }
+      // const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+          let url = userProfile?.user_type === "Admin"
+      ? `${API_BASE_URL}/admin/rnr`
+      : `${API_BASE_URL}/rnr`;
+
+    // Only send user_id when viewing another user
+    if (userId && userId !== userProfile?.user_id) {
+      url += `?user_id=${userId}`;
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`
       }
-      const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+    });
+
       if (response.ok) {
         const result = await response.json();
         setRnrData(result || []);
@@ -118,8 +133,20 @@ const SubAdminRnR = () => {
   const fetchFixedTasks = async (userId) => {
     try {
       const token = localStorage.getItem("token");
-      let url = `${API_BASE_URL}/hod/fixed-tasks${userId ? `?user_id=${userId}` : ''}`;
-      const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+      // let url = `${API_BASE_URL}/hod/fixed-tasks${userId ? `?user_id=${userId}` : ''}`;
+      // const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+      let url = `${API_BASE_URL}/hod/fixed-tasks`;
+
+// Only send user_id when viewing team member
+if (userId && userId !== userProfile?.user_id) {
+  url += `?user_id=${userId}`;
+}
+
+const response = await fetch(url, {
+  headers: {
+    Authorization: `Bearer ${token}`
+  }
+});
       if (response.ok) {
         const result = await response.json();
         setFixedTasks(result || []);
@@ -130,9 +157,21 @@ const SubAdminRnR = () => {
   const fetchRoleOverview = async (userId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/role_overview/${userId}`, { headers: { "Authorization": `Bearer ${token}` } });
+      // const response = await fetch(`${API_BASE_URL}/role_overview/${userId}`, { headers: { "Authorization": `Bearer ${token}` } });
+       let url = `${API_BASE_URL}/role_overview`;
+       console.log('check32');
+    // Only send user_id when viewing team member
+    if (userId && userId !== userProfile?.user_id) {
+      url += `?user_id=${userId}`;
+    }
+     console.log('url:',url);
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
       if (response.ok) {
         const result = await response.json();
+               console.log('check31',result);
+
         setRoleOverviewData(result.role_overview || null);
       } else if (response.status === 404) {
         setRoleOverviewData(null);

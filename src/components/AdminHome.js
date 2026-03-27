@@ -688,7 +688,7 @@ const AdminHome = ({ onLogout }) => {
         timeline: task.timeline,
         task_name: task.taskName,
         status: task.status,
-        assignee_remarks: task.remarks,
+        assignee_remarks: task.assignerRemarks,
         upload_closing: "",
         remarks: "",
         parameter: task.parameter,

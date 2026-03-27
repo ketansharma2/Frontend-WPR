@@ -17,7 +17,7 @@ import MonthlyProjection from './MonthlyProjection';
 import { api } from '../config/api';
 import { FaEllipsisV, FaExternalLinkAlt } from 'react-icons/fa';
 import './Home.css';
-
+import { History } from "lucide-react";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
@@ -137,14 +137,14 @@ const Home = ({ onLogout }) => {
       if (showLoading) setWeeklyLoading(true);
       const token = localStorage.getItem("token");
       const profile = JSON.parse(localStorage.getItem("profile"));
-  
+     
       if (!token || !profile) {
         setError("Authentication required");
         return;
       }
   
       console.log('Fetching weekly data for user:', profile.user_id, 'with filters:', filters);
-  
+      
       const response = await fetch(`${API_BASE_URL}/weekly`, {
         method: 'POST',
         headers: {
@@ -342,11 +342,25 @@ const Home = ({ onLogout }) => {
   }, [categoryFilter, userProfile]);
   
   // Fetch weekly data when calendar page is accessed
-  useEffect(() => {
-    if (currentPage === 'calendar' && userProfile) {
-      fetchWeeklyData();
-    }
-  }, [currentPage, userProfile]);
+  // useEffect(() => {
+  //   if (currentPage === 'calendar' && userProfile) {
+  //     fetchWeeklyData();
+  //   }
+  // }, [currentPage, userProfile]);
+  // Add this useEffect after the existing ones
+useEffect(() => {
+  if (currentPage === 'calendar' && userProfile) {
+    // Build filters object
+    const filters = {
+      task_type: weeklyTaskTypeFilter ,
+      status: weeklyStatusFilter ,
+      category: weeklyCategoryFilter
+    };
+    
+    // Fetch with filters, but don't show loading indicator for filter changes to avoid flicker
+    fetchWeeklyData(filters, false);
+  }
+}, [currentPage, userProfile, weeklyTaskTypeFilter, weeklyStatusFilter, weeklyCategoryFilter]);
   
   // Sync filter with current page on page changes
   useEffect(() => {
@@ -612,6 +626,7 @@ const Home = ({ onLogout }) => {
           time: updatedTask.time,
           prop_slot: updatedTask.prop_slot || updatedTask.timeSlot,
           status: updatedTask.status,
+          
           notes: updatedTask.notes || updatedTask.agenda
         };
       } else if (updatedTask.category === 'assigned') {
@@ -630,12 +645,13 @@ const Home = ({ onLogout }) => {
           task_name: updatedTask.task_name || updatedTask.name,
           time: updatedTask.time_in_mins || updatedTask.time,
           task_type: updatedTask.task_type || updatedTask.type,
+          source:updatedTask.source,
           status: updatedTask.status,
           file_link: (updatedTask.file_link || updatedTask.attachments) || null,
           remarks: updatedTask.remarks
         };
       }
-
+      console.log('chekckc',updatedTask);
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -1141,7 +1157,16 @@ const Home = ({ onLogout }) => {
                         borderBottom: '1px solid #e2e8f0'
                       }}>
                         <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', fontWeight: '500' }}>{index + 1}</td>
-                        <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500', textAlign: 'left' }}>{task.task_name || task.name}</td>
+                        <td style={{
+    padding: '8px 12px',
+    color: '#374151',
+    fontWeight: '500',
+    textAlign: 'left',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px'
+  }}>{task.task_name || task.name}   {task.source === "task_history" && <History size={14} />}
+</td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{formatDate(task.timeline) || 'N/A'}</td>
                         <td style={{ padding: '8px 12px', color: '#374151' }}>{task.task_type || 'work'}</td>
                         <td style={{ padding: '8px 12px' }}>

@@ -35,6 +35,7 @@ const Task = {
 const TaskHeader = ({ task, progress, subtasks, meetings }) => {
   const completedSubtasks = subtasks.filter(s => s.status === 'Done').length;
   const totalSubtasks = subtasks.length;
+  console.log('check assign task:',task);
 
   return (
     <header style={{ background: 'hsl(var(--primary))', color: 'white', padding: '0.75rem 1.5rem', borderBottom: '1px solid hsl(var(--border))', borderRadius: '12px' }}>
@@ -967,6 +968,7 @@ const TaskView = ({ task: propTask, onClose, onLogout }) => {
 
       if (response.ok) {
         const result = await response.json();
+        console.log('check task data:',result);
         const taskData = result.task || result.meeting;
         if (taskData) {
           setTask(taskData);

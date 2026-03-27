@@ -385,11 +385,12 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                 <div className="dropdown-menu">
                   {filter === 'meeting' ? (
                     <>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter(''); setShowStatusDropdown(false); }}>All</div>
                       <div className="dropdown-item" onClick={() => { setStatusFilter('Done'); setShowStatusDropdown(false); }}>Done</div>
                       <div className="dropdown-item" onClick={() => { setStatusFilter('Scheduled'); setShowStatusDropdown(false); }}>Scheduled</div>
                       <div className="dropdown-item" onClick={() => { setStatusFilter('Cancelled'); setShowStatusDropdown(false); }}>Cancelled</div>
                       <div className="dropdown-item" onClick={() => { setStatusFilter('On Hold'); setShowStatusDropdown(false); }}>On Hold</div>
-                      <div className="dropdown-item" onClick={() => { setStatusFilter('Re-scheduled'); setShowStatusDropdown(false); }}>Re-Scheduled</div>
+                      <div className="dropdown-item" onClick={() => { setStatusFilter('Re-Scheduled'); setShowStatusDropdown(false); }}>Re-Scheduled</div>
                     </>
                   ) : (
                     <>
@@ -633,6 +634,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
               <div className="dropdown-menu">
                 {filter === 'meeting' ? (
                   <>
+                    <div className="dropdown-item" onClick={() => { setStatusFilter(''); setShowStatusDropdown(false); }}>All</div>
                     <div className="dropdown-item" onClick={() => { setStatusFilter('Done'); setShowStatusDropdown(false); }}>Done</div>
                     <div className="dropdown-item" onClick={() => { setStatusFilter('Scheduled'); setShowStatusDropdown(false); }}>Scheduled</div>
                     <div className="dropdown-item" onClick={() => { setStatusFilter('Cancelled'); setShowStatusDropdown(false); }}>Cancelled</div>

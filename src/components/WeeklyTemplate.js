@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./weeklyTemplate.css";
-import { FaTimes, FaSearch, FaChevronDown, FaExternalLinkAlt } from "react-icons/fa";
+import { FaTimes, FaSearch, FaChevronDown, FaExternalLinkAlt ,FaInfoCircle} from "react-icons/fa";
 import { API_ENDPOINTS } from "../config/api";
 
 export default function WeeklyTemplate({ tasks, loading, filter, setFilter, dateFilter, setDateFilter, taskTypeFilter, setTaskTypeFilter, statusFilter, setStatusFilter, categoryFilter, setCategoryFilter, viewTypeFilter, setViewTypeFilter, teamMemberFilter, setTeamMemberFilter, teamMembers, fetchWeeklyData, isAdminView = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-
+const [popupView, setPopupView] = useState("task");
   // Set default dates to current week's Monday and Saturday on mount
   useEffect(() => {
     if (!fromDate && !toDate) {
@@ -38,6 +38,18 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showTeamMemberDropdown, setShowTeamMemberDropdown] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+const [showPopup, setShowPopup] = useState(false);
+
+const openTaskPopup = (task) => {
+  setSelectedTask(task);
+  setShowPopup(true);
+};
+
+const closeTaskPopup = () => {
+  setSelectedTask(null);
+  setShowPopup(false);
+};
   const [activeFilters, setActiveFilters] = useState({
     date: '',
     tasktype: '',
@@ -73,30 +85,42 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
   }, []);
 
   // Fetch data when filters change with debounce
-  useEffect(() => {
-    if (filterTimeout) clearTimeout(filterTimeout);
-    const timeout = setTimeout(() => {
-      if (fetchWeeklyData) {
-
-        const filters = {};
-        if (fromDate) filters.from_date = fromDate;
-        if (toDate) filters.to_date = toDate;
-        if (taskTypeFilter) filters.task_type = taskTypeFilter;
-        if (statusFilter) filters.status = statusFilter || 'all';
-        if (categoryFilter) filters.category = categoryFilter;
-        if (viewTypeFilter) filters.view_type = viewTypeFilter;
-        if (viewTypeFilter === 'team' && teamMemberFilter) filters.target_user_id = teamMemberFilter;
-        // For admin view, don't fetch if no team member selected (not 'all')
-        if (!(isAdminView && viewTypeFilter === 'all' && teamMemberFilter !== 'all')) {
-          fetchWeeklyData(filters, !hasFetchedInitial.current); // Show loading only for initial fetch
-        }
-        if (!hasFetchedInitial.current) hasFetchedInitial.current = true;
+// Fetch data when filters change with debounce
+useEffect(() => {
+  if (filterTimeout) clearTimeout(filterTimeout);
+  
+  const timeout = setTimeout(() => {
+    if (fetchWeeklyData) {
+      // Build filters object - ALWAYS include ALL filters
+      const filters = {};
+      
+      // ALWAYS include date filters if they exist
+      if (fromDate) filters.from_date = fromDate;
+      if (toDate) filters.to_date = toDate;
+      
+      // Include other filters (convert empty to 'all')
+      filters.task_type = taskTypeFilter || 'all';
+      filters.status = statusFilter || 'all';
+      filters.category = categoryFilter || 'all';
+      filters.view_type = viewTypeFilter || (isAdminView ? 'all' : 'self');
+      
+      // Add team member filter if applicable
+      if (viewTypeFilter === 'team' && teamMemberFilter) {
+        filters.target_user_id = teamMemberFilter;
       }
-    }, hasFetchedInitial.current ? 500 : 0); // No debounce for initial fetch
-    setFilterTimeout(timeout);
-    return () => clearTimeout(timeout);
-  }, [fromDate, toDate, taskTypeFilter, statusFilter, categoryFilter, viewTypeFilter, teamMemberFilter, fetchWeeklyData, isAdminView]);
-
+      
+      console.log('Fetching with filters:', filters); // Debug log
+      
+      // ALWAYS fetch - no condition blocking
+      fetchWeeklyData(filters, !hasFetchedInitial.current);
+      
+      if (!hasFetchedInitial.current) hasFetchedInitial.current = true;
+    }
+  }, hasFetchedInitial.current ? 500 : 0);
+  
+  setFilterTimeout(timeout);
+  return () => clearTimeout(timeout);
+}, [fromDate, toDate, taskTypeFilter, statusFilter, categoryFilter, viewTypeFilter, teamMemberFilter, fetchWeeklyData, isAdminView]);
 
   // Show loading state
   if (loading) {
@@ -179,44 +203,71 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
+  // const allTasks = tasks.filter(task => {
+  //   // Search filter
+  //   const displayName = task.task_name || task.name || "Untitled Task";
+  //   if (searchQuery && !displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+  //       !(task.description || '').toLowerCase().includes(searchQuery.toLowerCase())) {
+  //     return false;
+  //   }
+
+  //   return true;
+  // }).sort((a, b) => {
+  //   // For "All Team Members" view, sort by source first (master tasks at top), then by owner name, then by date
+  //   if (viewTypeFilter === 'all') {
+  //     // Primary sort: Master tasks first
+  //     if (a.source === 'assigned' && b.source !== 'assigned') return -1;
+  //     if (a.source !== 'assigned' && b.source === 'assigned') return 1;
+
+  //     // Secondary sort: Owner name in ascending order (A-Z)
+  //     const ownerNameA = a.source === 'assigned' ? (a.assigned_to_user?.name || 'Unknown') : (a.users?.name || 'Unknown');
+  //     const ownerNameB = b.source === 'assigned' ? (b.assigned_to_user?.name || 'Unknown') : (b.users?.name || 'Unknown');
+
+  //     if (ownerNameA < ownerNameB) return -1;
+  //     if (ownerNameA > ownerNameB) return 1;
+
+  //     // Tertiary sort: Latest tasks first (by updated_at or created_at)
+  //     const dateA = new Date(a.start_date || a.date || 0);
+  //     const dateB = new Date(b.start_date  || b.date || 0);
+  //     return dateB - dateA; // Descending order (newest first)
+  //   } else {
+  //     // Default sorting: Show master tasks first, then self tasks, then by date
+  //     if (a.source === 'assigned' && b.source !== 'assigned') return -1;
+  //     if (a.source !== 'assigned' && b.source === 'assigned') return 1;
+
+  //     // Secondary sort: Latest tasks first (by updated_at or created_at)
+  //     const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
+  //     const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
+  //     return dateB - dateA; // Descending order (newest first)
+  //   }
+  // });
+
+
   const allTasks = tasks.filter(task => {
-    // Search filter
-    const displayName = task.task_name || task.name || "Untitled Task";
-    if (searchQuery && !displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !(task.description || '').toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
+  const displayName = task.task_name || task.name || "Untitled Task";
+  if (searchQuery && !displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !(task.description || '').toLowerCase().includes(searchQuery.toLowerCase())) {
+    return false;
+  }
+  return true;
+}).sort((a, b) => {
+  // Master tasks first
+  if (a.source === 'assigned' && b.source !== 'assigned') return -1;
+  if (a.source !== 'assigned' && b.source === 'assigned') return 1;
 
-    return true;
-  }).sort((a, b) => {
-    // For "All Team Members" view, sort by source first (master tasks at top), then by owner name, then by date
-    if (viewTypeFilter === 'all') {
-      // Primary sort: Master tasks first
-      if (a.source === 'assigned' && b.source !== 'assigned') return -1;
-      if (a.source !== 'assigned' && b.source === 'assigned') return 1;
+  // if (viewTypeFilter === 'all') {
+  //   // Secondary: Owner name ascending
+  //   const ownerNameA = a.source === 'assigned' ? (a.assigned_to_user?.name || 'Unknown') : (a.users?.name || 'Unknown');
+  //   const ownerNameB = b.source === 'assigned' ? (b.assigned_to_user?.name || 'Unknown') : (b.users?.name || 'Unknown');
+  //   if (ownerNameA < ownerNameB) return -1;
+  //   if (ownerNameA > ownerNameB) return 1;
+  // }
 
-      // Secondary sort: Owner name in ascending order (A-Z)
-      const ownerNameA = a.source === 'assigned' ? (a.assigned_to_user?.name || 'Unknown') : (a.users?.name || 'Unknown');
-      const ownerNameB = b.source === 'assigned' ? (b.assigned_to_user?.name || 'Unknown') : (b.users?.name || 'Unknown');
-
-      if (ownerNameA < ownerNameB) return -1;
-      if (ownerNameA > ownerNameB) return 1;
-
-      // Tertiary sort: Latest tasks first (by updated_at or created_at)
-      const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
-      const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
-      return dateB - dateA; // Descending order (newest first)
-    } else {
-      // Default sorting: Show master tasks first, then self tasks, then by date
-      if (a.source === 'assigned' && b.source !== 'assigned') return -1;
-      if (a.source !== 'assigned' && b.source === 'assigned') return 1;
-
-      // Secondary sort: Latest tasks first (by updated_at or created_at)
-      const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
-      const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
-      return dateB - dateA; // Descending order (newest first)
-    }
-  });
+  // Sort by start_date descending
+  const dateA = new Date(a.start_date || a.date || 0);
+  const dateB = new Date(b.start_date || b.date || 0);
+  return dateA - dateB;
+});
 
   return (
     <div className="weekly-wrapper" style={{ padding: '0 50px' }}>
@@ -466,25 +517,41 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
           <tbody>
             <tr className="header-row">
               <th>Task Name</th>
-              <th>Date</th>
-              <th>Timeline</th>
+              <th>Start Date</th>
+              <th>End Date</th>
               <th>Task Type</th>
               <th>Status</th>
               {(viewTypeFilter === 'all' || viewTypeFilter === 'team') && <th>Owner</th>}
               <th>Assignee</th>
-              <th>Link</th>
+              <th>Remarks</th>
+              <th>Action</th>
             </tr>
             {allTasks.length > 0 ? (
               allTasks.map((task, index) => (
                 <tr key={index} style={task.source === 'assigned' ? { backgroundColor: '#cfe2f3' } : {}} className={task.source === 'assigned' ? 'assigned-row' : ''}>
                   <td style={{ textAlign: 'left' }}>{task.task_name || task.name || "Untitled Task"}</td>
+                  <td>{formatDate(task.start_date)}</td>
                   <td>{formatDate(task.date || task.dueDate)}</td>
-                  <td>{formatDate(task.timeline || task.prop_slot)}</td>
                   <td>{task.source === 'assigned' ? 'Master' : (task.task_type || task.type || task.dept || "Work")}</td>
                   <td>{task.status}</td>
                   {(viewTypeFilter === 'all' || viewTypeFilter === 'team') && <td>{task.source === 'assigned' ? (task.assigned_to_user?.name || 'Unknown') : (task.users?.name || 'Unknown')}</td>}
                   <td>{task.source === 'assigned' ? (task.assigned_by_user?.name || 'Unknown') : 'Self'}</td>
-                  <td>{task.file_link || task.attachments ? <a href={task.file_link || task.attachments} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }} title="Open link"><FaExternalLinkAlt style={{ fontSize: '14px' }} /></a> : 'NA'}</td>
+<td>
+  {(task.latest_remarks || task.remarks || "").length > 20
+    ? (task.latest_remarks || task.remarks).slice(0, 20) + "..."
+    : (task.latest_remarks || task.remarks)}
+</td>                 
+<td>
+  <FaExternalLinkAlt
+    style={{
+      color: "#2563eb",
+      cursor: "pointer",
+      fontSize: "16px"
+    }}
+    title="View Details"
+    onClick={() => openTaskPopup(task)}
+  />
+</td>
                 </tr>
               ))
             ) : (
@@ -503,8 +570,125 @@ export default function WeeklyTemplate({ tasks, loading, filter, setFilter, date
             )}
           </tbody>
         </table>
+
+      </div>
+{showPopup && selectedTask && (
+  <div className="history-popup-overlay">
+    <div className="history-popup-box">
+
+      {/* Header */}
+      <div className="history-popup-header">
+
+        <div className="header-left">
+          <span className="calendar-icon">📅</span>
+
+          <div>
+            <h2>{selectedTask.task_name}</h2>
+            <small>Task History</small>
+          </div>
+        </div>
+
+        <div className="header-actions">
+
+          <div className="popup-switch">
+            <button
+              className={popupView === "task" ? "active" : ""}
+              onClick={() => setPopupView("task")}
+            >
+              Task
+            </button>
+
+            <button
+              className={popupView === "meeting" ? "active" : ""}
+              onClick={() => setPopupView("meeting")}
+            >
+              Meeting
+            </button>
+          </div>
+
+          <FaTimes className="history-close-icon" onClick={closeTaskPopup} />
+
+        </div>
       </div>
 
+      {/* Task View */}
+      {/* Task View */}
+{popupView === "task" && (
+  <>
+    <div className="history-table-header task-header">
+      <div>Date</div>
+      <div>Time</div>
+      <div>Remarks</div>
+      <div>Status</div>
+    </div>
+
+    <div className="history-table-body">
+      {selectedTask.remarks_between_dates ? (
+        selectedTask.remarks_between_dates.split("|").map((item, index) => {
+          const parts = item.split(":");
+          const remarkDate = parts[0]?.trim();
+          const remarkText = parts.slice(1).join(":").trim();
+
+          return (
+            <div key={index} className="history-row task-row">
+              <div>{formatDate(remarkDate)}</div>
+              <div>{index + 1}00</div>
+              <div>{remarkText}</div>
+              <div>
+                <span className="status-pill">
+                  {selectedTask.status}
+                </span>
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="history-row task-row">
+          <div>No history available</div>
+        </div>
+      )}
+    </div>
+  </>
+)}
+
+{/* Meeting View */}
+{popupView === "meeting" && (
+  <>
+    <div className="history-table-header meeting-header" style={{color: '#000'}}>
+      <div>Date</div>
+      <div>Meeting</div>
+      <div>Department</div>
+      <div>Co-Person</div>
+      <div>Slot</div>
+      <div>Time</div>
+      <div>Note</div>
+    </div>
+
+    <div className="history-table-body">
+      {selectedTask.meeting_details?.length > 0 ? (
+        selectedTask.meeting_details.map((meeting, index) => (
+          <div key={index} className="history-row meeting-row">
+            <div>{formatDate(meeting.date)}</div>
+            <div>{meeting.meeting_name}</div>
+            <div>{meeting.dept || "-"}</div>
+            <div>{meeting.co_person || "-"}</div>
+            <div>{meeting.prop_slot || "-"}</div>
+            <div>{meeting.time || "-"} min</div>
+            <div>{meeting.notes || "-"}</div>
+
+          </div>
+        ))
+      ) : (
+        <div className="history-row meeting-row">
+          <div>No meetings available</div>
+        </div>
+      )}
+    </div>
+  </>
+)}
+    </div>
+  </div>
+)}
 
     </div>
   );

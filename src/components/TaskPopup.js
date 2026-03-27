@@ -304,6 +304,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
        updateTask(updatedTask);
      } else {
        // For assigning tasks
+      
        const assignData = {
          date: assignFormData.date,
          timeline: assignFormData.timeline,
@@ -316,6 +317,7 @@ export default function TaskPopup({ open, onClose, addTask, editingTask, updateT
          status: assignFormData.status,
          uploadClosing: assignFormData.uploadClosing,
        };
+       console.log('assign task:', assignData);
        addTask(assignData);
      }
    } else if (editingTask) {

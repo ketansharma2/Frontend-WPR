@@ -82,7 +82,20 @@ const RnR = () => {
   const fetchRoleOverview = async (userId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/role_overview/${userId}`, { headers: { "Authorization": `Bearer ${token}` } });
+      // const response = await fetch(`${API_BASE_URL}/role_overview/${userId}`, { headers: { "Authorization": `Bearer ${token}` } });
+
+  let url = `${API_BASE_URL}/role_overview`;
+
+    // Only send user_id when viewing team member
+    if (userId && userId !== userProfile?.user_id) {
+      url += `?user_id=${userId}`;
+    }
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+
       if (response.ok) {
         const result = await response.json();
         setRoleOverviewData(result.role_overview || null);

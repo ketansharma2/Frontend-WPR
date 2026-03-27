@@ -47,6 +47,7 @@ const AdminRnR = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
+              console('data2:');
 
       let url = `${API_BASE_URL}/admin/rnr`;
       if (userId && userId !== 'all') {
@@ -59,9 +60,11 @@ const AdminRnR = () => {
           "Content-Type": "application/json"
         }
       });
+      console('data2:', response);
 
       if (response.ok) {
         const result = await response.json();
+        console('check rnr data:', result);
         setRnrData(result || []);
       }
     } catch (error) {

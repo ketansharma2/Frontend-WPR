@@ -87,24 +87,53 @@ const HodRnR = () => {
   };
 
 
+  // const fetchRnrData = async (userId) => {
+  //   try {
+  //     const token = localStorage.getItem("token");
+  //     let url = `${API_BASE_URL}/rnr${userId ? `?user_id=${userId}` : ''}`;
+  //     const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+  //     if (response.ok) {
+  //       const result = await response.json();
+  //       setRnrData(result || []);
+  //     }
+  //   } catch (error) { console.error('Error fetching R&R:', error); }
+  // };
+
   const fetchRnrData = async (userId) => {
-    try {
-      const token = localStorage.getItem("token");
-      let url = `${API_BASE_URL}/rnr${userId ? `?user_id=${userId}` : ''}`;
-      const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
-      if (response.ok) {
-        const result = await response.json();
-        setRnrData(result || []);
-      }
-    } catch (error) { console.error('Error fetching R&R:', error); }
-  };
+  try {
+    const token = localStorage.getItem("token");
+
+    let url = `${API_BASE_URL}/rnr`;
+
+    // only send user_id when viewing team member
+    if (userId && userId !== userProfile?.user_id) {
+      url += `?user_id=${userId}`;
+    }
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      setRnrData(result || []);
+    }
+  } catch (error) {
+    console.error('Error fetching R&R:', error);
+  }
+};
 
 
   const fetchFixedTasks = async (userId) => {
     try {
       const token = localStorage.getItem("token");
-      let url = `${API_BASE_URL}/hod/fixed-tasks${userId ? `?user_id=${userId}` : ''}`;
-      const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+      let url = `${API_BASE_URL}/hod/fixed-tasks`;
+
+      if (userId && userId !== userProfile?.user_id) {
+        url += `?user_id=${userId}`;
+       }      
+       console.log('check url:', url);
+     const response = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
       if (response.ok) {
         const result = await response.json();
         setFixedTasks(result || []);
@@ -115,7 +144,18 @@ const HodRnR = () => {
   const fetchRoleOverview = async (userId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/role_overview/${userId}`, { headers: { "Authorization": `Bearer ${token}` } });
+      // const response = await fetch(`${API_BASE_URL}/role_overview/${userId}`, { headers: { "Authorization": `Bearer ${token}` } });
+      let url = `${API_BASE_URL}/role_overview`;
+
+    // Only send user_id when viewing team member
+    if (userId && userId !== userProfile?.user_id) {
+      url += `?user_id=${userId}`;
+    }
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
       if (response.ok) {
         const result = await response.json();
         setRoleOverviewData(result.role_overview || null);
