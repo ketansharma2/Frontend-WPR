@@ -255,13 +255,13 @@ useEffect(() => {
   if (a.source === 'assigned' && b.source !== 'assigned') return -1;
   if (a.source !== 'assigned' && b.source === 'assigned') return 1;
 
-  // if (viewTypeFilter === 'all') {
-  //   // Secondary: Owner name ascending
-  //   const ownerNameA = a.source === 'assigned' ? (a.assigned_to_user?.name || 'Unknown') : (a.users?.name || 'Unknown');
-  //   const ownerNameB = b.source === 'assigned' ? (b.assigned_to_user?.name || 'Unknown') : (b.users?.name || 'Unknown');
-  //   if (ownerNameA < ownerNameB) return -1;
-  //   if (ownerNameA > ownerNameB) return 1;
-  // }
+  if (viewTypeFilter === 'all') {
+    // Secondary: Owner name ascending
+    const ownerNameA = a.source === 'assigned' ? (a.assigned_to_user?.name || 'Unknown') : (a.users?.name || 'Unknown');
+    const ownerNameB = b.source === 'assigned' ? (b.assigned_to_user?.name || 'Unknown') : (b.users?.name || 'Unknown');
+    if (ownerNameA < ownerNameB) return -1;
+    if (ownerNameA > ownerNameB) return 1;
+  }
 
   // Sort by start_date descending
   const dateA = new Date(a.start_date || a.date || 0);
@@ -529,8 +529,19 @@ useEffect(() => {
             {allTasks.length > 0 ? (
               allTasks.map((task, index) => (
                 <tr key={index} style={task.source === 'assigned' ? { backgroundColor: '#cfe2f3' } : {}} className={task.source === 'assigned' ? 'assigned-row' : ''}>
-                  <td style={{ textAlign: 'left' }}>{task.task_name || task.name || "Untitled Task"}</td>
-                  <td>{formatDate(task.start_date)}</td>
+<td
+  style={{
+    textAlign: 'left',
+    maxWidth: '180px',
+    width: '180px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
+  }}
+  title={task.task_name || task.name || "Untitled Task"}
+>
+  {task.task_name || task.name || "Untitled Task"}
+</td>                  <td>{formatDate(task.start_date)}</td>
                   <td>{formatDate(task.date || task.dueDate)}</td>
                   <td>{task.source === 'assigned' ? 'Master' : (task.task_type || task.type || task.dept || "Work")}</td>
                   <td>{task.status}</td>
