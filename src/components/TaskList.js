@@ -26,13 +26,32 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showViewTypeDropdown, setShowViewTypeDropdown] = useState(false);
   const [showTeamMemberDropdown, setShowTeamMemberDropdown] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+  const togglePopup = () => setIsOpen(!isOpen);
+  const profile = JSON.parse(localStorage.getItem("profile"));
+
   const [menuOpen, setMenuOpen] = useState(null);
+  const today = new Date().toISOString().split('T')[0];
+const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+
+const [startDate, setStartDate] = useState(today);
+const [endDate, setEndDate] = useState(today);
+
 
   const yesterdayDateRef = useRef(yesterdayDate);
   useEffect(() => {
+
     yesterdayDateRef.current = yesterdayDate;
   }, [yesterdayDate]);
+useEffect(() => {
+  if (!tasks?.length) return;
 
+  const result = tasks.filter(task =>
+    task.user_id === "c81bc40d-8084-4cf9-a387-1fbb21781291"
+  );
+
+  console.log("Sonu filtered tasks:", result);
+}, [tasks]);
   // Sync activeFilters with filter props
   useEffect(() => {
     setActiveFilters({
@@ -65,6 +84,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
 
   // Close dropdowns when filter changes
   useEffect(() => {
+    console.log('check date:',tasks);
     setShowTeamMemberDropdown(false);
   }, [filter]);
 
@@ -85,6 +105,8 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
     setTaskTypeFilter('');
     setStatusFilter('');
     setCategoryFilter('');
+    setStartDate('');
+setEndDate('');
     setViewTypeFilter && setViewTypeFilter('self');
     setTeamMemberFilter && setTeamMemberFilter('');
     setDateActive('');
@@ -192,81 +214,371 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
     return `${itemType}_${taskId}_${index}_${timestamp}`;
   };
 
-  const filteredTasks = tasks.filter(task => {
+//   const filteredTasks = tasks.filter(task => {
+//     const displayName = getDisplayName(task);
+//     const description = getDescription(task);
+
+//     // Search filter
+//     if (searchQuery && !displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+//         !description?.toLowerCase().includes(searchQuery.toLowerCase())) {
+//       return false;
+//     }
+
+//     // Type filter (task/meeting)
+//     if (filter !== 'task' && filter !== 'meeting') return false;
+//     if (task.itemType !== filter) return false;
+
+//     // Task type filter (only for tasks, not meetings)
+//     if (task.itemType === 'task' && taskTypeFilter && getTaskType(task) !== taskTypeFilter) return false;
+
+//     // Status filter
+//     if (statusFilter && task.status !== statusFilter) return false;
+
+ 
+//    // Date filter - use task.date instead of created_at
+//     if (dateFilter === 'all') return true;
+//     const taskDateValue = task.date || task.created_at || task.createdAt;
+//     if (!taskDateValue) return false;
+
+//        if ((startDate || endDate) && taskDateValue) {
+//   const taskDate = new Date(taskDateValue);
+//   taskDate.setHours(0, 0, 0, 0);
+
+//   if (startDate) {
+//     const start = new Date(startDate);
+//     start.setHours(0, 0, 0, 0);
+//     if (taskDate < start) return false;
+//   }
+
+//   if (endDate) {
+//     const end = new Date(endDate);
+//     end.setHours(0, 0, 0, 0);
+//     if (taskDate > end) return false;
+//   }
+// }
+//     const taskDate = new Date(taskDateValue);
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
+
+//     if (dateFilter === 'today') {
+//       const compareDate = new Date(taskDate);
+//       compareDate.setHours(0, 0, 0, 0);
+//       return compareDate.getTime() === today.getTime();
+//     } else if (dateFilter === 'yesterday') {
+//       if (!yesterdayDate) return false;
+//       const lastWorkingDay = new Date(yesterdayDate);
+//       lastWorkingDay.setHours(0, 0, 0, 0);
+//       const compareDate = new Date(taskDate);
+//       compareDate.setHours(0, 0, 0, 0);
+//       return compareDate.getTime() === lastWorkingDay.getTime();
+//     } else if (dateFilter === 'past_week') {
+//       const d = new Date();
+//       d.setDate(d.getDate() - 7);
+//       const weekday = d.getDay();
+//       const monday = new Date(d);
+//       monday.setDate(d.getDate() - ((weekday + 6) % 7));
+//       const saturday = new Date(monday);
+//       saturday.setDate(monday.getDate() + 5);
+//       return taskDate >= monday && taskDate <= saturday;
+//     } else if (dateFilter === 'past_month') {
+//       const now = new Date();
+//       const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+//       const last = new Date(now.getFullYear(), now.getMonth(), 0);
+//       return taskDate >= first && taskDate <= last;
+//     }
+
+//     // Start Date - End Date Range Filter
+// // const taskDateValue = task.date || task.created_at || task.createdAt;
+
+
+
+
+
+// return true;
+//   }).sort((a, b) => {
+//     // Primary sort: Master tasks (assigned) first, then self tasks
+//     const isMasterA = a.itemType === 'task' && a.category === 'assigned';
+//     const isMasterB = b.itemType === 'task' && b.category === 'assigned';
+
+//     if (isMasterA && !isMasterB) return -1;
+//     if (!isMasterA && isMasterB) return 1;
+
+//     // Secondary sort: Owner name in ascending order (A-Z)
+//     const ownerNameA = a.users?.name || 'Unknown';
+//     const ownerNameB = b.users?.name || 'Unknown';
+
+//     if (ownerNameA < ownerNameB) return -1;
+//     if (ownerNameA > ownerNameB) return 1;
+
+//     // Tertiary sort: Latest first (new to old)
+//     const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
+//     const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
+//     return dateB - dateA; // Descending order (newest first)
+//   });
+const filteredTasks = tasks
+  .filter((task) => {
     const displayName = getDisplayName(task);
     const description = getDescription(task);
 
-    // Search filter
-    if (searchQuery && !displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !description?.toLowerCase().includes(searchQuery.toLowerCase())) {
+    // 1. Search filter
+    if (
+      searchQuery &&
+      !displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !description?.toLowerCase().includes(searchQuery.toLowerCase())
+    ) {
       return false;
     }
 
-    // Type filter (task/meeting)
-    if (filter !== 'task' && filter !== 'meeting') return false;
-    if (task.itemType !== filter) return false;
+    // 2. Type filter
+    if (filter && filter !== "all" && task.itemType !== filter) {
+      return false;
+    }
 
-    // Task type filter (only for tasks, not meetings)
-    if (task.itemType === 'task' && taskTypeFilter && getTaskType(task) !== taskTypeFilter) return false;
+    // 3. Task type filter
+    if (
+      task.itemType === "task" &&
+      taskTypeFilter &&
+      taskTypeFilter !== "all" &&
+      getTaskType(task) !== taskTypeFilter
+    ) {
+      return false;
+    }
 
-    // Status filter
-    if (statusFilter && task.status !== statusFilter) return false;
+    // 4. Status filter
+    if (
+      statusFilter &&
+      statusFilter !== "all" &&
+      task.status !== statusFilter
+    ) {
+      return false;
+    }
 
-    // Date filter - use task.date instead of created_at
-    if (dateFilter === 'all') return true;
-    const taskDateValue = task.date || task.created_at || task.createdAt;
+    // 5. Category filter (Self/Assigned)
+    if (
+      task.itemType === "task" &&
+      categoryFilter &&
+      categoryFilter !== "all" &&
+      task.category !== categoryFilter
+    ) {
+      return false;
+    }
+
+    // 6. Team Member Filter
+    
+// if (teamMemberFilter && teamMemberFilter !== "" && teamMemberFilter !== "all") {
+//   const taskOwnerId = task.user_id || task.assigned_to || task.owner_id;
+//   console.log('chckck:',teamMemberFilter);
+//   // Only apply team member filter, don't change other filter behavior
+//   if (taskOwnerId !== teamMemberFilter) {
+//     return false;
+//   }
+// }
+if (teamMemberFilter && teamMemberFilter !== "" && teamMemberFilter !== "all") {
+  if (task.itemType === 'meeting') {
+    const meetingOwnerId = task.user?.user_id || task.user_id;
+    if (meetingOwnerId !== teamMemberFilter) return false;
+  } else if (task.itemType === 'task') {
+    const taskOwnerId = task.user_id || task.assigned_to;
+    if (taskOwnerId !== teamMemberFilter) return false;
+  }
+}
+
+
+    // 7. View Type Filter
+    if (
+      viewTypeFilter &&
+      viewTypeFilter !== "all" &&
+      task.itemType === "task"
+    ) {
+      if (viewTypeFilter === "self" && task.category !== "self")
+        return false;
+      if (viewTypeFilter === "team" && task.category !== "assigned")
+        return false;
+    }
+
+    // 8. DATE FILTER LOGIC - FIXED with Date Range
+    const taskDateValue = task.date || task.dueDate || task.created_at || task.createdAt;
     if (!taskDateValue) return false;
-    const taskDate = new Date(taskDateValue);
+
+    const taskDate = new Date(taskDateValue + "T00:00:00");
+    if (isNaN(taskDate.getTime())) return false;
+
+    taskDate.setHours(0, 0, 0, 0);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (dateFilter === 'today') {
-      const compareDate = new Date(taskDate);
-      compareDate.setHours(0, 0, 0, 0);
-      return compareDate.getTime() === today.getTime();
-    } else if (dateFilter === 'yesterday') {
-      if (!yesterdayDate) return false;
-      const lastWorkingDay = new Date(yesterdayDate);
-      lastWorkingDay.setHours(0, 0, 0, 0);
-      const compareDate = new Date(taskDate);
-      compareDate.setHours(0, 0, 0, 0);
-      return compareDate.getTime() === lastWorkingDay.getTime();
-    } else if (dateFilter === 'past_week') {
-      const d = new Date();
-      d.setDate(d.getDate() - 7);
-      const weekday = d.getDay();
-      const monday = new Date(d);
-      monday.setDate(d.getDate() - ((weekday + 6) % 7));
-      const saturday = new Date(monday);
-      saturday.setDate(monday.getDate() + 5);
-      return taskDate >= monday && taskDate <= saturday;
-    } else if (dateFilter === 'past_month') {
-      const now = new Date();
-      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const last = new Date(now.getFullYear(), now.getMonth(), 0);
-      return taskDate >= first && taskDate <= last;
+    // PRIORITY 1: Date Range Filter (startDate and endDate)
+    if (startDate && endDate) {
+      const start = new Date(startDate + "T00:00:00");
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate + "T00:00:00");
+      end.setHours(23, 59, 59, 999);
+      
+      return taskDate >= start && taskDate <= end;
     }
+    
+    if (startDate && !endDate) {
+      const start = new Date(startDate + "T00:00:00");
+      start.setHours(0, 0, 0, 0);
+      return taskDate >= start;
+    }
+    
+    if (!startDate && endDate) {
+      const end = new Date(endDate + "T00:00:00");
+      end.setHours(23, 59, 59, 999);
+      return taskDate <= end;
+    }
+
+    // PRIORITY 2: Dropdown Date Filters (only if no date range)
+    if (dateFilter === "today") {
+      return taskDate.getTime() === today.getTime();
+    }
+
+    if (dateFilter === "yesterday") {
+      if (!yesterdayDate) return false;
+      const lastWorkingDay = new Date(yesterdayDate + "T00:00:00");
+      lastWorkingDay.setHours(0, 0, 0, 0);
+      return taskDate.getTime() === lastWorkingDay.getTime();
+    }
+
+    if (dateFilter === "past_week") {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      weekAgo.setHours(0, 0, 0, 0);
+      return taskDate >= weekAgo && taskDate <= today;
+    }
+
+    if (dateFilter === "past_month") {
+      const monthAgo = new Date();
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      monthAgo.setHours(0, 0, 0, 0);
+      return taskDate >= monthAgo && taskDate <= today;
+    }
+
+    // If no date filters applied, show all
     return true;
-  }).sort((a, b) => {
-    // Primary sort: Master tasks (assigned) first, then self tasks
-    const isMasterA = a.itemType === 'task' && a.category === 'assigned';
-    const isMasterB = b.itemType === 'task' && b.category === 'assigned';
+  })
+  .sort((a, b) => {
+  // Primary sort: Master tasks first
+  const isMasterA = a.itemType === "task" && a.category === "assigned";
+  const isMasterB = b.itemType === "task" && b.category === "assigned";
 
-    if (isMasterA && !isMasterB) return -1;
-    if (!isMasterA && isMasterB) return 1;
+  if (isMasterA && !isMasterB) return -1;
+  if (!isMasterA && isMasterB) return 1;
 
-    // Secondary sort: Owner name in ascending order (A-Z)
-    const ownerNameA = a.users?.name || 'Unknown';
-    const ownerNameB = b.users?.name || 'Unknown';
+  // Secondary sort: Owner name
+  const ownerNameA = (a.users?.name || a.owner_name || a.owner_name12 || "Unknown").toLowerCase();
+  const ownerNameB = (b.users?.name || b.owner_name || b.owner_name12 || "Unknown").toLowerCase();
 
-    if (ownerNameA < ownerNameB) return -1;
-    if (ownerNameA > ownerNameB) return 1;
+  if (ownerNameA !== ownerNameB) {
+    return ownerNameA.localeCompare(ownerNameB);
+  }
 
-    // Tertiary sort: Latest first (new to old)
-    const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
-    const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
-    return dateB - dateA; // Descending order (newest first)
-  });
+  // Tertiary sort: By date based on sortOrder
+  const getValidDate = (task) => {
+    const date = task.date || task.dueDate || task.created_at || task.createdAt;
+    return date ? new Date(date) : new Date(0);
+  };
+  
+  const dateA = getValidDate(a);
+  const dateB = getValidDate(b);
+  
+  // Use sortOrder state to determine order
+  if (sortOrder === 'desc') {
+    return dateB - dateA; // Newest first
+  } else {
+    return dateA - dateB; // Oldest first
+  }
+});
+// console.log('check before filteredTasks:',tasks);
+
+// const filteredTasks = tasks.filter(task => {
+//   const displayName = getDisplayName(task);
+//   const description = getDescription(task);
+
+//   // Search filter
+//   if (searchQuery && !displayName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+//       !description?.toLowerCase().includes(searchQuery.toLowerCase())) {
+//     return false;
+//   }
+
+//   // Type filter (task/meeting)
+//   if (filter !== 'task' && filter !== 'meeting') return false;
+//   if (task.itemType !== filter) return false;
+
+//   // Task type filter (only for tasks, not meetings)
+//   if (task.itemType === 'task' && taskTypeFilter && getTaskType(task) !== taskTypeFilter) return false;
+
+//   // Status filter
+//   if (statusFilter && task.status !== statusFilter) return false;
+
+//   // Get task date
+//   const taskDateValue = task.date || task.created_at || task.createdAt;
+//   if (!taskDateValue) return false;
+
+//   const taskDate = new Date(taskDateValue);
+//   taskDate.setHours(0, 0, 0, 0);
+
+//   const today = new Date();
+//   today.setHours(0, 0, 0, 0);
+
+//   // Date Range Filter (Start Date - End Date)
+//   // This should run regardless of dateFilter
+//   if (startDate || endDate) {
+//     if (startDate) {
+//       const start = new Date(startDate);
+//       start.setHours(0, 0, 0, 0);
+//                console.log('check fate',taskDate,start);
+
+//       if (taskDate < start) return false;
+
+//     }
+//     if (endDate) {
+//       const end = new Date(endDate);
+//       end.setHours(0, 0, 0, 0);
+//         console.log('check eeate',taskDate,end);
+
+//       if (taskDate > end) return false;
+//     }
+//     // If date range is active, skip dropdown date filter
+//     return true;
+//   }
+
+//   // Dropdown Date Filter (only if no date range is set)
+//   if (dateFilter === 'today') {
+//     return taskDate.getTime() === today.getTime();
+//   }
+
+  
+
+
+  
+
+//   // If no date filter is active, include all tasks
+//   return true;
+// }).sort((a, b) => {
+//   // ... rest of sorting logic
+//       const isMasterA = a.itemType === 'task' && a.category === 'assigned';
+//     const isMasterB = b.itemType === 'task' && b.category === 'assigned';
+
+//     if (isMasterA && !isMasterB) return -1;
+//     if (!isMasterA && isMasterB) return 1;
+
+//     // Secondary sort: Owner name in ascending order (A-Z)
+//     const ownerNameA = a.users?.name || 'Unknown';
+//     const ownerNameB = b.users?.name || 'Unknown';
+
+//     if (ownerNameA < ownerNameB) return -1;
+//     if (ownerNameA > ownerNameB) return 1;
+
+//     // Tertiary sort: Latest first (new to old)
+//     const dateA = new Date(a.updated_at || a.created_at || a.date || 0);
+//     const dateB = new Date(b.updated_at || b.created_at || b.date || 0);
+//     return dateB - dateA; // Descending order (newest first)
+// });
+
+console.log('check filteredTasks:',filteredTasks);
 
   if (filteredTasks.length === 0) {
     return (
@@ -315,6 +627,8 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                 </div>
               )}
             </div>
+
+     
 
             {filter !== 'meeting' && (
               <div className="filter-dropdown">
@@ -436,11 +750,20 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                       All Team Members
                     </div>
                     {teamMembers && teamMembers.length > 0 ? teamMembers.map(member => (
-                      <div
-                        key={member.user_id}
-                        className="dropdown-item"
-                        onClick={() => { setViewTypeFilter('team'); setTeamMemberFilter(member.user_id); setShowTeamMemberDropdown(false); }}
-                      >
+                        <div
+    key={member.user_id}
+    className="dropdown-item"
+    onClick={() => {
+      // Only set team member filter, don't auto-set viewTypeFilter
+      setTeamMemberFilter(member.user_id);
+      // Only set viewTypeFilter if it's explicitly needed
+      if (member.user_id === 'all') {
+        setViewTypeFilter('all');
+      }
+      setShowTeamMemberDropdown(false);
+    }}
+  >
+
                         {member.name}
                       </div>
                     )) : (
@@ -510,6 +833,23 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
     );
   }
 
+const ownerSummary = filteredTasks.reduce((acc, task) => {
+  console.log('acc',task);
+  const owner =  task.owner_name12 || task.user?.name ;
+  const date = task.date || task.created_at || task.createdAt;
+
+  if (!acc[owner]) {
+    acc[owner] = new Set();
+  }
+
+  acc[owner].add(date);
+  return acc;
+}, {});
+
+const ownerDayCount = Object.fromEntries(
+  Object.entries(ownerSummary).map(([owner, dates]) => [owner, dates.size])
+);
+
 
   return (
     <div className="cu-task-wrapper">
@@ -537,7 +877,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
         {/* Filter Controls */}
         <div className="filter-controls">
           {/* Date Filter */}
-          <div className="filter-dropdown">
+          {/* <div className="filter-dropdown">
             <button
               className={`filter-btn ${activeFilters.date ? 'active' : ''}`}
               onClick={(e) => {
@@ -560,7 +900,28 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                 <div className="dropdown-item" onClick={() => { setDateFilter('past_month'); setDateActive('past_month'); setShowDateDropdown(false); }}>Past month</div>
               </div>
             )}
-          </div>
+          </div> */}
+          <div className="filter-date-range">
+  <input
+    type="date"
+    value={startDate}
+onChange={(e) => {
+  setDateFilter('all');
+  setStartDate(e.target.value);
+}}    className="date-input"
+  />
+
+  <span className="date-separator">to</span>
+
+  <input
+    type="date"
+    value={endDate}
+onChange={(e) => {
+  setDateFilter('all');
+  setEndDate(e.target.value);
+}}    className="date-input"
+  />
+</div>
 
           {/* Task Type Filter - Hide for meetings */}
           {filter !== 'meeting' && (
@@ -688,7 +1049,8 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                         if (member.user_id === 'all') {
                           setViewTypeFilter('all');
                         } else {
-                          setViewTypeFilter('team');
+    setViewTypeFilter(''); // Clear view type, don't set to 'team'
+    setTeamMemberFilter(member.user_id);
                         }
                         setTeamMemberFilter(member.user_id);
                         setShowTeamMemberDropdown(false);
@@ -749,6 +1111,59 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
           <ToggleSwitch onToggle={setFilter} active={filter === 'task' ? 'Tasks' : 'Meeting'} />
         </div>
       </div>
+      )}
+{profile?.user_type === "Admin" && filter === "task" && (
+
+    <div
+  className="task-summary-card cursor-pointer hover:shadow-lg transition-shadow duration-200 p-4 rounded-lg bg-white flex items-center justify-between"
+  onClick={togglePopup}
+>
+  <h3 className="text-gray-700 font-semibold text-lg">Team Members</h3>
+  <span className="text-blue-600 font-bold text-xl">
+    {new Set(filteredTasks.map(task => task.user_id)).size}
+  </span>
+</div>
+)}
+
+{/* <div className="fill-wpr-card">
+  <h3>Daily Task Summary</h3>
+
+  {Object.entries(ownerDayCount).map(([name, count]) => (
+    <div key={name} className="summary-row">
+      <span>{name}</span>
+      <span>{count} day{count > 1 ? "s" : ""}</span>
+    </div>
+  ))}
+</div> */}
+
+      {isOpen && (
+        <div className="popup-overlay">
+          <div className="cu-task-wrapper popup-card">
+            <div className="popup-header">
+              <h3>Daily Task Summary</h3>
+              <button className="close-btn" onClick={togglePopup}>
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="popup-content">
+              {Object.entries(ownerDayCount).length === 0 ? (
+                <p className="no-tasks-message">No tasks found</p>
+              ) : (
+                Object.entries(ownerDayCount)
+  .sort(([nameA], [nameB]) => nameA.localeCompare(nameB)) // sort names ascending
+  .map(([name, count]) => (
+    <div key={name} className="summary-row enhanced-task-row">
+      <span className="assignee-text">{name}</span>
+      <span className="status-badge">
+        {count} day{count > 1 ? "s" : ""}
+      </span>
+    </div>
+  ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Table Container */}
@@ -1016,7 +1431,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                       <td style={{ padding: '8px 12px', color: '#374151' }}>{formatDate(getDueDate(task)) || 'Not set'}</td>
                       <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500', textAlign: 'left' }}>{getDisplayName(task)}</td>
                       {viewTypeFilter === 'all' && (
-                        <td style={{ padding: '8px 12px', color: '#374151' }}>{task.owner_name || 'Unknown'}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151' }}>{task.users.name || 'Unknown'}</td>
                       )}
                       <td style={{ padding: '8px 12px', color: '#374151' }}>{getTaskType(task)}</td>
                       <td style={{ padding: '8px 12px', color: '#374151' }}>{task.co_person || 'Not specified'}</td>
@@ -1096,7 +1511,7 @@ export default function TaskList({ tasks, onEdit, onViewDetails, onDelete, onVie
                       )}
                       <td style={{ padding: '8px 12px', color: '#374151', fontWeight: '500', textAlign: 'left' }}>{getDisplayName(task)}</td>
                       {teamMemberFilter === 'all' && (
-                        <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>{task.users?.name || 'Unknown'}</td>
+                        <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center' }}>{task.user?.name ||task.owner_name12 ||task.user?.owner_name || 'Unknown'}</td>
                       )}
                       <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', whiteSpace: 'nowrap' }}>{formatDate(getDueDate(task)) || 'Not set'}</td>
                       <td style={{ padding: '8px 12px', color: '#374151', textAlign: 'center', whiteSpace: 'nowrap' }}>{getTimeline(task) ? formatDate(getTimeline(task)) : 'Not set'}</td>

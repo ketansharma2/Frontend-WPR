@@ -14,8 +14,8 @@ const RnR = () => {
   const [rnrData, setRnrData] = useState([]);
   const [fixedTasks, setFixedTasks] = useState([]);
   const [roleOverviewData, setRoleOverviewData] = useState(null);
-
-
+const [sopData, setSopData] = useState([]);
+const [selectedPdf, setSelectedPdf] = useState(null);
   // Modal Visibility States
   const [showRnrModal, setShowRnrModal] = useState(false);
   const [showFixedTaskModal, setShowFixedTaskModal] = useState(false);
@@ -50,9 +50,42 @@ const RnR = () => {
       fetchRnrData(parsed.user_id);
       fetchFixedTasks(parsed.user_id);
       fetchRoleOverview(parsed.user_id);
+      fetchSopData(parsed.user_id);
     }
   }, []);
 
+  const fetchSopData = async (userId) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(
+      `${API_BASE_URL}/sop${userId ? `?user_id=${userId}` : ''}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    if (response.ok) {
+      const result = await response.json();
+
+      console.log("SOP result:", result);
+
+      setSopData(Array.isArray(result) ? result : []);
+
+        if (result?.length > 0 && result[0]?.links?.length > 0) {
+        setSelectedPdf(result[0].links[0].url);
+      }
+
+    } else {
+      setSopData([]);
+    }
+  } catch (error) {
+    console.error("Error fetching SOP:", error);
+    setSopData([]);
+  }
+};
 
   const fetchRnrData = async (userId) => {
     try {
@@ -413,8 +446,82 @@ const RnR = () => {
           </div>
         )}
 
+{activeTab === 'SOP' && (
+  <div className="table-card">
+    <div className="card-inner-header">
+      <h4 className="brand-blue-text">SOP Documents</h4>
+    </div>
 
-        {!['R&R'].includes(activeTab) && (
+    {/* File Selector */}
+    <div
+      style={{
+        display: "flex",
+        gap: "10px",
+        marginBottom: "20px",
+        flexWrap: "wrap",
+        padding: "10px 25px"
+      }}
+    >
+      {sopData.flatMap(item =>
+        item.links?.map((pdf, index) => (
+          <button
+            key={`${item.id}-${index}`}
+            onClick={() => setSelectedPdf(pdf.url)}
+            style={{
+              padding: "10px 18px",
+              borderRadius: "8px",
+              border: selectedPdf === pdf.url ? "2px solid #2563eb" : "1px solid #d1d5db",
+              background: selectedPdf === pdf.url ? "#eff6ff" : "#fff",
+              color: selectedPdf === pdf.url ? "#2563eb" : "#374151",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s ease"
+            }}
+          >
+            📄 {pdf.name}
+          </button>
+        )) || []
+      )}
+    </div>
+
+    {/* PDF Viewer */}
+    <div
+      style={{
+        // border: "1px solid #e5e7eb",
+        borderRadius: "12px",
+        overflow: "hidden",
+        background: "#fff",
+        // boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
+      }}
+    >
+      {selectedPdf ? (
+        <iframe
+          src={`${selectedPdf}`}
+          width="85%"
+          height="780px"
+          title="PDF Viewer"
+          style={{
+            border: "none"
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            padding: "40px",
+            textAlign: "center",
+            color: "#6b7280"
+          }}
+        >
+          No SOP available
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+
+
+        {!['R&R','SOP'].includes(activeTab) && (
           <div className="empty-state">
             <p>Content for <strong>{activeTab}</strong> is coming soon.</p>
           </div>

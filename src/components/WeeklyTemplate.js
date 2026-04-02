@@ -553,15 +553,23 @@ useEffect(() => {
     : (task.latest_remarks || task.remarks)}
 </td>                 
 <td>
-  <FaExternalLinkAlt
-    style={{
-      color: "#2563eb",
-      cursor: "pointer",
-      fontSize: "16px"
-    }}
-    title="View Details"
+  <span
     onClick={() => openTaskPopup(task)}
-  />
+    title="View Details"
+    style={{
+      display: "inline-block",
+      padding: "5px 12px",
+      background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+      color: "#fff",
+      borderRadius: "999px",
+      fontSize: "12px",
+      fontWeight: "600",
+      cursor: "pointer",
+      transition: "0.3s ease"
+    }}
+  >
+    View
+  </span>
 </td>
                 </tr>
               ))
