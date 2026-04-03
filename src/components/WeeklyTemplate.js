@@ -645,20 +645,23 @@ useEffect(() => {
       {selectedTask.remarks_between_dates ? (
         selectedTask.remarks_between_dates.split("|").map((item, index) => {
           const parts = item.split(":");
-          const remarkDate = parts[0]?.trim();
-          const remarkText = parts.slice(1).join(":").trim();
+          
+              const remarkDate = parts[0]?.trim();
+    const remarkText = parts.slice(1, -2).join(":").trim(); 
+    const hours = parts[parts.length - 2]?.trim();
+    const status = parts[parts.length - 1]?.trim();
+
 
           return (
-            <div key={index} className="history-row task-row">
-              <div>{formatDate(remarkDate)}</div>
-              <div>{index + 1}00</div>
-              <div>{remarkText}</div>
-              <div>
-                <span className="status-pill">
-                  {selectedTask.status}
-                </span>
-              </div>
-            </div>
+                  <div key={index} className="history-row task-row">
+        <div>{formatDate(remarkDate)}</div>
+        <div>{hours}</div>
+        <div>{remarkText}</div>
+        <div>
+          <span className="status-pill">{status}</span>
+        </div>
+      </div>
+
           );
         })
       ) : (
