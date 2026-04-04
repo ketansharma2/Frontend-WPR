@@ -16,7 +16,57 @@ const HodRnR = () => {
   const [rnrData, setRnrData] = useState([]);
   const [fixedTasks, setFixedTasks] = useState([]);
   const [roleOverviewData, setRoleOverviewData] = useState(null);
+const [sopForm, setSopForm] = useState({
+  user_id: "",
+  pdf_name: "",
+  file: null,
+});
+const handleSopUpload = async () => {
+  try {
+    if (!sopForm.user_id || !sopForm.pdf_name || !sopForm.file) {
+      alert("Please fill all fields");
+      return;
+    }
 
+    const token = localStorage.getItem("token");
+
+    const formData = new FormData();
+    formData.append("user_id", sopForm.user_id);
+    formData.append("pdf_name", sopForm.pdf_name);
+    formData.append("file", sopForm.file);
+
+    const response = await fetch(`${API_BASE_URL}/sop/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    if (response.ok) {
+      alert("SOP uploaded successfully ✅");
+
+      setSopForm({
+        user_id: "",
+        pdf_name: "",
+        file: null
+      });
+
+      setShowSopModal(false);
+
+      fetchSopData(selectedUserId);
+    } else {
+      alert("Upload failed");
+    }
+
+  } catch (error) {
+    console.error(error);
+    alert("Upload error");
+  }
+};
+const [showSopModal, setShowSopModal] = useState(false);
+
+const [users, setUsers] = useState([]);
 const [sopData, setSopData] = useState([]);
 const [selectedPdf, setSelectedPdf] = useState(null);
   // Modal Visibility States
@@ -42,6 +92,7 @@ const [selectedPdf, setSelectedPdf] = useState(null);
     taskName: '', frequency: 'Daily', assignTo: '', assignedBy: ''
   });
 
+  
 
   // --- Effects & Fetching ---
   useEffect(() => {
@@ -61,11 +112,12 @@ const [selectedPdf, setSelectedPdf] = useState(null);
       setRoleOverviewData(null); // Clear previous data
           setSopData([]);
     setSelectedPdf(null); // ✅ clear previous PDF immediately
-
+     console.log('selected:',selectedUserId);
       fetchRnrData(selectedUserId);
       fetchFixedTasks(selectedUserId);
       fetchRoleOverview(selectedUserId);
       fetchSopData(selectedUserId);
+      setUsers(selectedUserId);
     }
   }, [selectedUserId]);
 
@@ -551,9 +603,24 @@ const [selectedPdf, setSelectedPdf] = useState(null);
 {activeTab === 'SOP' && (
   <div className="table-card">
     <div className="card-inner-header">
-      <h4 className="brand-blue-text">SOP Documents</h4>
-    </div>
+  <h4 className="brand-blue-text">SOP Documents</h4>
 
+  <button
+    className="submit-btn"
+    onClick={() => setShowSopModal(true)}
+    style={{
+       padding: "4px 10px",
+    fontSize: "12px",
+    borderRadius: "6px",
+    cursor: "pointer",
+    width: "auto",
+    minWidth: "90px",
+    height: "32px",
+    }}
+  >
+    + Upload SOP
+  </button>
+</div>
     {/* File Selector */}
     <div
       style={{
@@ -679,7 +746,126 @@ const [selectedPdf, setSelectedPdf] = useState(null);
 
 
       {/* --- MODALS --- */}
+        {/* SOP Upload Modal */}
+{showSopModal && (
+  <div className="modal-overlay">
+    <div className="enhanced-task-popup">
 
+      {/* Header */}
+      <div className="popup-header">
+        <div className="header-content">
+          <div className="title-section">
+            <h2 className="modal-title">Upload SOP PDF</h2>
+            <p className="modal-subtitle">Assign PDF to user and save document link</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Form */}
+      <div className="popup-content">
+        <div className="form-grid-container">
+
+          {/* Select User */}
+<div className="field-box span-6">
+  <label className="field-label required">Select User</label>
+
+  <select
+    className="enhanced-input"
+    value={sopForm.user_id}
+    onChange={(e) =>
+      setSopForm({ ...sopForm, user_id: e.target.value })
+    }
+  >
+    <option value="">Select User</option>
+
+    {/* Self */}
+    <option value={userProfile?.user_id}>
+      {userProfile?.name} (Me)
+    </option>
+
+    {/* Team Members */}
+    {teamMembers.map((member) => (
+      <option key={member.user_id} value={member.user_id}>
+        {member.name}
+      </option>
+    ))}
+  </select>
+</div>
+
+          {/* PDF Name */}
+          <div className="field-box span-6">
+            <label className="field-label required">PDF Name</label>
+            <input
+              type="text"
+              className="enhanced-input"
+              placeholder="Enter PDF name"
+              value={sopForm.pdf_name}
+              onChange={(e) =>
+                setSopForm({ ...sopForm, pdf_name: e.target.value })
+              }
+            />
+          </div>
+
+          {/* PDF Upload */}
+         <div className="field-box span-12">
+  <label className="field-label required">Upload PDF</label>
+
+  <div>
+    <label
+      htmlFor="pdfUpload"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "48px",
+        border: "1px dashed #cbd5e1",
+        borderRadius: "10px",
+        background: "#f8fafc",
+        cursor: "pointer",
+        fontSize: "14px",
+        color: "#475569",
+        fontWeight: "500",
+        transition: "all 0.2s ease"
+      }}
+    >
+      📄 {sopForm.file ? sopForm.file.name : "Choose PDF File"}
+    </label>
+
+    <input
+      id="pdfUpload"
+      type="file"
+      accept="application/pdf"
+      style={{ display: "none" }}
+      onChange={(e) =>
+        setSopForm({ ...sopForm, file: e.target.files[0] })
+      }
+    />
+  </div>
+</div>
+
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="popup-footer">
+        <div className="footer-tips">
+          <span>📄</span>
+          <span>Upload SOP document in PDF format</span>
+        </div>
+
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button className="cancel-btn" onClick={() => setShowSopModal(false)}>
+            Cancel
+          </button>
+
+          <button className="submit-btn" onClick={handleSopUpload}>
+            Save PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* 1. Modal: Add Role Overview */}
       {showRoleOverviewModal && (
