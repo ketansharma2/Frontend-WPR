@@ -460,36 +460,7 @@ if (teamMemberFilter && teamMemberFilter !== "" && teamMemberFilter !== "all") {
     return true;
   })
   .sort((a, b) => {
-  // Primary sort: Master tasks first
-  const isMasterA = a.itemType === "task" && a.category === "assigned";
-  const isMasterB = b.itemType === "task" && b.category === "assigned";
-
-  if (isMasterA && !isMasterB) return -1;
-  if (!isMasterA && isMasterB) return 1;
-
-  // Secondary sort: Owner name
-  const ownerNameA = (a.users?.name || a.owner_name || a.owner_name12 || "Unknown").toLowerCase();
-  const ownerNameB = (b.users?.name || b.owner_name || b.owner_name12 || "Unknown").toLowerCase();
-
-  if (ownerNameA !== ownerNameB) {
-    return ownerNameA.localeCompare(ownerNameB);
-  }
-
-  // Tertiary sort: By date based on sortOrder
-  const getValidDate = (task) => {
-    const date = task.date || task.dueDate || task.created_at || task.createdAt;
-    return date ? new Date(date) : new Date(0);
-  };
   
-  const dateA = getValidDate(a);
-  const dateB = getValidDate(b);
-  
-  // Use sortOrder state to determine order
-  if (sortOrder === 'desc') {
-    return dateB - dateA; // Newest first
-  } else {
-    return dateA - dateB; // Oldest first
-  }
 });
 // console.log('check before filteredTasks:',tasks);
 
