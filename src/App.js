@@ -51,15 +51,17 @@ function App() {
 
   // Protected Route component
   const ProtectedRoute = ({ children, allowedRoles }) => {
-    if (loading) return null; 
+   
     if (!isAuthenticated) {
       return <Navigate to="/login" replace />;
     }
+    
 
     if (allowedRoles && !allowedRoles.includes(userProfile?.user_type)) {
       return <Navigate to="/home" replace />;
     }
-
+    if (loading) return null; 
+ 
     return children;
   };
 
