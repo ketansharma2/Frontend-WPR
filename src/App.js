@@ -12,7 +12,7 @@ import './App.css';
 function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     // Check if user is already logged in
     const token = localStorage.getItem("token");
@@ -27,6 +27,7 @@ function App() {
         console.error("Error parsing user profile:", error);
         setIsAuthenticated(false);
       }
+       setLoading(false);
     } else {
       setIsAuthenticated(false);
     }
@@ -50,6 +51,7 @@ function App() {
 
   // Protected Route component
   const ProtectedRoute = ({ children, allowedRoles }) => {
+    if (loading) return null; 
     if (!isAuthenticated) {
       return <Navigate to="/login" replace />;
     }

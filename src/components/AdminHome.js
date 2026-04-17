@@ -89,18 +89,30 @@ const AdminHome = ({ onLogout }) => {
   const navigate = useNavigate();
 
   // Determine current page from URL path
-  const getCurrentPage = () => {
-    const path = location.pathname;
-    if (path === "/admin/home") return "home";
-    if (path === "/admin/tasks") return "tasks";
-    if (path === "/admin/meetings") return "meetings";
-    if (path === "/admin/calendar") return "calendar";
-    if (path === "/admin/rnr") return "rnr";
-    if (path === "/admin/users") return "users";
-    if (path === "/admin/individual-analytics") return "individual-analytics";
-    return "home"; // default
-  };
+  // const getCurrentPage = () => {
+  //   const path = location.pathname;
+  //   if (path === "/admin/home") return "home";
+  //   if (path === "/admin/tasks") return "tasks";
+  //   if (path === "/admin/meetings") return "meetings";
+  //   if (path === "/admin/calendar") return "calendar";
+  //   if (path === "/admin/rnr") return "rnr";
+  //   if (path === "/admin/users") return "users";
+  //   if (path === "/admin/individual-analytics") return "individual-analytics";
+  //   return "home"; // default
+  // };
+const getCurrentPage = () => {
+  const path = location.pathname;
 
+  if (path.startsWith("/admin/tasks")) return "tasks";
+  if (path.startsWith("/admin/meetings")) return "meetings";
+  if (path.startsWith("/admin/calendar")) return "calendar";
+  if (path.startsWith("/admin/rnr")) return "rnr";
+  if (path.startsWith("/admin/users")) return "users";
+  if (path.startsWith("/admin/individual-analytics")) return "individual-analytics";
+  if (path.startsWith("/admin/home")) return "home";
+
+  return "home";
+};
   // Helper function to get initials from name
   const getInitials = (name) => {
     if (!name) return "?";
@@ -1050,6 +1062,7 @@ const AdminHome = ({ onLogout }) => {
     onLogout();
   };
 
+  console.log('current page:',currentPage);
   const renderPage = () => {
     switch (currentPage) {
       case "tasks":
@@ -1094,7 +1107,7 @@ const AdminHome = ({ onLogout }) => {
             onViewDetails={onViewDetails}
             onViewHistory={onViewHistory}
             onDelete={deleteTask}
-            filter={filter}
+            filter="meeting"
             setFilter={handleFilterChange}
             dateFilter={meetingDateFilter}
             setDateFilter={setMeetingDateFilter}

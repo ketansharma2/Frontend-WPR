@@ -550,9 +550,8 @@ if (teamMemberFilter && teamMemberFilter !== "" && teamMemberFilter !== "all") {
 //     return dateB - dateA; // Descending order (newest first)
 // });
 
-console.log('check filteredTasks:',filteredTasks);
-
-  if (filteredTasks.length === 0) {
+console.log('check filteredTasks:',filter);
+if(filter === 'meeting'){ 
     return (
       <div className="cu-task-wrapper">
         {showFilterBar && (
@@ -803,7 +802,7 @@ console.log('check filteredTasks:',filteredTasks);
         </div>
       </div>
     );
-  }
+}
 
 const ownerSummary = filteredTasks.reduce((acc, task) => {
   console.log('acc',task);
@@ -822,7 +821,7 @@ const ownerDayCount = Object.fromEntries(
   Object.entries(ownerSummary).map(([owner, dates]) => [owner, dates.size])
 );
 
-
+if (filter === 'task') {
   return (
     <div className="cu-task-wrapper">
       {/* Keep existing Professional Filter Bar unchanged */}
@@ -923,7 +922,7 @@ onChange={(e) => {
           )}
 
           {/* Category Filter - Hide for meetings */}
-          {filter !== 'meeting' && (
+          {filter !== 'meetings' && (
             <div className="filter-dropdown">
               <button
                 className={`filter-btn ${activeFilters.category ? 'active' : ''}`}
@@ -1620,4 +1619,5 @@ onChange={(e) => {
       </div>
     </div>
   );
+}
 }
