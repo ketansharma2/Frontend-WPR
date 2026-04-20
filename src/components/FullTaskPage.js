@@ -627,40 +627,55 @@ const MeetingList = ({ meetings, onAddMeeting }) => {
         </div>
       )}
 
-      <div className="meeting-table-wrapper">
-        <table className="meeting-table">
-          <thead>
-            <tr className="meeting-table-header">
-              <th className="meeting-th" style={{ fontSize: '0.75rem', color: 'black' }}>SNO</th>
-              <th className="meeting-th title" style={{ fontSize: '0.75rem', color: 'black' }}>MEETING TITLE</th>
-              <th className="meeting-th" style={{ fontSize: '0.75rem', color: 'black' }}>CO PERSON</th>
-              <th className="meeting-th" style={{ fontSize: '0.75rem', color: 'black' }}>DEPT.</th>
-              <th className="meeting-th" style={{ fontSize: '0.75rem', color: 'black' }}>TIME</th>
-              <th className="meeting-th" style={{ fontSize: '0.75rem', color: 'black' }}>SLOT TIMINGS</th>
-              <th className="meeting-th" style={{ fontSize: '0.75rem', color: 'black' }}>STATUS</th>
-              <th className="meeting-th" style={{ fontSize: '0.75rem', color: 'black' }}>NOTES</th>
-            </tr>
-          </thead>
-          <tbody>
-            {meetings.map((meeting, index) => (
-              <tr key={meeting.id || `meeting-${index}`} className="meeting-row">
-                <td className="meeting-td sno">{index + 1}</td>
-                <td className="meeting-td title">{meeting.title}</td>
-                <td className="meeting-td">{meeting.coPerson}</td>
-                <td className="meeting-td">{meeting.department}</td>
-                <td className="meeting-td">{meeting.time ? `${meeting.time} mins` : '-'}</td>
-                <td className="meeting-td">{meeting.slotTimings || '-'}</td>
-                <td className="meeting-td">
-                  <span className={`meeting-status ${getStatusClass(meeting.status)}`}>
-                    {meeting.status}
-                  </span>
-                </td>
-                <td className="meeting-td notes">{meeting.notes || '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+<div className="meeting-table-wrapper" style={{ overflowX: 'auto' }}>
+  <table className="meeting-table" style={{ 
+    width: '100%', 
+    borderCollapse: 'collapse',
+    minWidth: '800px' // Ensures table doesn't collapse on small screens
+  }}>
+    <thead>
+      <tr style={{ background: 'hsl(var(--muted))', borderBottom: '1px solid hsl(var(--border))' }}>
+        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem', width: '60px' }}>SNO</th>
+        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>MEETING TITLE</th>
+        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>CO PERSON</th>
+        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>DEPT.</th>
+        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>TIME</th>
+        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>SLOT TIMINGS</th>
+        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>STATUS</th>
+        <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.75rem' }}>NOTES</th>
+      </tr>
+    </thead>
+    <tbody>
+      {meetings.map((meeting, index) => (
+        <tr key={meeting.id || `meeting-${index}`} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+          <td style={{ padding: '0.75rem', textAlign: 'center' }}>{index + 1}</td>
+          <td style={{ padding: '0.75rem', fontWeight: '500', textAlign: 'left' }}>{meeting.title}</td>
+          <td style={{ padding: '0.75rem', textAlign: 'left' }}>{meeting.coPerson}</td>
+          <td style={{ padding: '0.75rem', textAlign: 'left' }}>{meeting.department}</td>
+          <td style={{ padding: '0.75rem', textAlign: 'left' }}>{meeting.time ? `${meeting.time} mins` : '-'}</td>
+          <td style={{ padding: '0.75rem', textAlign: 'left' }}>{meeting.slotTimings || '-'}</td>
+          <td style={{ padding: '0.75rem', textAlign: 'left' }}>
+            <span style={{
+              padding: '0.25rem 0.75rem',
+              borderRadius: '9999px',
+              fontSize: '0.75rem',
+              fontWeight: '500',
+              display: 'inline-block',
+              background: meeting.status === 'Done' ? 'hsl(142, 76%, 36%)' : 
+                         meeting.status === 'Cancelled' ? 'hsl(0, 84%, 60%)' :
+                         meeting.status === 'Re-Scheduled' ? 'hsl(38, 92%, 50%)' :
+                         'hsl(217, 91%, 60%)',
+              color: 'white'
+            }}>
+              {meeting.status}
+            </span>
+          </td>
+          <td style={{ padding: '0.75rem', textAlign: 'left' }}>{meeting.notes || '-'}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
     </div>
   );
 };
