@@ -676,36 +676,38 @@ useEffect(() => {
 {/* Meeting View */}
 {popupView === "meeting" && (
   <>
-    <div className="history-table-header meeting-header" style={{color: '#000'}}>
-      <div>Date</div>
-      <div>Meeting</div>
-      <div>Department</div>
-      <div>Co-Person</div>
-      <div>Slot</div>
-      <div>Time</div>
-      <div>Note</div>
-    </div>
-
-    <div className="history-table-body">
-      {selectedTask.meeting_details?.length > 0 ? (
-        selectedTask.meeting_details.map((meeting, index) => (
-          <div key={index} className="history-row meeting-row">
-            <div>{formatDate(meeting.date)}</div>
-            <div>{meeting.meeting_name}</div>
-            <div>{meeting.dept || "-"}</div>
-            <div>{meeting.co_person || "-"}</div>
-            <div>{meeting.prop_slot || "-"}</div>
-            <div>{meeting.time || "-"} min</div>
-            <div>{meeting.notes || "-"}</div>
-
-          </div>
-        ))
-      ) : (
-        <div className="history-row meeting-row">
-          <div>No meetings available</div>
-        </div>
-      )}
-    </div>
+    <table className="meeting-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Meeting</th>
+          <th>Department</th>
+          <th>Co-Person</th>
+          <th>Slot</th>
+          <th>Time</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {selectedTask.meeting_details?.length > 0 ? (
+          selectedTask.meeting_details.map((meeting, index) => (
+            <tr key={index}>
+              <td>{formatDate(meeting.date)}</td>
+              <td>{meeting.meeting_name}</td>
+              <td>{meeting.dept || "-"}</td>
+              <td>{meeting.co_person || "-"}</td>
+              <td>{meeting.prop_slot || "-"}</td>
+              <td>{meeting.time ? `${meeting.time} min` : "-"}</td>
+              <td className="meeting-notes">{meeting.note || meeting.notes || "-"}</td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="7" style={{ textAlign: 'center' }}>No meetings available</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   </>
 )}
     </div>

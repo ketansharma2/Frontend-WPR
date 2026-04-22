@@ -219,7 +219,8 @@
 
 .history-table-header {
   display: grid;
-  grid-template-columns: 120px 100px 1fr 120px;
+  grid-template-columns: 100px 150px 120px 120px 80px 80px 1fr;
+  /* Date | Meeting | Department | Co-Person | Slot | Time | Note */
   background: #f1f5f9;
   padding: 16px 20px;
   font-weight: 700;
@@ -239,6 +240,11 @@
   border-bottom: 1px solid #e2e8f0;
   align-items: center;
   color: #475569;
+}
+
+.history-row.task-row {
+  display: grid;
+  grid-template-columns: 120px 100px 1fr 120px;
 }
 
 .status-pill {
@@ -301,14 +307,76 @@
 
 .meeting-header,
 .meeting-row {
-  display: grid;
-  grid-template-columns: 110px 110px 110px 110px 110px 110px 1fr;
+   display: grid;
+  grid-template-columns: 100px 150px 100px 100px 80px 70px 1fr;
   align-items: center;
+}
+
+.meeting-header.no-notes,
+.meeting-row.no-notes {
+  grid-template-columns: 100px 150px 100px 100px 80px 70px;
+}
+
+.meeting-notes {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+.meeting-table-body {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.meeting-table-body .meeting-row {
+  display: grid;
+  grid-template-columns: 100px 150px 100px 100px 80px 70px 1fr;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  align-items: center;
+  font-size: 13px;
+  color: #475569;
+}
+
+.meeting-table-body .meeting-row.no-notes {
+  grid-template-columns: 100px 150px 100px 100px 80px 70px;
+}
+
+.meeting-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.meeting-table th {
+  background: #f1f5f9;
+  padding: 14px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.meeting-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.meeting-table tr:hover {
+  background: #f8fafc;
+}
+
+.meeting-table .meeting-notes {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-table-header {
   background: #f1f5f9;
-  padding: 14px 18px;
   font-weight: 700;
   color: #475569;
   border-bottom: 1px solid #e2e8f0;
