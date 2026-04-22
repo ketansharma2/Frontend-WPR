@@ -698,7 +698,9 @@ useEffect(() => {
               <td>{meeting.co_person || "-"}</td>
               <td>{meeting.prop_slot || "-"}</td>
               <td>{meeting.time ? `${meeting.time} min` : "-"}</td>
-              <td className="meeting-notes">{meeting.note || meeting.notes || "-"}</td>
+              <td className="meeting-notes"  
+  title={meeting.note || meeting.notes || "-"}
+>{meeting.note || meeting.notes || "-"}</td>
             </tr>
           ))
         ) : (
