@@ -14,7 +14,8 @@ export default function AdminUsers() {
      name: "",
      dept: "",
      designation: "",
-     user_type: "Team Member"
+     user_type: "Team Member",
+     status: "active"
    });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -25,6 +26,7 @@ export default function AdminUsers() {
     try {
       setError("");
       const data = await api.getMembers();
+      console.log("Fetched users:", data.members); // Debug log
       setUsers(data.members || []);
     } catch (err) {
       console.error("Error fetching users:", err);
@@ -50,7 +52,8 @@ export default function AdminUsers() {
         dept: formData.dept,
         designation: formData.designation,
         role: formData.user_type,
-        user_type: formData.user_type
+        user_type: formData.user_type,
+        status: formData.status
       };
 
       // If editing and password is empty, remove it from the request
@@ -73,7 +76,8 @@ export default function AdminUsers() {
         name: "",
         dept: "",
         designation: "",
-        user_type: "Team Member"
+        user_type: "Team Member",
+        status: "active"
       });
       setShowPassword(false);
       fetchUsers(); // Refresh the users list
@@ -94,7 +98,8 @@ export default function AdminUsers() {
       name: user.name || "",
       dept: user.dept || "",
       designation: user.role || "", // Designation from role field
-      user_type: user.user_type || "Team Member" // User type from user_type field
+      user_type: user.user_type || "Team Member", // User type from user_type field
+      status: user.status || "active" // Status from status field
     });
     setShowPassword(false);
     setShowModal(true);
@@ -125,7 +130,8 @@ export default function AdminUsers() {
       name: "",
       dept: "",
       designation: "",
-      user_type: "Team Member"
+      user_type: "Team Member",
+      status: "active"
     });
     setShowPassword(false);
     setShowModal(true);
@@ -285,6 +291,16 @@ export default function AdminUsers() {
                   width: 'auto'
                 }}>User Type</th>
                 <th style={{
+  padding: '8px 12px',
+  textAlign: 'center',
+  fontWeight: '600',
+  fontSize: '14px',
+  color: 'white',
+  borderRight: '1px solid #e5e7eb'
+}}>
+  Status
+</th>
+                <th style={{
                   padding: '8px 12px',
                   textAlign: 'center',
                   fontWeight: '600',
@@ -340,6 +356,20 @@ export default function AdminUsers() {
                          user.user_type}
                       </span>
                     </td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+  <span style={{
+    padding: '4px 10px',
+    borderRadius: '20px',
+    fontSize: '12px',
+    fontWeight: '600',
+    backgroundColor:
+      user.status === "active" ? "#dcfce7" : "#fee2e2",
+    color:
+      user.status === "active" ? "#166534" : "#b91c1c"
+  }}>
+    {user.status || "active"}
+  </span>
+</td>
                     <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                       <button
                         onClick={() => handleEdit(user)}
@@ -488,6 +518,24 @@ export default function AdminUsers() {
                       <option value="Admin">Admin</option>
                     </select>
                   </div>
+                  <div className="field-box span-6">
+  <label className="field-label required">Status</label>
+
+  <select
+    className="enhanced-select"
+    value={formData.status}
+    onChange={(e) =>
+      setFormData({
+        ...formData,
+        status: e.target.value
+      })
+    }
+    disabled={loading}
+  >
+    <option value="active">active</option>
+    <option value="inactive">inactive</option>
+  </select>
+</div>
                 </div>
               </form>
             </div>
