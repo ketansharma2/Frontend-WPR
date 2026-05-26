@@ -873,34 +873,122 @@ const InputPanel = ({ inputUpdates, taskHistory, onAddUpdate, onOpenUpdateModal 
         </div>
       </div>
 
-      <div className="panel-card history-card">
-        <div className="history-header">
-          <span>📅</span>
-          <h3 className="history-title">Task History</h3>
-        </div>
-        <div className="history-table-wrapper">
-          <table className="history-table">
-            <thead>
-              <tr className="history-table-header">
-                <th className="history-th">Date</th>
-                <th className="history-th">Time</th>
-                <th className="history-th">Remarks</th>
-                <th className="history-th">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {taskHistory.map((history) => (
-                <tr key={history.id} className="history-row">
-                  <td className="history-td">{history.date}</td>
-                  <td className="history-td">{history.time_spent || '-'}</td>
-                  <td className="history-td">{history.remarks || '-'}</td>
-                  <td className="history-td">{history.status || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+    {/* FIXED TASK HISTORY SECTION - NO OVERFLOW */}
+<div style={{
+  background: "hsl(var(--card))",
+  borderRadius: "0.5rem",
+  boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
+  border: "1px solid hsl(var(--border))",
+  overflow: "hidden",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+  boxSizing: "border-box"
+}}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.75rem 1rem",
+    background: "linear-gradient(to right, hsl(var(--primary)), hsl(var(--primary) / 0.7))",
+    color: "hsl(var(--primary-foreground))"
+  }}>
+    <span>📅</span>
+    <h3 style={{
+      fontSize: "0.875rem",
+      fontWeight: 600,
+      margin: 0,
+      color: "inherit"
+    }}>Task History</h3>
+  </div>
+  
+  <div style={{
+    overflowX: "auto",
+    maxHeight: "12rem",
+    overflowY: "auto",
+    width: "100%"
+  }}>
+    <table style={{
+      width: "100%",
+      fontSize: "0.75rem",
+      borderCollapse: "collapse"
+    }}>
+      <thead>
+        <tr style={{
+          background: "hsl(var(--muted))",
+          position: "sticky",
+          top: 0
+        }}>
+          <th style={{
+            textAlign: "center",
+            padding: "0.5rem",
+            fontWeight: 600,
+            color: "hsl(var(--muted-foreground))",
+            whiteSpace: "nowrap",
+            borderBottom: "1px solid hsl(var(--border))"
+          }}>Date</th>
+          <th style={{
+            textAlign: "center",
+            padding: "0.5rem",
+            fontWeight: 600,
+            color: "hsl(var(--muted-foreground))",
+            whiteSpace: "nowrap",
+            borderBottom: "1px solid hsl(var(--border))"
+          }}>Time</th>
+          <th style={{
+            textAlign: "center",
+            padding: "0.5rem",
+            fontWeight: 600,
+            color: "hsl(var(--muted-foreground))",
+            whiteSpace: "nowrap",
+            borderBottom: "1px solid hsl(var(--border))"
+          }}>Remarks</th>
+          <th style={{
+            textAlign: "center",
+            padding: "0.5rem",
+            fontWeight: 600,
+            color: "hsl(var(--muted-foreground))",
+            whiteSpace: "nowrap",
+            borderBottom: "1px solid hsl(var(--border))"
+          }}>Status</th>
+         </tr>
+      </thead>
+      <tbody>
+        {taskHistory.map((history) => (
+          <tr key={history.id} style={{
+            borderBottom: "1px solid hsl(var(--border))"
+          }}>
+            <td style={{
+              padding: "0.5rem",
+              color: "hsl(var(--muted-foreground))",
+              whiteSpace: "nowrap",
+              textAlign: "center"
+            }}>{history.date}</td>
+            <td style={{
+              padding: "0.5rem",
+              color: "hsl(var(--muted-foreground))",
+              whiteSpace: "nowrap",
+              textAlign: "center"
+            }}>{history.time_spent || '-'}</td>
+            <td style={{
+              padding: "0.5rem",
+              color: "hsl(var(--muted-foreground))",
+              whiteSpace: "normal",
+              wordBreak: "break-word",
+              maxWidth: "180px"
+            }}>{history.remarks || '-'}</td>
+            <td style={{
+              padding: "0.5rem",
+              color: "hsl(var(--muted-foreground))",
+              whiteSpace: "nowrap",
+              textAlign: "center"
+            }}>{history.status || '-'}</td>
+           </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
     </div>
   );
 };
@@ -1246,16 +1334,49 @@ const TaskView = ({ task: propTask, onClose, onLogout }) => {
             <TaskHeader task={task} progress={progress} subtasks={subtasks} meetings={meetings} />
           </div>
 
-          <div className="task-content" style={{ padding: '15px 0 0 0' }}>
-            <div className="main-section">
-              <SubtaskSlider subtasks={subtasks} onAddSubtask={handleAddSubtask} />
-              <MeetingList meetings={meetings} onAddMeeting={handleAddMeeting} />
-            </div>
+<div style={{ 
+  padding: '15px 0 0 0',
+  display: 'grid',
+  gridTemplateColumns: '1fr',
+  gap: '1.5rem',
+  width: '100%',
+  maxWidth: '100%',
+  overflowX: 'hidden'
+}}>
+  <div style={{
+    display: 'grid',
+    gridTemplateColumns: '7fr 3fr',
+    gap: '1.5rem',
+    width: '100%',
+    maxWidth: '100%',
+    overflowX: 'hidden'
+  }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1.5rem',
+      minWidth: 0,
+      overflowX: 'hidden',
+      width: '100%'
+    }}>
+      <SubtaskSlider subtasks={subtasks} onAddSubtask={handleAddSubtask} />
+      <MeetingList meetings={meetings} onAddMeeting={handleAddMeeting} />
+    </div>
 
-            <div className="side-section">
-              <InputPanel inputUpdates={inputUpdates} taskHistory={taskHistory} onAddUpdate={handleAddInputUpdate} onOpenUpdateModal={openUpdateModal} />
-            </div>
-          </div>
+    <div style={{
+      minWidth: 0,
+      overflowX: 'hidden',
+      width: '100%'
+    }}>
+      <InputPanel 
+        inputUpdates={inputUpdates} 
+        taskHistory={taskHistory} 
+        onAddUpdate={handleAddInputUpdate} 
+        onOpenUpdateModal={openUpdateModal} 
+      />
+    </div>
+  </div>
+</div>
         </div>
       </main>
 
