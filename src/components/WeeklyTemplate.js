@@ -548,10 +548,19 @@ useEffect(() => {
                   {(viewTypeFilter === 'all' || viewTypeFilter === 'team') && <td>{task.source === 'assigned' ? (task.assigned_to_user?.name || 'Unknown') : (task.users?.name || 'Unknown')}</td>}
                   <td>{task.source === 'assigned' ? (task.assigned_by_user?.name || 'Unknown') : 'Self'}</td>
 <td>
-  {(task.latest_remarks || task.remarks || "").length > 20
-    ? (task.latest_remarks || task.remarks).slice(0, 20) + "..."
-    : (task.latest_remarks || task.remarks)}
-</td>                 
+  <span
+    title="Click to copy"
+    style={{ cursor: 'pointer' }}
+    onClick={() => {
+      navigator.clipboard.writeText(task.latest_remarks || task.remarks || "");
+      alert("Remarks copied!");
+    }}
+  >
+    {(task.latest_remarks || task.remarks || "").length > 20
+      ? (task.latest_remarks || task.remarks).slice(0, 20) + "..."
+      : (task.latest_remarks || task.remarks)}
+  </span>
+</td>              
 <td>
   <span
     onClick={() => openTaskPopup(task)}

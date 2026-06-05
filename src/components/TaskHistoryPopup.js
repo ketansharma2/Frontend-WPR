@@ -177,7 +177,9 @@ const TaskHistoryPopup = ({ open, onClose, taskId }) => {
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px', color: '#374151' }}>
-                        {item.remarks || 'No remarks'}
+                         <span title={item.remarks || 'No remarks'} style={{ cursor: 'help' }}>
+    {item.remarks || 'No remarks'}
+  </span>
                       </td>
                       <td style={{ padding: '12px 16px', color: '#374151', textAlign: 'center' }}>
                         {item.changed_at ? new Date(item.changed_at).toLocaleTimeString('en-IN', {
