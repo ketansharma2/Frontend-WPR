@@ -718,7 +718,7 @@ useEffect(() => {
           </tr>
         )}
       </tbody>
-    </table>
+    </table>// add  branch pr in wpr frontend
   </>
 )}
     </div>
